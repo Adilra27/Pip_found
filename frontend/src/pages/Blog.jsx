@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { PenTool, Calendar, MessageSquare } from 'lucide-react';
+import { API_BASE_URL } from '../api';
 
 export default function Blog() {
   const [posts, setPosts] = useState([]);
   useEffect(() => {
-    fetch('/api/blog')
+    fetch(`${API_BASE_URL}/blog`)
       .then(res => res.json())
       .then(data => setPosts(data))
       .catch(err => console.error(err));

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000/api';
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
 
 export async function fetchCauses() {
   const res = await fetch(`${API_BASE_URL}/causes`);
@@ -63,5 +63,11 @@ export async function fetchDonationsList() {
 export async function fetchContactInquiries() {
   const res = await fetch(`${API_BASE_URL}/contact`);
   if (!res.ok) throw new Error('Failed to fetch inquiries');
+  return res.json();
+}
+
+export async function fetchTeam() {
+  const res = await fetch(`${API_BASE_URL}/team`);
+  if (!res.ok) throw new Error('Failed to fetch team');
   return res.json();
 }

@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Heart, Award, Users, CheckCircle, User } from 'lucide-react';
+import { fetchTeam } from '../api';
 
 export default function About({ onOpenDonate }) {
   const [team, setTeam] = useState([]);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/team')
-      .then((res) => res.json())
-      .then(setTeam)
-      .catch(console.error);
+    fetchTeam().then(setTeam).catch(console.error);
   }, []);
 
   return (
