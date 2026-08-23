@@ -11,6 +11,15 @@ const json = (body, status = 200, origin = '*') => new Response(JSON.stringify(b
 const now = () => new Date().toISOString();
 const body = async (request) => request.json().catch(() => ({}));
 const rows = (result) => result.results || [];
+const allowedOrigin = (request, env) => {
+  const requestOrigin = request.headers.get('Origin');
+  const allowed = [
+    env.FRONTEND_ORIGIN,
+    'https://pip-found.pages.dev',
+    'https://www.pip-dev.in',
+  ].filter(Boolean);
+  return allowed.includes(requestOrigin) ? requestOrigin : allowed[0] || '*';
+};
 
 function adminAuthorized(request, env) {
   const header = request.headers.get('Authorization') || '';
@@ -24,7 +33,7 @@ async function api(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/$/, '');
   const method = request.method;
-  const origin = env.FRONTEND_ORIGIN || '*';
+  const origin = allowedOrigin(request, env);
   if (method === 'OPTIONS') return json({}, 204, origin);
 
   if (method === 'GET' && path === '/') return json({ status: 'online', organization: 'Piplad Welfare Foundation', tagline: 'Creating Opportunities, Creating Lives', docs_url: '/api/health' }, 200, origin);
