@@ -5,7 +5,7 @@ compatibility_date = "2026-08-23"
 [[d1_databases]]
 binding = "DB"
 database_name = "piplad-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "30d21832-fb0f-44d5-a534-082b10e0a27d"
 
 [vars]
 FRONTEND_ORIGIN = "https://www.pip-dev.in"
