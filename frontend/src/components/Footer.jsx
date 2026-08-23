@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, MapPin, Phone, Mail, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Heart, MapPin, Phone, Mail, ShieldCheck } from 'lucide-react';
+import SocialLinks from './SocialLinks';
 
 export default function Footer({ onOpenDonate }) {
   return (
@@ -25,6 +26,8 @@ export default function Footer({ onOpenDonate }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(16,185,129,0.1)', color: '#34d399', padding: '0.5rem 0.8rem', borderRadius: '6px', fontSize: '0.85rem', width: 'fit-content' }}>
               <ShieldCheck size={16} /> 80G Tax Deductible (Reg. NGO)
             </div>
+            <h4 style={{ color: '#ffffff', fontSize: '1rem', fontWeight: 700, margin: '1.75rem 0 0.9rem 0' }}>Follow Us</h4>
+            <SocialLinks />
           </div>
 
           {/* Col 2: Quick Links */}
