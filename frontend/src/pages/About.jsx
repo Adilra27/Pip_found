@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { fetchTeam } from '../api';
 
 import AboutHero from '../components/about/AboutHero';
@@ -15,10 +16,15 @@ import AboutCTA from '../components/about/AboutCTA';
 import '../styles/about.css';
 
 export default function About({ onOpenDonate }) {
+  const location = useLocation();
+
   const [team, setTeam] = useState([]);
   const [teamLoading, setTeamLoading] = useState(true);
   const [teamError, setTeamError] = useState(null);
 
+  /*
+   * Load team information
+   */
   useEffect(() => {
     let isMounted = true;
 
@@ -52,6 +58,46 @@ export default function About({ onOpenDonate }) {
       isMounted = false;
     };
   }, []);
+
+  /*
+   * Handle hash navigation
+   *
+   * Examples:
+   *
+   * /about#founders
+   * /about#mentors
+   *
+   * React Router changes the URL, but it does not
+   * always automatically scroll to the hash target.
+   */
+  useEffect(() => {
+    if (!location.hash) {
+      return;
+    }
+
+    const hash = location.hash.replace('#', '');
+
+    const scrollToSection = () => {
+      const element = document.getElementById(hash);
+
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    };
+
+    /*
+     * Wait until the About page sections have rendered
+     * before trying to find the target element.
+     */
+    const timeoutId = setTimeout(scrollToSection, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [location.hash]);
 
   return (
     <main className="about-page">

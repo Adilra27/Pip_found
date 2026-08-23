@@ -11,7 +11,11 @@ const MentorsSection = () => {
   const mentor = data.mentors[activeMentor];
 
   return (
-    <section className="about-mentors">
+    <section
+      id="mentors"
+      className="about-mentors"
+      style={{ scrollMarginTop: "100px" }}
+    >
 
       <div className="about-container">
 

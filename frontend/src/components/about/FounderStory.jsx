@@ -7,7 +7,11 @@ const FounderStory = () => {
   const data = founderStoryData;
 
   return (
-    <section className="about-founder">
+    <section
+      id="founders"
+      className="about-founder"
+      style={{ scrollMarginTop: "100px" }}
+    >
 
       <div className="about-container">
 
