@@ -71,3 +71,28 @@ export async function fetchTeam() {
   if (!res.ok) throw new Error('Failed to fetch team');
   return res.json();
 }
+
+export async function fetchBlogPosts() {
+  const res = await fetch(`${API_BASE_URL}/blog`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch blog posts');
+  }
+
+  return res.json();
+}
+
+
+export async function fetchBlogPost(id) {
+  const res = await fetch(`${API_BASE_URL}/blog/${id}`);
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error('Blog post not found');
+    }
+
+    throw new Error('Failed to fetch blog post');
+  }
+
+  return res.json();
+}

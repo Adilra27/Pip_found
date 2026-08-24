@@ -11,6 +11,7 @@ import Gallery from './pages/Gallery';
 import Contact from './pages/Contact';
 import Terms from './pages/Terms';
 import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
 import Team from './pages/Team';
 import Certificates from './pages/Certificates';
 import JoinUs from './pages/JoinUs';
@@ -55,6 +56,7 @@ export default function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:id" element={<BlogPost />} />
             <Route path="/team" element={<Team />} />
             <Route path="/certificates" element={<Certificates />} />
             <Route path="/join" element={<JoinUs />} />

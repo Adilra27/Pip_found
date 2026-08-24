@@ -115,6 +115,7 @@ class CertificateResponse(CertificateBase):
         from_attributes = True
 
 # Blog Schemas
+
 class BlogBase(BaseModel):
     title: str
     summary: Optional[str] = None
@@ -122,13 +123,14 @@ class BlogBase(BaseModel):
     image_url: Optional[str] = None
     published_date: Optional[datetime] = None
 
+
 class BlogResponse(BlogBase):
     id: int
     created_at: datetime
 
     class Config:
         from_attributes = True
-
+        
 # About Schemas
 class AboutBase(BaseModel):
     name: str
