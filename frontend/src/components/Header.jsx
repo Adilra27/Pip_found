@@ -59,10 +59,6 @@ export default function Header({ onOpenDonate }) {
       <div style={{ background: '#84cc16', color: '#ffffff', fontSize: '0.85rem', padding: '0.5rem 0' }}>
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {/* Social Icons placeholder matching original green bar */}
-            <div style={{display: 'flex', gap: '0.5rem'}}>
-              <span>Fb</span><span>Ig</span><span>Yt</span><span>In</span><span>X</span>
-            </div>
           </div>
           <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', fontWeight: 600 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>

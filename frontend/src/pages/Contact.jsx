@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { submitContact } from '../api';
 import { MapPin, Phone, Mail, Send, CheckCircle2, Loader2 } from 'lucide-react';
+import SocialLinks from '../components/SocialLinks';
 
 export default function Contact() {
   const [name, setName] = useState('');
@@ -84,6 +85,11 @@ export default function Contact() {
                   <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Email Address</h4>
                   <p style={{ color: '#64748b', fontSize: '0.95rem' }}>contact@pipladfoundation.in</p>
                 </div>
+              </div>
+
+              <div>
+                <h4 style={{ fontWeight: 700, color: '#0f172a', marginBottom: '0.9rem' }}>Follow Our Work</h4>
+                <SocialLinks onLight />
               </div>
             </div>
           </div>
