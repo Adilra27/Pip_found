@@ -36,7 +36,7 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.database import SessionLocal
+from app.database import Base, SessionLocal, engine
 from app.models import Blog
 
 
@@ -328,6 +328,7 @@ def migrate_posts(posts: list[dict]) -> tuple[int, int, int]:
         skipped_count
     """
 
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     created_count = 0
