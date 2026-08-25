@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from .database import engine, Base
 from .routes import causes, contact, donation, admin, team, certificates, blog, about, media
 
@@ -45,5 +46,7 @@ def root():
 from .admin_panel import setup_admin
 setup_admin(app)
 
-# Serve React frontend build
-app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")
+# Serve the React build when it is available locally.
+frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if frontend_dist.is_dir():
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
