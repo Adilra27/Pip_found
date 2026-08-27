@@ -6,7 +6,7 @@ import {
 import {
   clearAdminCredentials, createAdminProject, deleteAdminGalleryImage, deleteAdminProject,
   deleteAdminVideo, fetchAdminGallery, fetchAdminProjects, fetchAdminStats, fetchAdminVideos,
-  fetchContactInquiries, fetchDonationsList, getAdminCredentials, resolveMediaUrl,
+  fetchContactInquiries, fetchDonationsList, getAdminCredentials, resolveMediaUrl, API_ORIGIN,
   setAdminCredentials, updateAdminProject, uploadAdminGalleryImage, uploadAdminVideo
 } from '../api';
 
@@ -225,7 +225,7 @@ export default function Admin() {
       <div className="container">
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
           {tabs.map(([id, label]) => <button key={id} className="btn" onClick={() => setTab(id)} style={tab === id ? primaryButton : {}}>{label}</button>)}
-          <a href="http://localhost:8000/admin" target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none', marginLeft: 'auto' }}><ShieldCheck size={16} /> SQL Admin</a>
+          <a href={`${API_ORIGIN}/admin`} target="_blank" rel="noopener noreferrer" className="btn" style={{ textDecoration: 'none', marginLeft: 'auto' }}><ShieldCheck size={16} /> SQL Admin</a>
         </div>
         <ErrorMessage message={error} />
 

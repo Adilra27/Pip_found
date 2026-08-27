@@ -36,15 +36,15 @@ app.add_middleware(
 )
 
 # API routes
-app.include_router(causes.router, prefix="/api/causes", tags=["Causes"])
-app.include_router(contact.router, prefix="/api/contact", tags=["Contact"])
-app.include_router(donation.router, prefix="/api/donate", tags=["Donations"])
-app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
-app.include_router(team.router, prefix="/api/team", tags=["Team"])
-app.include_router(certificates.router, prefix="/api/certificates", tags=["Certificates"])
-app.include_router(blog.router, prefix="/api/blog", tags=["Blog"])
-app.include_router(about.router, prefix="/api/about", tags=["About"])
-app.include_router(media.router, prefix="/api", tags=["Media"])
+app.include_router(causes.router)
+app.include_router(contact.router)
+app.include_router(donation.router)
+app.include_router(admin.router)
+app.include_router(team.router)
+app.include_router(certificates.router)
+app.include_router(blog.router)
+app.include_router(about.router)
+app.include_router(media.router)
 
 
 @app.get("/")
