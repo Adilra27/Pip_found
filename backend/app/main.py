@@ -1,28 +1,30 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import engine, Base
-from .routes import causes, contact, donation, admin, team, certificates, blog, about, media
 
-# Create DB tables
+from .admin_panel import setup_admin
+from .database import Base, engine
+from .routes import about, admin, blog, causes, certificates, contact, donation, media, team
+
+# Creates newly introduced tables without changing existing data.
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Piplad Welfare Foundation API",
     description="Python FastAPI backend powering Piplad Welfare Foundation web application",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-# Enable CORS for React JS frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include Routers
 app.include_router(causes.router)
 app.include_router(contact.router)
 app.include_router(donation.router)
@@ -39,11 +41,18 @@ def root():
         "status": "online",
         "organization": "Piplad Welfare Foundation",
         "tagline": "Creating Opportunities, Creating Lives",
-        "docs_url": "/docs"
+        "docs_url": "/docs",
     }
 
-from .admin_panel import setup_admin
 setup_admin(app)
 
-# Serve React frontend build
+BASE_DIR = Path(__file__).resolve().parent.parent
+MEDIA_DIR = BASE_DIR / "media"
+MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+(MEDIA_DIR / "gallery").mkdir(parents=True, exist_ok=True)
+(MEDIA_DIR / "videos").mkdir(parents=True, exist_ok=True)
+(MEDIA_DIR / "projects").mkdir(parents=True, exist_ok=True)
+
+# IMPORTANT: media must be mounted before the catch-all frontend mount.
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="frontend")

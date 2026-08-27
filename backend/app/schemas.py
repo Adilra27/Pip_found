@@ -1,8 +1,12 @@
-from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
+from datetime import date, datetime
+from typing import List, Optional
 
-# Cause Schemas
+from pydantic import BaseModel, ConfigDict
+
+
+# ============================================================
+# CAUSE SCHEMAS
+# ============================================================
 
 class CauseBase(BaseModel):
     title: str
@@ -13,18 +17,23 @@ class CauseBase(BaseModel):
     raised_amount: Optional[float] = 0.0
     image_url: Optional[str] = None
 
+
 class CauseCreate(CauseBase):
     slug: str
+
 
 class CauseResponse(CauseBase):
     id: int
     slug: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Contact Inquiry Schemas
+
+# ============================================================
+# CONTACT SCHEMAS
+# ============================================================
+
 class ContactCreate(BaseModel):
     name: str
     email: str
@@ -32,20 +41,25 @@ class ContactCreate(BaseModel):
     subject: Optional[str] = None
     message: str
 
+
 class ContactResponse(ContactCreate):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Donation Schemas
+
+# ============================================================
+# DONATION SCHEMAS
+# ============================================================
+
 class DonationCreate(BaseModel):
     donor_name: str
     donor_email: str
     donor_phone: Optional[str] = None
     amount: float
     cause_id: Optional[int] = None
+
 
 class RazorpayOrderCreate(BaseModel):
     amount: float
@@ -55,11 +69,13 @@ class RazorpayOrderCreate(BaseModel):
     donor_phone: Optional[str] = None
     cause_id: Optional[int] = None
 
+
 class RazorpayVerifyRequest(BaseModel):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
     donation_id: int
+
 
 class DonationResponse(BaseModel):
     id: int
@@ -71,50 +87,97 @@ class DonationResponse(BaseModel):
     status: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Gallery Item Schemas
+
+# ============================================================
+# GALLERY / PHOTO SCHEMAS
+# ============================================================
+
 class GalleryItemBase(BaseModel):
     title: str
     image_url: str
-    category: Optional[str] = "Events"
+    category: Optional[str] = "Photo Gallery"
+    description: Optional[str] = None
+
 
 class GalleryItemResponse(GalleryItemBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Team Member Schemas
+
+# ============================================================
+# VIDEO GALLERY SCHEMAS
+# ============================================================
+
+class VideoGalleryResponse(BaseModel):
+    id: int
+    title: str
+    video_url: str
+    description: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================
+# UPCOMING PROJECT SCHEMAS
+# ============================================================
+
+class UpcomingProjectResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+    expected_date: Optional[date] = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================
+# TEAM MEMBER SCHEMAS
+# ============================================================
+
 class TeamMemberBase(BaseModel):
     name: str
     role: Optional[str] = None
     photo_url: Optional[str] = None
     bio: Optional[str] = None
 
+
 class TeamMemberResponse(TeamMemberBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Certificate Schemas
+
+# ============================================================
+# CERTIFICATE SCHEMAS
+# ============================================================
+
 class CertificateBase(BaseModel):
     title: str
     image_url: Optional[str] = None
     description: Optional[str] = None
 
+
 class CertificateResponse(CertificateBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Blog Schemas
+
+# ============================================================
+# BLOG SCHEMAS
+# ============================================================
+
 class BlogBase(BaseModel):
     title: str
     summary: Optional[str] = None
@@ -122,14 +185,18 @@ class BlogBase(BaseModel):
     image_url: Optional[str] = None
     published_date: Optional[datetime] = None
 
+
 class BlogResponse(BlogBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# About Schemas
+
+# ============================================================
+# ABOUT SCHEMAS
+# ============================================================
+
 class AboutBase(BaseModel):
     name: str
     tagline: Optional[str] = None
@@ -138,13 +205,17 @@ class AboutBase(BaseModel):
     founded: Optional[str] = None
     registration: Optional[str] = None
 
+
 class AboutResponse(AboutBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Media Schemas
+
+# ============================================================
+# MEDIA SCHEMAS
+# ============================================================
+
 class MediaBase(BaseModel):
     title: str
     source: str
@@ -152,10 +223,9 @@ class MediaBase(BaseModel):
     image_url: Optional[str] = None
     published_date: Optional[datetime] = None
 
+
 class MediaResponse(MediaBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
+    model_config = ConfigDict(from_attributes=True)

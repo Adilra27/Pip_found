@@ -1,12 +1,56 @@
-from fastapi import APIRouter, Depends
-from typing import List
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+
 from ..database import get_db
-from ..models import Media
-from ..schemas import MediaResponse
+from ..models import GalleryItem, Media, UpcomingProject, VideoGallery
+from ..schemas import (
+    GalleryItemResponse,
+    MediaResponse,
+    UpcomingProjectResponse,
+    VideoGalleryResponse,
+)
 
-router = APIRouter(prefix="/api/media", tags=["Media"])
+router = APIRouter(tags=["Media & Awards"])
 
-@router.get("", response_model=List[MediaResponse])
+
+@router.get("/api/gallery", response_model=List[GalleryItemResponse])
+def get_public_gallery(db: Session = Depends(get_db)):
+    """Return only administrator-managed photo-gallery images."""
+    return (
+        db.query(GalleryItem)
+        .filter(GalleryItem.category == "Photo Gallery")
+        .order_by(GalleryItem.created_at.desc(), GalleryItem.id.desc())
+        .all()
+    )
+
+
+@router.get("/api/videos", response_model=List[VideoGalleryResponse])
+def get_public_videos(db: Session = Depends(get_db)):
+    """Return administrator-managed videos."""
+    return (
+        db.query(VideoGallery)
+        .order_by(VideoGallery.created_at.desc(), VideoGallery.id.desc())
+        .all()
+    )
+
+
+@router.get("/api/projects", response_model=List[UpcomingProjectResponse])
+def get_public_projects(
+    status: str = Query("upcoming", pattern="^(upcoming)$"),
+    db: Session = Depends(get_db),
+):
+    """Publicly expose upcoming projects only."""
+    return (
+        db.query(UpcomingProject)
+        .filter(UpcomingProject.status == status)
+        .order_by(UpcomingProject.expected_date.asc(), UpcomingProject.id.desc())
+        .all()
+    )
+
+
+# Existing media-coverage endpoint is kept intact for compatibility.
+@router.get("/api/media", response_model=List[MediaResponse])
 def get_media_coverage(db: Session = Depends(get_db)):
     return db.query(Media).order_by(Media.published_date.desc()).all()
