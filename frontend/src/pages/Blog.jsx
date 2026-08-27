@@ -1,118 +1,385 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Calendar, Heart, PenTool, Sparkles } from 'lucide-react';
+import { Calendar, ArrowRight, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { API_BASE_URL } from '../api';
-
-const temporaryPosts = [
-  {
-    id: 'temporary-healthcare',
-    category: 'Healthcare',
-    title: 'Small acts of care can change a child\'s whole tomorrow',
-    excerpt: 'From timely medical support to a reassuring hand, our healthcare work begins with seeing every child as a whole person.',
-    date: 'Coming soon',
-    readTime: '4 min read',
-    accent: '#059669'
-  },
-  {
-    id: 'temporary-education',
-    category: 'Education',
-    title: 'A learning opportunity is a door that stays open',
-    excerpt: 'Quality education gives children more than supplies. It gives them confidence, choices, and a stronger voice in their future.',
-    date: 'Coming soon',
-    readTime: '3 min read',
-    accent: '#0284c7'
-  },
-  {
-    id: 'temporary-community',
-    category: 'Community',
-    title: 'Why lasting change is built together',
-    excerpt: 'Our strongest work grows from local ideas, shared responsibility, and people who keep showing up for one another.',
-    date: 'Coming soon',
-    readTime: '5 min read',
-    accent: '#d97706'
-  }
-];
-
-function formatPost(post, index) {
-  return {
-    id: post.id || `post-${index}`,
-    category: post.category || 'PWF Journal',
-    title: post.title || 'A new story from Piplad Welfare Foundation',
-    excerpt: post.excerpt || post.summary || post.content || 'More details from this story will be shared soon.',
-    date: post.date ? new Date(post.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Latest update',
-    readTime: post.read_time || '3 min read',
-    accent: ['#059669', '#0284c7', '#d97706'][index % 3]
-  };
-}
+import { fetchBlogPosts } from '../api';
 
 export default function Blog() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Track which blog card is currently being hovered
+  const [hoveredPostId, setHoveredPostId] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/blog`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch blog posts');
-        return res.json();
-      })
-      .then((data) => setPosts(Array.isArray(data) ? data.map(formatPost) : []))
-      .catch((error) => console.error('Failed to fetch blog:', error))
-      .finally(() => setLoading(false));
+    let isMounted = true;
+
+    const loadPosts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await fetchBlogPosts();
+
+        if (isMounted) {
+          setPosts(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch blog posts:', err);
+
+        if (isMounted) {
+          setError(
+            'Unable to load blog posts right now. Please try again later.'
+          );
+          setPosts([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPosts();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const visiblePosts = posts.length > 0 ? posts : temporaryPosts;
+  const formatDate = (date) => {
+    if (!date) return '';
+
+    return new Date(date).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
 
   return (
-    <div>
-      <section style={{ background: '#0f172a', color: '#fff', padding: '4rem 0', textAlign: 'center' }}>
+    <main className="blog-page">
+
+      {/* HERO */}
+      <section
+        style={{
+          background: '#0f172a',
+          color: '#ffffff',
+          padding: '5rem 0',
+          textAlign: 'center'
+        }}
+      >
         <div className="container">
-          <span className="badge badge-green" style={{ marginBottom: '0.75rem' }}><Sparkles size={16} /> PWF Journal</span>
-          <h1 className="heading-xl" style={{ color: '#fff', marginBottom: '0.75rem' }}>Stories That Move Us Forward</h1>
-          <p className="subheading" style={{ color: '#cbd5e1', margin: '0 auto' }}>A closer look at the people, ideas, and everyday moments behind our mission.</p>
+
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '0.5rem 1rem',
+              borderRadius: '999px',
+              fontWeight: 700,
+              marginBottom: '1rem'
+            }}
+          >
+            <BookOpen size={18} />
+            Our Blog
+          </div>
+
+          <h1
+            style={{
+              fontSize: 'clamp(2.5rem, 5vw, 4rem)',
+              fontWeight: 800,
+              margin: '0 0 1rem'
+            }}
+          >
+            Stories, Updates & News
+          </h1>
+
+          <p
+            style={{
+              maxWidth: '700px',
+              margin: '0 auto',
+              color: '#cbd5e1',
+              fontSize: '1.1rem',
+              lineHeight: 1.7
+            }}
+          >
+            Stories from the communities we serve, updates from
+            Piplad Welfare Foundation, and ideas that inspire
+            positive change.
+          </p>
+
         </div>
       </section>
 
-      <section className="section-padding" style={{ background: '#f8fafc' }}>
+
+      {/* BLOG LIST */}
+      <section
+        style={{
+          background: '#f8fafc',
+          padding: '5rem 0'
+        }}
+      >
+
         <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-            <div>
-              <span className="badge badge-amber" style={{ marginBottom: '0.75rem' }}>{loading ? 'Preparing stories' : posts.length > 0 ? 'Latest from PWF' : 'Preview edition'}</span>
-              <h2 className="heading-lg">Notes from the field</h2>
-            </div>
-            <p style={{ color: '#64748b', maxWidth: '360px', margin: 0 }}>Thoughtful updates from a foundation creating opportunities and creating lives.</p>
-          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-            {visiblePosts.map((post, index) => (
-              <article key={post.id} className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: '360px', borderTop: `5px solid ${post.accent}` }}>
-                <div style={{ padding: '1.5rem 1.5rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-                  <span style={{ color: post.accent, fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{post.category}</span>
-                  <Heart size={18} color="#f59e0b" fill="#fef3c7" />
-                </div>
-                <div style={{ padding: '1rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-                  <h3 className="heading-md" style={{ marginBottom: '0.75rem' }}>{post.title}</h3>
-                  <p style={{ color: '#475569', lineHeight: 1.65, marginBottom: '1.5rem' }}>{post.excerpt}</p>
-                  <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', color: '#64748b', fontSize: '0.82rem', marginTop: 'auto', flexWrap: 'wrap' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={15} /> {post.date}</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><PenTool size={15} /> {post.readTime}</span>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+          {/* Loading */}
+          {loading && (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '4rem 1rem',
+                color: '#64748b'
+              }}
+            >
+              Loading blog posts...
+            </div>
+          )}
 
-          <div style={{ marginTop: '3rem', padding: '2rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-            <div>
-              <h3 style={{ color: '#065f46', fontSize: '1.2rem', marginBottom: '0.35rem' }}>Stay close to the work</h3>
-              <p style={{ color: '#047857' }}>Explore the causes and people making these stories possible.</p>
+
+          {/* Error */}
+          {!loading && error && (
+            <div
+              style={{
+                maxWidth: '700px',
+                margin: '0 auto',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+                padding: '1.5rem',
+                borderRadius: '12px',
+                textAlign: 'center'
+              }}
+            >
+              {error}
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <Link to="/causes" className="btn btn-primary">Explore Causes <ArrowRight size={17} /></Link>
-              <Link to="/contact" className="btn btn-outline">Contact Us</Link>
+          )}
+
+
+          {/* Empty */}
+          {!loading && !error && posts.length === 0 && (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '4rem 1rem'
+              }}
+            >
+              <h2 style={{ color: '#0f172a' }}>
+                No blog posts yet
+              </h2>
+
+              <p style={{ color: '#64748b' }}>
+                New stories and updates will appear here soon.
+              </p>
             </div>
-          </div>
+          )}
+
+
+          {/* Posts */}
+          {!loading && !error && posts.length > 0 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns:
+                  'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: '2rem'
+              }}
+            >
+
+              {posts.map((post) => {
+
+                const isHovered = hoveredPostId === post.id;
+
+                return (
+                  <article
+                    key={post.id}
+                    onMouseEnter={() => setHoveredPostId(post.id)}
+                    onMouseLeave={() => setHoveredPostId(null)}
+                    style={{
+                      background: '#ffffff',
+                      borderRadius: '18px',
+                      overflow: 'hidden',
+
+                      /*
+                       * Hover effect:
+                       * - Normal: standard shadow
+                       * - Hover: card lifts 6px and shadow increases
+                       */
+                      boxShadow: isHovered
+                        ? '0 18px 40px rgba(15, 23, 42, 0.15)'
+                        : '0 8px 30px rgba(15, 23, 42, 0.08)',
+
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+
+                      transform: isHovered
+                        ? 'translateY(-6px)'
+                        : 'translateY(0)',
+
+                      transition:
+                        'transform 0.25s ease, box-shadow 0.25s ease',
+
+                      cursor: 'pointer'
+                    }}
+                  >
+
+                    {/* Image */}
+                    <div
+                      style={{
+                        height: '220px',
+                        background: '#e2e8f0',
+                        overflow: 'hidden'
+                      }}
+                    >
+
+                      {post.image_url ? (
+                        <img
+                          src={post.image_url}
+                          alt={post.title}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+
+                            /*
+                             * Very subtle image zoom on hover.
+                             * This keeps the effect elegant instead
+                             * of making the card feel overly animated.
+                             */
+                            transform: isHovered
+                              ? 'scale(1.03)'
+                              : 'scale(1)',
+
+                            transition: 'transform 0.35s ease'
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#64748b',
+                            fontWeight: 600
+                          }}
+                        >
+                          Piplad Welfare Foundation
+                        </div>
+                      )}
+
+                    </div>
+
+
+                    {/* Content */}
+                    <div
+                      style={{
+                        padding: '1.75rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        flex: 1
+                      }}
+                    >
+
+                      {/* Date */}
+                      {post.published_date && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#65a30d',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            marginBottom: '0.75rem'
+                          }}
+                        >
+                          <Calendar size={16} />
+
+                          {formatDate(post.published_date)}
+                        </div>
+                      )}
+
+
+                      {/* Title */}
+                      <h2
+                        style={{
+                          color: '#0f172a',
+                          fontSize: '1.35rem',
+                          lineHeight: 1.35,
+                          margin: '0 0 0.75rem'
+                        }}
+                      >
+                        {post.title}
+                      </h2>
+
+
+                      {/* Summary */}
+                      <p
+                        style={{
+                          color: '#475569',
+                          lineHeight: 1.7,
+                          margin: '0 0 1.5rem'
+                        }}
+                      >
+                        {post.summary ||
+                          'Read the latest story from Piplad Welfare Foundation.'}
+                      </p>
+
+
+                      {/* Read More */}
+                      <div
+                        style={{
+                          marginTop: 'auto'
+                        }}
+                      >
+
+                        <Link
+                          to={`/blog/${post.id}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#15803d',
+                            fontWeight: 700,
+                            textDecoration: 'none'
+                          }}
+                        >
+                          Read More
+
+                          <ArrowRight
+                            size={18}
+                            style={{
+                              transform: isHovered
+                                ? 'translateX(4px)'
+                                : 'translateX(0)',
+                              transition:
+                                'transform 0.25s ease'
+                            }}
+                          />
+
+                        </Link>
+
+                      </div>
+
+                    </div>
+
+                  </article>
+                );
+              })}
+
+            </div>
+          )}
+
         </div>
+
       </section>
-    </div>
+
+    </main>
   );
 }

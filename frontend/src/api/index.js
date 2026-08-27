@@ -1,98 +1,56 @@
-export const API_BASE_URL = (
-  import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-).replace(/\/$/, '');
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
 
 export const API_ORIGIN = API_BASE_URL.replace(/\/api$/, '');
 
 export function resolveMediaUrl(url) {
   if (!url) return '';
-
-  if (/^https?:\/\//i.test(url)) {
-    return url;
-  }
-
-  if (url.startsWith('/')) {
-    return `${API_ORIGIN}${url}`;
-  }
-
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('/')) return `${API_ORIGIN}${url}`;
   return `${API_ORIGIN}/${url}`;
 }
 
-
-// ============================================================
-// PUBLIC API
-// ============================================================
-
 export async function fetchCauses() {
   const res = await fetch(`${API_BASE_URL}/causes`);
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch causes');
-  }
-
+  if (!res.ok) throw new Error('Failed to fetch causes');
   return res.json();
 }
 
 export async function fetchCauseById(id) {
   const res = await fetch(`${API_BASE_URL}/causes/${id}`);
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch cause details');
-  }
-
+  if (!res.ok) throw new Error('Failed to fetch cause details');
   return res.json();
 }
 
 export async function submitContact(data) {
   const res = await fetch(`${API_BASE_URL}/contact`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
-  if (!res.ok) {
-    throw new Error('Failed to submit contact form');
-  }
-
+  if (!res.ok) throw new Error('Failed to submit contact form');
   return res.json();
 }
-
-
-// ============================================================
-// DONATIONS / RAZORPAY
-// ============================================================
 
 export async function createRazorpayOrder(data) {
   const res = await fetch(`${API_BASE_URL}/donate/create-order`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
-  if (!res.ok) {
-    throw new Error('Failed to create donation order');
-  }
-
+  if (!res.ok) throw new Error('Failed to create donation order');
   return res.json();
 }
 
 export async function verifyPayment(data) {
   const res = await fetch(`${API_BASE_URL}/donate/verify`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
-  if (!res.ok) {
-    throw new Error('Failed to verify payment');
-  }
-
+  if (!res.ok) throw new Error('Failed to verify payment');
   return res.json();
 }
 
@@ -106,7 +64,6 @@ const ADMIN_STORAGE_KEY = 'pwf_admin_basic_auth';
 export function getAdminCredentials() {
   try {
     const raw = sessionStorage.getItem(ADMIN_STORAGE_KEY);
-
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -116,10 +73,7 @@ export function getAdminCredentials() {
 export function setAdminCredentials(username, password) {
   sessionStorage.setItem(
     ADMIN_STORAGE_KEY,
-    JSON.stringify({
-      username,
-      password,
-    })
+    JSON.stringify({ username, password })
   );
 }
 
@@ -129,7 +83,7 @@ export function clearAdminCredentials() {
 
 
 // ============================================================
-// ADMIN FETCH HELPER
+// ADMIN REQUEST HELPER
 // ============================================================
 
 async function adminFetch(path, options = {}) {
@@ -145,9 +99,7 @@ async function adminFetch(path, options = {}) {
 
   headers.set(
     'Authorization',
-    `Basic ${btoa(
-      `${credentials.username}:${credentials.password}`
-    )}`
+    `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
   );
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -160,7 +112,6 @@ async function adminFetch(path, options = {}) {
 
     const error = new Error('ADMIN_AUTH_REQUIRED');
     error.code = 'ADMIN_AUTH_REQUIRED';
-
     throw error;
   }
 
@@ -169,18 +120,15 @@ async function adminFetch(path, options = {}) {
 
     try {
       const data = await response.json();
-
       message = data.detail || message;
     } catch {
-      // Keep the generic error message.
+      // Keep the generic message.
     }
 
     throw new Error(message);
   }
 
-  if (response.status === 204) {
-    return null;
-  }
+  if (response.status === 204) return null;
 
   return response.json();
 }
@@ -196,7 +144,7 @@ export async function fetchAdminStats() {
 
 
 // ============================================================
-// ADMIN PHOTO GALLERY
+// ADMIN GALLERY
 // ============================================================
 
 export async function fetchAdminGallery() {
@@ -232,7 +180,7 @@ export async function deleteAdminGalleryImage(id) {
 
 
 // ============================================================
-// ADMIN VIDEO GALLERY
+// ADMIN VIDEOS
 // ============================================================
 
 export async function fetchAdminVideos() {
@@ -268,7 +216,7 @@ export async function deleteAdminVideo(id) {
 
 
 // ============================================================
-// ADMIN UPCOMING PROJECTS
+// ADMIN PROJECTS
 // ============================================================
 
 export async function fetchAdminProjects() {
@@ -325,10 +273,7 @@ export async function updateAdminProject(
     form.append('expected_date', expectedDate);
   }
 
-  form.append(
-    'remove_image',
-    String(Boolean(removeImage))
-  );
+  form.append('remove_image', String(Boolean(removeImage)));
 
   if (file) {
     form.append('file', file);
@@ -382,9 +327,7 @@ export async function fetchVideos() {
 // ============================================================
 
 export async function fetchUpcomingProjects() {
-  const res = await fetch(
-    `${API_BASE_URL}/projects?status=upcoming`
-  );
+  const res = await fetch(`${API_BASE_URL}/projects?status=upcoming`);
 
   if (!res.ok) {
     throw new Error('Failed to fetch upcoming projects');
@@ -395,7 +338,7 @@ export async function fetchUpcomingProjects() {
 
 
 // ============================================================
-// PUBLIC DONATIONS
+// DONATIONS
 // ============================================================
 
 export async function fetchDonationsList() {
@@ -410,7 +353,7 @@ export async function fetchDonationsList() {
 
 
 // ============================================================
-// PUBLIC CONTACT / INQUIRIES
+// CONTACT
 // ============================================================
 
 export async function fetchContactInquiries() {
@@ -425,7 +368,7 @@ export async function fetchContactInquiries() {
 
 
 // ============================================================
-// PUBLIC TEAM
+// TEAM
 // ============================================================
 
 export async function fetchTeam() {

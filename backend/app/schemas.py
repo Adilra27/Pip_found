@@ -4,10 +4,6 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
-# ============================================================
-# CAUSE SCHEMAS
-# ============================================================
-
 class CauseBase(BaseModel):
     title: str
     category: Optional[str] = "General"
@@ -26,13 +22,8 @@ class CauseResponse(CauseBase):
     id: int
     slug: str
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
-
-# ============================================================
-# CONTACT SCHEMAS
-# ============================================================
 
 class ContactCreate(BaseModel):
     name: str
@@ -45,13 +36,8 @@ class ContactCreate(BaseModel):
 class ContactResponse(ContactCreate):
     id: int
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
-
-# ============================================================
-# DONATION SCHEMAS
-# ============================================================
 
 class DonationCreate(BaseModel):
     donor_name: str
@@ -86,13 +72,8 @@ class DonationResponse(BaseModel):
     cause_id: Optional[int] = None
     status: str
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
-
-# ============================================================
-# GALLERY / PHOTO SCHEMAS
-# ============================================================
 
 class GalleryItemBase(BaseModel):
     title: str
@@ -104,13 +85,8 @@ class GalleryItemBase(BaseModel):
 class GalleryItemResponse(GalleryItemBase):
     id: int
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
-
-# ============================================================
-# VIDEO GALLERY SCHEMAS
-# ============================================================
 
 class VideoGalleryResponse(BaseModel):
     id: int
@@ -118,13 +94,8 @@ class VideoGalleryResponse(BaseModel):
     video_url: str
     description: Optional[str] = None
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
-
-# ============================================================
-# UPCOMING PROJECT SCHEMAS
-# ============================================================
 
 class UpcomingProjectResponse(BaseModel):
     id: int
@@ -135,13 +106,8 @@ class UpcomingProjectResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
-
-# ============================================================
-# TEAM MEMBER SCHEMAS
-# ============================================================
 
 class TeamMemberBase(BaseModel):
     name: str
@@ -153,13 +119,8 @@ class TeamMemberBase(BaseModel):
 class TeamMemberResponse(TeamMemberBase):
     id: int
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
-
-# ============================================================
-# CERTIFICATE SCHEMAS
-# ============================================================
 
 class CertificateBase(BaseModel):
     title: str
@@ -170,7 +131,6 @@ class CertificateBase(BaseModel):
 class CertificateResponse(CertificateBase):
     id: int
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -189,7 +149,6 @@ class BlogBase(BaseModel):
 class BlogResponse(BlogBase):
     id: int
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -208,13 +167,8 @@ class AboutBase(BaseModel):
 
 class AboutResponse(AboutBase):
     id: int
-
     model_config = ConfigDict(from_attributes=True)
 
-
-# ============================================================
-# MEDIA SCHEMAS
-# ============================================================
 
 class MediaBase(BaseModel):
     title: str
@@ -227,5 +181,4 @@ class MediaBase(BaseModel):
 class MediaResponse(MediaBase):
     id: int
     created_at: datetime
-
     model_config = ConfigDict(from_attributes=True)

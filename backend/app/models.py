@@ -101,10 +101,12 @@ class Blog(Base):
     __tablename__ = "blogs"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
+    slug = Column(String(255), unique=True, index=True, nullable=False)
     summary = Column(Text, nullable=True)
     content = Column(Text, nullable=False)
     image_url = Column(String(500), nullable=True)
-    published_date = Column(DateTime, default=datetime.utcnow)
+    source_url = Column(String(500), nullable=True)
+    published_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
