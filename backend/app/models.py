@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -14,8 +14,8 @@ class Cause(Base):
     category = Column(String(100), default="General")
     short_description = Column(Text, nullable=False)
     full_description = Column(Text, nullable=True)
-    target_amount = Column(Float, default=100000.0)
-    raised_amount = Column(Float, default=0.0)
+    target_amount = Column(Numeric(12, 2), default=100000.0)
+    raised_amount = Column(Numeric(12, 2), default=0.0)
     image_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     donations = relationship("Donation", back_populates="cause")
@@ -27,7 +27,7 @@ class Donation(Base):
     donor_name = Column(String(255), nullable=False)
     donor_email = Column(String(255), nullable=False)
     donor_phone = Column(String(50), nullable=True)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
     cause_id = Column(Integer, ForeignKey("causes.id"), nullable=True)
     razorpay_order_id = Column(String(255), nullable=True)
     razorpay_payment_id = Column(String(255), nullable=True)
