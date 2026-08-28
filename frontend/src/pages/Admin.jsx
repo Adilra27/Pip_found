@@ -157,7 +157,11 @@ function VolunteerManager() {
   useEffect(() => { load(); }, []);
 
   async function setStatus(id, status) {
-    try { await updateAdminVolunteerStatus(id, status); await load(); }
+    try {
+      const updated = await updateAdminVolunteerStatus(id, status);
+      setItems((current) => current.map((item) => item.id === id ? updated : item));
+      setError('');
+    }
     catch (e) { setError(e.message); }
   }
 

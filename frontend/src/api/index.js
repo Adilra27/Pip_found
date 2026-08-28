@@ -119,6 +119,7 @@ async function adminFetch(path, options = {}) {
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
+    cache: 'no-store',
     headers,
   });
 
