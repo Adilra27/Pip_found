@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, Users, Handshake, TrendingUp, CheckCircle2, ArrowRight, Loader2, MessageCircle, Award, Zap } from 'lucide-react';
 import '../styles/joinus.css';
+import { submitVolunteerApplication } from '../api';
 
 export default function JoinUs() {
   const [formData, setFormData] = useState({
@@ -88,8 +89,13 @@ export default function JoinUs() {
     setError(null);
 
     try {
-      // API call would go here
-      console.log('Form submitted:', formData);
+      await submitVolunteerApplication({
+        full_name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        interest_area: formData.interestArea,
+        about_yourself: formData.aboutYourself,
+      });
       setLoading(false);
       setSubmitted(true);
       

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
   CalendarDays, Image as ImageIcon, LogIn, LogOut, MessageSquare,
-  RefreshCw, ShieldCheck, Trash2, Upload, Video, DollarSign, Users, Heart
+  RefreshCw, ShieldCheck, Trash2, Upload, Video, DollarSign, Users, Heart, Check, X
 } from 'lucide-react';
 import {
   clearAdminCredentials, createAdminProject, deleteAdminGalleryImage, deleteAdminProject,
   deleteAdminVideo, fetchAdminGallery, fetchAdminProjects, fetchAdminStats, fetchAdminVideos,
   fetchContactInquiries, fetchDonationsList, getAdminCredentials, resolveMediaUrl, API_ORIGIN,
-  setAdminCredentials, updateAdminProject, uploadAdminGalleryImage, uploadAdminVideo
+  setAdminCredentials, updateAdminProject, uploadAdminGalleryImage, uploadAdminVideo,
+  fetchAdminVolunteers, updateAdminVolunteerStatus, deleteAdminVolunteer
 } from '../api';
 
 const emptyPhotoForm = { title: '', description: '', file: null };
@@ -142,6 +143,51 @@ function VideoManager({ refreshAll }) {
 }
 
 function ProjectManager({ refreshAll }) {
+
+  function VolunteerManager() {
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    async function load() {
+      setLoading(true);
+      try { setItems(await fetchAdminVolunteers()); setError(''); }
+      catch (e) { setError(e.message); }
+      finally { setLoading(false); }
+    }
+
+    useEffect(() => { load(); }, []);
+
+    async function setStatus(id, status) {
+      try { await updateAdminVolunteerStatus(id, status); await load(); }
+      catch (e) { setError(e.message); }
+    }
+
+    async function remove(id) {
+      if (!window.confirm('Remove this volunteer application?')) return;
+      try { await deleteAdminVolunteer(id); await load(); }
+      catch (e) { setError(e.message); }
+    }
+
+    return <ManagerSection title="Volunteer Applications" icon={<Users size={22} />}>
+      <ErrorMessage message={error} />
+      {loading ? <p>Loading...</p> : items.length === 0 ? <p style={{ color: '#64748b' }}>No volunteer applications yet.</p> : (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {items.map((item) => <article key={item.id} className="card" style={{ padding: '1rem', borderLeft: `4px solid ${item.status === 'accepted' ? '#059669' : item.status === 'rejected' ? '#dc2626' : '#d97706'}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+              <div><h3 style={{ margin: 0 }}>{item.full_name}</h3><p style={{ color: '#475569', margin: '.35rem 0' }}>{item.email} · {item.phone}</p><p style={{ color: '#64748b', margin: 0 }}>Interest: {item.interest_area}</p>{item.about_yourself && <p style={{ color: '#475569', lineHeight: 1.5 }}>{item.about_yourself}</p>}</div>
+              <span className="badge" style={{ background: item.status === 'accepted' ? '#d1fae5' : item.status === 'rejected' ? '#fee2e2' : '#fef3c7', color: item.status === 'accepted' ? '#065f46' : item.status === 'rejected' ? '#991b1b' : '#92400e' }}>{item.status}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+              <button className="btn" onClick={() => setStatus(item.id, 'accepted')} style={primaryButton}><Check size={15} /> Accept</button>
+              <button className="btn" onClick={() => setStatus(item.id, 'rejected')} style={dangerButton}><X size={15} /> Reject</button>
+              <button className="btn" onClick={() => remove(item.id)} style={dangerButton}><Trash2 size={15} /> Remove</button>
+            </div>
+          </article>)}
+        </div>
+      )}
+    </ManagerSection>;
+  }
   const [items, setItems] = useState([]);
   const [form, setForm] = useState(emptyProjectForm);
   const [editingId, setEditingId] = useState(null);
@@ -211,7 +257,7 @@ export default function Admin() {
   if (!authenticated) return <AdminLogin onLogin={() => setAuthenticated(true)} />;
 
   function logout() { clearAdminCredentials(); setAuthenticated(false); }
-  const tabs = [['dashboard', 'Dashboard'], ['gallery', 'Photos'], ['videos', 'Videos'], ['projects', 'Upcoming Projects']];
+  const tabs = [['dashboard', 'Dashboard'], ['volunteers', 'Volunteers'], ['gallery', 'Photos'], ['videos', 'Videos'], ['projects', 'Upcoming Projects']];
 
   return <div>
     <section style={{ background: '#0f172a', color: '#fff', padding: '3rem 0 2rem' }}>
@@ -240,6 +286,7 @@ export default function Admin() {
         </>}
 
         {tab === 'gallery' && <GalleryManager refreshAll={loadDashboard} />}
+          {tab === 'volunteers' && <VolunteerManager />}
         {tab === 'videos' && <VideoManager refreshAll={loadDashboard} />}
         {tab === 'projects' && <ProjectManager refreshAll={loadDashboard} />}
 

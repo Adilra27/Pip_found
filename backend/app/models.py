@@ -47,6 +47,19 @@ class ContactInquiry(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class VolunteerApplication(Base):
+    __tablename__ = "volunteer_applications"
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False)
+    phone = Column(String(50), nullable=False)
+    interest_area = Column(String(255), nullable=False)
+    about_yourself = Column(Text, nullable=True)
+    profile_pic_url = Column(String(500), nullable=True)
+    status = Column(String(50), nullable=False, default="pending", index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class TeamMember(Base):
     __tablename__ = "team_members"
     id = Column(Integer, primary_key=True, index=True)

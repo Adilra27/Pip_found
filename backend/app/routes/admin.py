@@ -18,11 +18,13 @@ from ..models import (
     GalleryItem,
     UpcomingProject,
     VideoGallery,
+    VolunteerApplication,
 )
 from ..schemas import (
     GalleryItemResponse,
     UpcomingProjectResponse,
     VideoGalleryResponse,
+    VolunteerApplicationResponse,
 )
 
 security = HTTPBasic()
@@ -120,12 +122,54 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db), _: str = Depends(ge
     total_donors = db.query(Donation).filter(Donation.status == "completed").count()
     active_causes = db.query(Cause).count()
     inquiries_count = db.query(ContactInquiry).count()
+    volunteer_applications_count = db.query(VolunteerApplication).filter(VolunteerApplication.status == "pending").count()
     return {
         "total_donations": total_donations,
         "total_donors": total_donors,
         "active_causes": active_causes,
         "inquiries_count": inquiries_count,
+        "volunteer_applications_count": volunteer_applications_count,
     }
+
+
+# ---------------------------------------------------------------------------
+# VOLUNTEER APPLICATIONS ADMIN
+# ---------------------------------------------------------------------------
+
+@router.get("/volunteers", response_model=List[VolunteerApplicationResponse])
+def get_volunteer_applications(db: Session = Depends(get_db), _: str = Depends(get_current_admin)):
+    return db.query(VolunteerApplication).order_by(VolunteerApplication.created_at.desc(), VolunteerApplication.id.desc()).all()
+
+
+@router.patch("/volunteers/{application_id}/status", response_model=VolunteerApplicationResponse)
+def update_volunteer_status(
+    application_id: int,
+    status_value: str,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    if status_value not in {"pending", "accepted", "rejected"}:
+        raise HTTPException(400, "Status must be pending, accepted, or rejected")
+    application = db.query(VolunteerApplication).filter(VolunteerApplication.id == application_id).first()
+    if not application:
+        raise HTTPException(404, "Volunteer application not found")
+    application.status = status_value
+    db.commit()
+    db.refresh(application)
+    return application
+
+
+@router.delete("/volunteers/{application_id}", status_code=204)
+def delete_volunteer_application(
+    application_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    application = db.query(VolunteerApplication).filter(VolunteerApplication.id == application_id).first()
+    if not application:
+        raise HTTPException(404, "Volunteer application not found")
+    db.delete(application)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------

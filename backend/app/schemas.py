@@ -39,6 +39,22 @@ class ContactResponse(ContactCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+class VolunteerApplicationCreate(BaseModel):
+    full_name: str
+    email: str
+    phone: str
+    interest_area: str
+    about_yourself: Optional[str] = None
+
+
+class VolunteerApplicationResponse(VolunteerApplicationCreate):
+    id: int
+    profile_pic_url: Optional[str] = None
+    status: str
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
 class DonationCreate(BaseModel):
     donor_name: str
     donor_email: str

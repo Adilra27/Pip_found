@@ -17,6 +17,7 @@ from .routes import (
     donation,
     media,
     team,
+    volunteers,
 )
 
 # Creates newly introduced tables without changing existing data.
@@ -48,6 +49,7 @@ app.include_router(certificates.router)
 app.include_router(blog.router)
 app.include_router(about.router)
 app.include_router(media.router)
+app.include_router(volunteers.router)
 
 
 @app.get("/")

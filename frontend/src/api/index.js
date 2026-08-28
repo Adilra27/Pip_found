@@ -32,6 +32,21 @@ export async function submitContact(data) {
   return res.json();
 }
 
+export async function submitVolunteerApplication(data) {
+  const res = await fetch(`${API_BASE_URL}/volunteers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const response = await res.json().catch(() => ({}));
+    throw new Error(response.detail || 'Failed to submit volunteer application');
+  }
+
+  return res.json();
+}
+
 export async function createRazorpayOrder(data) {
   const res = await fetch(`${API_BASE_URL}/donate/create-order`, {
     method: 'POST',
@@ -140,6 +155,20 @@ async function adminFetch(path, options = {}) {
 
 export async function fetchAdminStats() {
   return adminFetch('/admin/stats');
+}
+
+export async function fetchAdminVolunteers() {
+  return adminFetch('/admin/volunteers');
+}
+
+export async function updateAdminVolunteerStatus(id, status) {
+  return adminFetch(`/admin/volunteers/${id}/status?status_value=${encodeURIComponent(status)}`, {
+    method: 'PATCH',
+  });
+}
+
+export async function deleteAdminVolunteer(id) {
+  return adminFetch(`/admin/volunteers/${id}`, { method: 'DELETE' });
 }
 
 
