@@ -32,7 +32,7 @@ export default function Header({ onOpenDonate }) {
       subItems: [
         {
           label: 'Education & Skill development',
-          path: '/team/education',
+          path: '/team/education-and-skill-development',
         },
         {
           label: 'Healthcare',
@@ -40,27 +40,27 @@ export default function Header({ onOpenDonate }) {
         },
         {
           label: 'Finance & Legal',
-          path: '/team/finance',
+          path: '/team/finance-and-legal',
         },
         {
           label: 'Environment & Modern Agriculture',
-          path: '/team/environment',
+          path: '/team/environment-and-modern-agriculture',
         },
         {
           label: 'Social Welfare',
-          path: '/team/social',
+          path: '/team/social-welfare',
         },
         {
           label: 'Culture & Tourism',
-          path: '/team/culture',
+          path: '/team/culture-and-tourism',
         },
         {
           label: 'Sports & Yoga',
-          path: '/team/sports',
+          path: '/team/sports-and-yoga',
         },
         {
           label: 'IT & Social Media',
-          path: '/team/it',
+          path: '/team/it-and-social-media',
         },
       ],
     },
