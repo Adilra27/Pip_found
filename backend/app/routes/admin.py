@@ -25,6 +25,7 @@ from ..database import get_db
 
 from ..models import (
     Cause,
+    Certificate,
     ContactInquiry,
     Donation,
     GalleryItem,
@@ -35,6 +36,7 @@ from ..models import (
 )
 
 from ..schemas import (
+    CertificateResponse,
     GalleryItemResponse,
     TeamMemberResponse,
     UpcomingProjectResponse,
@@ -63,6 +65,7 @@ GALLERY_DIR = MEDIA_DIR / "gallery"
 VIDEO_DIR = MEDIA_DIR / "videos"
 PROJECT_DIR = MEDIA_DIR / "projects"
 TEAM_DIR = MEDIA_DIR / "team"
+CERTIFICATE_DIR = MEDIA_DIR / "certificates"
 
 
 # ============================================================
@@ -862,4 +865,206 @@ def delete_team_member(
 
     return {
         "message": "Team member deleted"
+    }
+
+
+# ============================================================
+# CERTIFICATES ADMIN
+# ============================================================
+
+@router.get(
+    "/certificates",
+    response_model=List[CertificateResponse],
+)
+def get_certificates(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(Certificate)
+        .order_by(
+            Certificate.created_at.desc(),
+            Certificate.id.desc(),
+        )
+        .all()
+    )
+
+
+@router.post(
+    "/certificates",
+    response_model=CertificateResponse,
+)
+def create_certificate(
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    title = title.strip()
+
+    if not title:
+        raise HTTPException(
+            status_code=400,
+            detail="Certificate title is required",
+        )
+
+    image_url = None
+
+    if file and file.filename:
+        _validate_upload(
+            file,
+            ALLOWED_IMAGE_EXTENSIONS,
+            ALLOWED_IMAGE_TYPES,
+            MAX_IMAGE_SIZE,
+        )
+
+        filename = _safe_name(
+            file.filename,
+            ".jpg",
+        )
+
+        _save_upload(
+            file,
+            CERTIFICATE_DIR,
+            filename,
+            MAX_IMAGE_SIZE,
+        )
+
+        image_url = _public_url(
+            "certificates",
+            filename,
+        )
+
+    certificate = Certificate(
+        title=title,
+        image_url=image_url,
+        description=(
+            (description or "").strip()
+            or None
+        ),
+    )
+
+    db.add(certificate)
+    db.commit()
+    db.refresh(certificate)
+
+    return certificate
+
+
+@router.put(
+    "/certificates/{certificate_id}",
+    response_model=CertificateResponse,
+)
+def update_certificate(
+    certificate_id: int,
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    remove_image: bool = Form(False),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    certificate = (
+        db.query(Certificate)
+        .filter(
+            Certificate.id == certificate_id
+        )
+        .first()
+    )
+
+    if not certificate:
+        raise HTTPException(
+            404,
+            "Certificate not found",
+        )
+
+    title = title.strip()
+
+    if not title:
+        raise HTTPException(
+            status_code=400,
+            detail="Certificate title is required",
+        )
+
+    old_image = certificate.image_url
+
+    certificate.title = title
+
+    certificate.description = (
+        (description or "").strip()
+        or None
+    )
+
+    if file and file.filename:
+        _validate_upload(
+            file,
+            ALLOWED_IMAGE_EXTENSIONS,
+            ALLOWED_IMAGE_TYPES,
+            MAX_IMAGE_SIZE,
+        )
+
+        filename = _safe_name(
+            file.filename,
+            ".jpg",
+        )
+
+        _save_upload(
+            file,
+            CERTIFICATE_DIR,
+            filename,
+            MAX_IMAGE_SIZE,
+        )
+
+        certificate.image_url = _public_url(
+            "certificates",
+            filename,
+        )
+
+    elif remove_image:
+        certificate.image_url = None
+
+    db.commit()
+    db.refresh(certificate)
+
+    if (
+        old_image
+        and old_image != certificate.image_url
+    ):
+        _delete_local_file(old_image)
+
+    return certificate
+
+
+@router.delete(
+    "/certificates/{certificate_id}",
+)
+def delete_certificate(
+    certificate_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    certificate = (
+        db.query(Certificate)
+        .filter(
+            Certificate.id == certificate_id
+        )
+        .first()
+    )
+
+    if not certificate:
+        raise HTTPException(
+            404,
+            "Certificate not found",
+        )
+
+    old_image = certificate.image_url
+
+    db.delete(certificate)
+    db.commit()
+
+    _delete_local_file(old_image)
+
+    return {
+        "message": "Certificate deleted"
     }

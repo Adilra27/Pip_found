@@ -214,6 +214,12 @@ MEDIA_DIR.mkdir(
     exist_ok=True,
 )
 
+# Certificate uploads.
+(MEDIA_DIR / "certificates").mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
 
 # ============================================================
 # STATIC MEDIA

@@ -393,13 +393,7 @@ export async function fetchDonationsList() {
 // ============================================================
 
 export async function fetchContactInquiries() {
-  const res = await fetch(`${API_BASE_URL}/contact`);
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch inquiries');
-  }
-
-  return res.json();
+  return adminFetch('/contact');
 }
 
 // ============================================================
@@ -424,8 +418,6 @@ export async function fetchTeam() {
 export async function fetchAdminTeam() {
   return adminFetch('/admin/team');
 }
-
-
 export async function createAdminTeamMember({
   name,
   role,
@@ -464,6 +456,82 @@ export async function createAdminTeamMember({
 
 export async function deleteAdminTeamMember(id) {
   return adminFetch(`/admin/team/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================
+// ADMIN CERTIFICATES
+// ============================================================
+
+export async function fetchAdminCertificates() {
+  return adminFetch('/admin/certificates');
+}
+
+export async function createAdminCertificate({
+  title,
+  description,
+  file,
+}) {
+  const form = new FormData();
+
+  form.append('title', title);
+
+  if (description) {
+    form.append('description', description);
+  }
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch('/admin/certificates', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function updateAdminCertificate(
+  id,
+  {
+    title,
+    description,
+    file,
+    removeImage,
+  }
+) {
+  const form = new FormData();
+
+  form.append('title', title);
+
+  if (description) {
+    form.append('description', description);
+  }
+
+  form.append('remove_image', String(Boolean(removeImage)));
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch(`/admin/certificates/${id}`, {
+    method: 'PUT',
+    body: form,
+  });
+}
+
+export async function deleteAdminCertificate(id) {
+  return adminFetch(`/admin/certificates/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================
+// CONTACT INQUIRIES
+// ============================================================
+
+export async function deleteContactInquiry(id) {
+  return adminFetch(`/contact/${id}`, {
     method: 'DELETE',
   });
 }

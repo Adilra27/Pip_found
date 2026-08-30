@@ -16,16 +16,22 @@ import {
   Heart,
   Check,
   X,
+  Award,
+  Edit3,
 } from 'lucide-react';
 
 import {
   clearAdminCredentials,
+  createAdminCertificate,
   createAdminProject,
   createAdminTeamMember,
+  deleteAdminCertificate,
   deleteAdminGalleryImage,
   deleteAdminProject,
   deleteAdminTeamMember,
   deleteAdminVideo,
+  deleteContactInquiry,
+  fetchAdminCertificates,
   fetchAdminGallery,
   fetchAdminProjects,
   fetchAdminStats,
@@ -37,6 +43,7 @@ import {
   getAdminCredentials,
   resolveMediaUrl,
   setAdminCredentials,
+  updateAdminCertificate,
   updateAdminProject,
   updateAdminVolunteerStatus,
   uploadAdminGalleryImage,
@@ -66,6 +73,12 @@ const emptyProjectForm = {
   title: '',
   description: '',
   expectedDate: '',
+  file: null,
+};
+
+const emptyCertificateForm = {
+  title: '',
+  description: '',
   file: null,
 };
 
@@ -1840,6 +1853,311 @@ function TeamManager({
 
 
 // ============================================================
+// CERTIFICATE MANAGER
+// ============================================================
+
+function CertificateManager({ refreshAll }) {
+  const [items, setItems] = useState([]);
+
+  const [form, setForm] = useState(emptyCertificateForm);
+
+  const [editingId, setEditingId] = useState(null);
+
+  const [removeImage, setRemoveImage] = useState(false);
+
+  const [saving, setSaving] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState('');
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      setItems(
+        await fetchAdminCertificates()
+      );
+
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function reset() {
+    setForm(emptyCertificateForm);
+    setEditingId(null);
+    setRemoveImage(false);
+  }
+
+  function edit(item) {
+    setEditingId(item.id);
+
+    setRemoveImage(false);
+
+    setForm({
+      title: item.title,
+      description: item.description || '',
+      file: null,
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+
+    setError('');
+
+    if (!form.title.trim()) {
+      setError('Please enter a certificate title.');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      if (editingId) {
+        await updateAdminCertificate(
+          editingId,
+          {
+            ...form,
+            removeImage,
+          }
+        );
+      } else {
+        await createAdminCertificate(form);
+      }
+
+      reset();
+
+      await load();
+
+      refreshAll();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id) {
+    if (
+      !window.confirm(
+        'Delete this certificate?'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await deleteAdminCertificate(id);
+
+      await load();
+
+      refreshAll();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  return (
+    <ManagerSection
+      title="Certificates"
+      icon={<Award size={22} />}
+    >
+      <ErrorMessage
+        message={error}
+      />
+
+      <form
+        onSubmit={submit}
+        style={formGridStyle}
+      >
+        <input
+          placeholder="Certificate title"
+          value={form.title}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              title: e.target.value,
+            })
+          }
+          required
+          style={inputStyle}
+        />
+
+        <textarea
+          placeholder="Description (optional)"
+          value={form.description}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              description: e.target.value,
+            })
+          }
+          style={textareaStyle}
+        />
+
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={(e) =>
+            setForm({
+              ...form,
+              file: e.target.files?.[0] || null,
+            })
+          }
+          style={inputStyle}
+        />
+
+        {editingId && (
+          <label
+            style={{
+              display: 'flex',
+              gap: '.5rem',
+              alignItems: 'center',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={removeImage}
+              onChange={(e) =>
+                setRemoveImage(e.target.checked)
+              }
+            />
+
+            Remove current image
+          </label>
+        )}
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '.75rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <button
+            className="btn"
+            disabled={saving}
+            style={primaryButton}
+          >
+            <Upload size={17} />
+
+            {saving
+              ? 'Saving...'
+              : editingId
+              ? 'Update Certificate'
+              : 'Add Certificate'}
+          </button>
+
+          {editingId && (
+            <button
+              type="button"
+              className="btn"
+              onClick={reset}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </form>
+
+      <div style={managerGrid}>
+        {loading ? (
+          <p>Loading...</p>
+        ) : items.length === 0 ? (
+          <p style={{ color: '#64748b' }}>
+            No certificates added yet.
+          </p>
+        ) : (
+          items.map((item) => (
+            <article
+              key={item.id}
+              className="card"
+              style={{ overflow: 'hidden' }}
+            >
+              {item.image_url ? (
+                <img
+                  src={resolveMediaUrl(item.image_url)}
+                  alt={item.title}
+                  style={{
+                    width: '100%',
+                    height: 180,
+                    objectFit: 'cover',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    height: 180,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#f1f5f9',
+                  }}
+                >
+                  <Award size={40} color="#94a3b8" />
+                </div>
+              )}
+
+              <div style={{ padding: '1rem' }}>
+                <h3 style={{ margin: '0 0 .4rem' }}>
+                  {item.title}
+                </h3>
+
+                {item.description && (
+                  <p style={{ color: '#64748b' }}>
+                    {item.description}
+                  </p>
+                )}
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '.5rem',
+                    marginTop: '.75rem',
+                  }}
+                >
+                  <button
+                    className="btn"
+                    onClick={() => edit(item)}
+                  >
+                    <Edit3 size={15} />
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() => remove(item.id)}
+                    className="btn"
+                    style={dangerButton}
+                  >
+                    <Trash2 size={15} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
 // MAIN ADMIN PAGE
 // ============================================================
 
@@ -1903,6 +2221,26 @@ export default function Admin() {
     }
   }, [authenticated]);
 
+  async function deleteInquiry(id) {
+    if (
+      !window.confirm(
+        'Delete this contact inquiry?'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await deleteContactInquiry(id);
+
+      setInquiries((current) =>
+        current.filter((item) => item.id !== id)
+      );
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   if (!authenticated) {
     return (
       <AdminLogin
@@ -1942,6 +2280,10 @@ export default function Admin() {
     [
       'team',
       'Team Members',
+    ],
+    [
+      'certificates',
+      'Certificates',
     ],
   ];
 
@@ -2209,6 +2551,14 @@ export default function Admin() {
             />
           )}
 
+          {tab === 'certificates' && (
+            <CertificateManager
+              refreshAll={
+                loadDashboard
+              }
+            />
+          )}
+
           {/* =================================================
               RECENT DONATIONS / INQUIRIES
               ================================================= */}
@@ -2383,7 +2733,19 @@ export default function Admin() {
                       <th
                         style={th}
                       >
+                        Phone
+                      </th>
+
+                      <th
+                        style={th}
+                      >
                         Subject
+                      </th>
+
+                      <th
+                        style={th}
+                      >
+                        Message
                       </th>
 
                       <th
@@ -2391,12 +2753,18 @@ export default function Admin() {
                       >
                         Date
                       </th>
+
+                      <th
+                        style={th}
+                      >
+                        Actions
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {inquiries
-                      .slice(0, 10)
+                      .slice(0, 20)
                       .map(
                         (i) => (
                           <tr
@@ -2425,8 +2793,26 @@ export default function Admin() {
                                 td
                               }
                             >
+                              {i.phone ||
+                                '—'}
+                            </td>
+
+                            <td
+                              style={
+                                td
+                              }
+                            >
                               {i.subject ||
                                 'General'}
+                            </td>
+
+                            <td
+                              style={{
+                                ...td,
+                                minWidth: 220,
+                              }}
+                            >
+                              {i.message}
                             </td>
 
                             <td
@@ -2436,7 +2822,26 @@ export default function Admin() {
                             >
                               {new Date(
                                 i.created_at
-                              ).toLocaleDateString()}
+                              ).toLocaleString()}
+                            </td>
+
+                            <td
+                              style={td}
+                            >
+                              <button
+                                onClick={() =>
+                                  deleteInquiry(
+                                    i.id
+                                  )
+                                }
+                                className="btn"
+                                style={dangerButton}
+                              >
+                                <Trash2
+                                  size={15}
+                                />
+                                Delete
+                              </button>
                             </td>
                           </tr>
                         )
@@ -2446,7 +2851,7 @@ export default function Admin() {
                       0 && (
                       <tr>
                         <td
-                          colSpan="4"
+                          colSpan="7"
                           style={
                             td
                           }
