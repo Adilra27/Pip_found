@@ -61,7 +61,7 @@ export default function Footer({ onOpenDonate }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.9rem', color: '#94a3b8' }}>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                 <MapPin size={18} color="#10b981" style={{ flexShrink: 0, marginTop: '3px' }} />
-                <span>Piplad Welfare Foundation, Main Road, India</span>
+                <span>Vill-Manikpur, Shahkhund-813108, Bhagalpur, Bihar</span>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <Phone size={18} color="#10b981" style={{ flexShrink: 0 }} />
@@ -69,7 +69,7 @@ export default function Footer({ onOpenDonate }) {
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <Mail size={18} color="#10b981" style={{ flexShrink: 0 }} />
-                <span>contact@pipladfoundation.in</span>
+                <span>info@pipladfoundation.in</span>
               </div>
               <button className="btn btn-primary" onClick={onOpenDonate} style={{ marginTop: '0.5rem', width: 'fit-content' }}>
                 <Heart size={16} fill="#ffffff" /> Make a Donation

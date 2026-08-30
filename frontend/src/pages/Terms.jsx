@@ -26,7 +26,7 @@ export default function Terms() {
 
             <h2 className="heading-md" style={{ marginBottom: '1rem', color: '#0f172a' }}>2. How to Request a Refund</h2>
             <p style={{ marginBottom: '1.5rem' }}>
-              To request a refund, please write an email to <strong>contact@pipladfoundation.in</strong> with your donation details, transaction reference ID, payment method used, and reason for refund. Refund requests will be reviewed by our board within 5 working days.
+              To request a refund, please write an email to <strong>info@pipladfoundation.in</strong> with your donation details, transaction reference ID, payment method used, and reason for refund. Refund requests will be reviewed by our board within 5 working days.
             </p>
 
             <h2 className="heading-md" style={{ marginBottom: '1rem', color: '#0f172a' }}>3. 80G Tax Receipt Terms</h2>

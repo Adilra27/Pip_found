@@ -63,7 +63,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Headquarters Address</h4>
-                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Piplad Welfare Foundation, Main Road, India</p>
+                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Vill-Manikpur, Shahkhund-813108, Bhagalpur, Bihar</p>
                 </div>
               </div>
 
@@ -83,7 +83,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Email Address</h4>
-                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>contact@pipladfoundation.in</p>
+                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>info@pipladfoundation.in</p>
                 </div>
               </div>
 
