@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { submitContact } from '../api';
-import { MapPin, Phone, Mail, Send, CheckCircle2, Loader2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Send, CheckCircle2, Loader2, Navigation } from 'lucide-react';
 import SocialLinks from '../components/SocialLinks';
+
+const FOUNDATION_ADDRESS = 'Manik Pur Buzurg, Bihar';
+
+const FOUNDATION_MAPS_QUERY = encodeURIComponent(
+  'Manik Pur Buzurg, माणिक पुर बुज़ुर्ग, Bihar'
+);
+
+const MAPS_EMBED_SRC = `https://www.google.com/maps?q=${FOUNDATION_MAPS_QUERY}&output=embed`;
+
+const DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${FOUNDATION_MAPS_QUERY}`;
 
 export default function Contact() {
   const [name, setName] = useState('');
@@ -63,7 +73,15 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Headquarters Address</h4>
-                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Vill-Manikpur, Shahkhund-813108, Bhagalpur, Bihar</p>
+                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>{FOUNDATION_ADDRESS}</p>
+                  <a
+                    href={DIRECTIONS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#059669', fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}
+                  >
+                    Get Directions <Navigation size={13} style={{ verticalAlign: 'middle' }} />
+                  </a>
                 </div>
               </div>
 
@@ -91,6 +109,53 @@ export default function Contact() {
                 <h4 style={{ fontWeight: 700, color: '#0f172a', marginBottom: '0.9rem' }}>Follow Our Work</h4>
                 <SocialLinks onLight />
               </div>
+            </div>
+
+            <div
+              style={{
+                position: 'relative',
+                borderRadius: '18px',
+                overflow: 'hidden',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 8px 25px rgba(15, 23, 42, 0.08)',
+              }}
+            >
+              <a
+                href={DIRECTIONS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open in Google Maps"
+                style={{ display: 'block' }}
+              >
+                <iframe
+                  title="Piplad Welfare Foundation Location"
+                  src={MAPS_EMBED_SRC}
+                  width="100%"
+                  height="200"
+                  style={{ border: 0, display: 'block', width: '100%', pointerEvents: 'none' }}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    right: '0.75rem',
+                    bottom: '0.75rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    padding: '0.5rem 0.9rem',
+                    borderRadius: '999px',
+                    boxShadow: '0 4px 14px rgba(15, 23, 42, 0.18)',
+                  }}
+                >
+                  <MapPin size={15} /> Open in Maps
+                </span>
+              </a>
             </div>
           </div>
 
