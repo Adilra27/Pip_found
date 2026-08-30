@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
@@ -210,8 +211,18 @@ function TeamCarousel({ members }) {
 }
 
 
-export default function Team() {
+function normalizeTeamName(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
 
+
+export default function Team() {
+  const { teamName } = useParams();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -228,11 +239,22 @@ export default function Team() {
 
         const data = await fetchTeam();
 
-        setMembers(
-          Array.isArray(data)
-            ? data
-            : []
+        const allMembers = Array.isArray(data) ? data : [];
+
+        if (!teamName) {
+          setMembers(allMembers);
+          return;
+        }
+
+        const requestedTeam = normalizeTeamName(
+          decodeURIComponent(teamName)
         );
+
+        const filteredMembers = allMembers.filter((member) => {
+          return normalizeTeamName(member.team || 'General') === requestedTeam;
+        });
+
+        setMembers(filteredMembers);
 
       } catch (err) {
 
@@ -254,7 +276,7 @@ export default function Team() {
 
     loadTeam();
 
-  }, []);
+  }, [teamName]);
 
 
   const groupedTeams = useMemo(() => {

@@ -58,6 +58,7 @@ export default function App() {
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:id" element={<BlogPost />} />
             <Route path="/team" element={<Team />} />
+            <Route path="/team/:teamName" element={<Team />} />
             <Route path="/certificates" element={<Certificates />} />
             <Route path="/join" element={<JoinUs />} />
             <Route path="/admin" element={<Admin />} />
