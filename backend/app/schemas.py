@@ -22,6 +22,7 @@ class CauseResponse(CauseBase):
     id: int
     slug: str
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -36,6 +37,7 @@ class ContactCreate(BaseModel):
 class ContactResponse(ContactCreate):
     id: int
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -88,6 +90,7 @@ class DonationResponse(BaseModel):
     cause_id: Optional[int] = None
     status: str
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -101,6 +104,7 @@ class GalleryItemBase(BaseModel):
 class GalleryItemResponse(GalleryItemBase):
     id: int
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -110,6 +114,7 @@ class VideoGalleryResponse(BaseModel):
     video_url: str
     description: Optional[str] = None
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -122,12 +127,18 @@ class UpcomingProjectResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
+
+# ============================================================
+# TEAM
+# ============================================================
 
 class TeamMemberBase(BaseModel):
     name: str
     role: Optional[str] = None
+    team: str = "General"
     photo_url: Optional[str] = None
     bio: Optional[str] = None
 
@@ -135,8 +146,13 @@ class TeamMemberBase(BaseModel):
 class TeamMemberResponse(TeamMemberBase):
     id: int
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
+
+# ============================================================
+# CERTIFICATES
+# ============================================================
 
 class CertificateBase(BaseModel):
     title: str
@@ -147,11 +163,12 @@ class CertificateBase(BaseModel):
 class CertificateResponse(CertificateBase):
     id: int
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================
-# BLOG SCHEMAS
+# BLOG
 # ============================================================
 
 class BlogBase(BaseModel):
@@ -165,11 +182,12 @@ class BlogBase(BaseModel):
 class BlogResponse(BlogBase):
     id: int
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================
-# ABOUT SCHEMAS
+# ABOUT
 # ============================================================
 
 class AboutBase(BaseModel):
@@ -183,8 +201,13 @@ class AboutBase(BaseModel):
 
 class AboutResponse(AboutBase):
     id: int
+
     model_config = ConfigDict(from_attributes=True)
 
+
+# ============================================================
+# MEDIA
+# ============================================================
 
 class MediaBase(BaseModel):
     title: str
@@ -197,4 +220,5 @@ class MediaBase(BaseModel):
 class MediaResponse(MediaBase):
     id: int
     created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)

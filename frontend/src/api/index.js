@@ -356,6 +356,12 @@ export async function fetchVideos() {
 // PUBLIC UPCOMING PROJECTS
 // ============================================================
 
+export async function fetchCertificates() {
+  const res = await fetch(`${API_BASE_URL}/certificates`);
+  if (!res.ok) throw new Error('Failed to fetch certificates');
+  return res.json();
+}
+
 export async function fetchUpcomingProjects() {
   const res = await fetch(`${API_BASE_URL}/projects?status=upcoming`);
 
@@ -396,7 +402,6 @@ export async function fetchContactInquiries() {
   return res.json();
 }
 
-
 // ============================================================
 // TEAM
 // ============================================================
@@ -411,6 +416,57 @@ export async function fetchTeam() {
   return res.json();
 }
 
+
+// ============================================================
+// ADMIN TEAM
+// ============================================================
+
+export async function fetchAdminTeam() {
+  return adminFetch('/admin/team');
+}
+
+
+export async function createAdminTeamMember({
+  name,
+  role,
+  team,
+  bio,
+  file,
+}) {
+  const form = new FormData();
+
+  form.append('name', name);
+
+  if (role) {
+    form.append('role', role);
+  }
+
+  form.append(
+    'team',
+    team || 'General'
+  );
+
+  if (bio) {
+    form.append('bio', bio);
+  }
+
+  // Photo is optional.
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch('/admin/team', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+
+export async function deleteAdminTeamMember(id) {
+  return adminFetch(`/admin/team/${id}`, {
+    method: 'DELETE',
+  });
+}
 
 // ============================================================
 // PUBLIC BLOG

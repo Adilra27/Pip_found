@@ -1,185 +1,504 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, ShieldCheck, Users, Award, BookOpen, UtensilsCrossed, ArrowRight, CheckCircle } from 'lucide-react';
-import { fetchCauses } from '../api';
+import {
+  ArrowRight,
+  Award,
+  BookOpen,
+  BriefcaseBusiness,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  HeartPulse,
+  Leaf,
+  MapPin,
+  PlayCircle,
+  ShieldCheck,
+  Sprout,
+  Trophy,
+  Users,
+  Utensils,
+} from 'lucide-react';
+import {
+  fetchBlogPosts,
+  fetchCauses,
+  fetchCertificates,
+  fetchUpcomingProjects,
+  resolveMediaUrl,
+} from '../api';
 import CauseCard from '../components/CauseCard';
+import { impactAreasData, whoWeAreData } from '../data/aboutdata';
+import '../styles/home.css';
+
+const heroSlides = [
+  {
+    eyebrow: 'Education for All',
+    title: 'Empowering Minds,',
+    highlight: 'Illuminating Futures',
+    text: 'Creating accessible learning opportunities for children, educators and rural communities through technology-enabled education.',
+    image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=85&w=1400',
+  },
+  {
+    eyebrow: 'Food for All',
+    title: 'Nourishing Hope,',
+    highlight: 'One Meal at a Time',
+    text: 'Supporting vulnerable families and communities with food assistance, community meals and dignity-centered welfare initiatives.',
+    image: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=85&w=1400',
+  },
+  {
+    eyebrow: 'Grow Green, Live Clean',
+    title: "Together, Let's Plant",
+    highlight: 'the Seeds for Tomorrow',
+    text: 'Building greener and more resilient communities through tree plantation, climate action, sustainable agriculture and conservation.',
+    image: 'https://images.unsplash.com/photo-1497250681960-ef046c08a56e?auto=format&fit=crop&q=85&w=1400',
+  },
+  {
+    eyebrow: 'Swift Aid, Strong Hope',
+    title: 'Every Second',
+    highlight: 'Saves a Life',
+    text: 'Standing with communities during emergencies through rapid relief, preparedness and resilient local support systems.',
+    image: 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&q=85&w=1400',
+  },
+];
+
+const programIcons = [
+  BookOpen,
+  BriefcaseBusiness,
+  HeartPulse,
+  Leaf,
+  Sprout,
+  Trophy,
+  Users,
+  ShieldCheck,
+];
+
+const partnerData = [
+  {
+    short: 'TCS',
+    name: 'Tata Consultancy Services',
+    description:
+      'Supports digital education, telemedicine, analytics and volunteer engagement under the HOPE Initiative.',
+  },
+  {
+    short: 'TCI',
+    name: 'Transport Corporation of India',
+    description:
+      'Enables industry-aligned vocational training, apprenticeships and direct placement pathways in logistics and supply chain.',
+  },
+];
+
+function SectionHeading({ eyebrow, title, description, light = false }) {
+  return (
+    <div className={`home-section-heading ${light ? 'is-light' : ''}`}>
+      {eyebrow && <span className="home-eyebrow">{eyebrow}</span>}
+      <h2>{title}</h2>
+      {description && <p>{description}</p>}
+    </div>
+  );
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function truncate(text, length = 150) {
+  if (!text) return '';
+  const clean = String(text).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return clean.length > length ? `${clean.slice(0, length).trim()}…` : clean;
+}
 
 export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
+  const [slide, setSlide] = useState(0);
   const [causes, setCauses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [blogs, setBlogs] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [certificates, setCertificates] = useState([]);
+  const [loading, setLoading] = useState({ causes: true, blogs: true, projects: true, certificates: true });
 
   useEffect(() => {
-    fetchCauses()
-      .then((data) => {
-        setCauses(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error fetching causes:', err);
-        setLoading(false);
-      });
+    const timer = window.setInterval(() => {
+      setSlide((current) => (current + 1) % heroSlides.length);
+    }, 6000);
+    return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async (key, request, setter) => {
+      try {
+        const data = await request();
+        if (mounted) setter(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error(`Failed to load homepage ${key}:`, error);
+        if (mounted) setter([]);
+      } finally {
+        if (mounted) setLoading((state) => ({ ...state, [key]: false }));
+      }
+    };
+
+    load('causes', fetchCauses, setCauses);
+    load('blogs', fetchBlogPosts, setBlogs);
+    load('projects', fetchUpcomingProjects, setProjects);
+    load('certificates', fetchCertificates, setCertificates);
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const activeSlide = heroSlides[slide];
+  const featuredBlogs = useMemo(() => blogs.slice(0, 4), [blogs]);
+  const featuredCertificates = useMemo(() => certificates.slice(0, 6), [certificates]);
+  const featuredProjects = useMemo(() => projects.slice(0, 3), [projects]);
+  const programs = impactAreasData.areas.slice(0, 8);
+
   return (
-    <div>
-      {/* Hero Section */}
-      <section style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#ffffff', padding: '5rem 0 6rem 0', position: 'relative', overflow: 'hidden' }}>
-        <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '3rem', alignItems: 'center' }}>
-          <div>
-            <div className="badge badge-green" style={{ marginBottom: '1.25rem' }}>
-              <ShieldCheck size={16} /> Empowering Communities Since Inception
-            </div>
-            <h1 className="heading-xl" style={{ color: '#ffffff', marginBottom: '1.25rem' }}>
-              Creating Opportunities, <span style={{ color: '#34d399' }}>Creating Lives</span>
+    <main className="home-page">
+      {/* HERO */}
+      <section className="home-hero">
+        <div className="home-hero-media" style={{ backgroundImage: `url(${activeSlide.image})` }} />
+        <div className="home-hero-overlay" />
+        <div className="container home-hero-inner">
+          <div className="home-hero-copy">
+            <span className="home-hero-badge">
+              <ShieldCheck size={16} /> Piplad Welfare Foundation
+            </span>
+            <span className="home-hero-eyebrow">{activeSlide.eyebrow}</span>
+            <h1>
+              {activeSlide.title} <span>{activeSlide.highlight}</span>
             </h1>
-            <p style={{ fontSize: '1.1rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '2rem', maxWidth: '580px' }}>
-              Piplad Welfare Foundation is committed to transforming lives through childhood healthcare, quality education for all, zero hunger food drives, and women empowerment.
-            </p>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <button className="btn btn-primary" onClick={() => onOpenDonate()} style={{ padding: '0.9rem 1.8rem', fontSize: '1.05rem', borderRadius: '999px' }}>
-                <Heart size={20} fill="#ffffff" /> Donate Now
+            <p>{activeSlide.text}</p>
+            <div className="home-hero-actions">
+              <button className="btn btn-primary home-hero-donate" onClick={() => onOpenDonate()}>
+                <HeartPulse size={19} fill="currentColor" /> Donate Now
               </button>
-              <Link to="/causes" className="btn btn-outline" style={{ color: '#ffffff', borderColor: '#475569', borderRadius: '999px' }}>
-                Explore Causes <ArrowRight size={18} />
+              <Link to="/about" className="home-ghost-button">
+                Discover Our Work <ArrowRight size={18} />
               </Link>
             </div>
           </div>
 
-          <div style={{ position: 'relative' }}>
-            <div style={{ borderRadius: '20px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', border: '4px solid rgba(255,255,255,0.1)' }}>
-              <img
-                src="https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=80&w=800"
-                alt="Piplad Welfare Foundation Drive"
-                style={{ width: '100%', height: '420px', objectFit: 'cover', display: 'block' }}
+          <div className="home-hero-logo-card">
+            <img src="/piplad-logo.jpg" alt="Piplad Welfare Foundation" />
+            <div className="home-hero-logo-caption">
+              <strong>Creating Opportunities, Creating Lives</strong>
+              <span>Grassroots-powered · Technology-enabled · Future-focused</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="home-hero-controls container">
+          <button type="button" aria-label="Previous slide" onClick={() => setSlide((slide - 1 + heroSlides.length) % heroSlides.length)}>
+            <ChevronLeft size={20} />
+          </button>
+          <div className="home-hero-dots">
+            {heroSlides.map((item, index) => (
+              <button
+                key={item.eyebrow}
+                type="button"
+                aria-label={`Go to slide ${index + 1}`}
+                className={index === slide ? 'active' : ''}
+                onClick={() => setSlide(index)}
               />
+            ))}
+          </div>
+          <button type="button" aria-label="Next slide" onClick={() => setSlide((slide + 1) % heroSlides.length)}>
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      </section>
+
+      {/* IMPACT STRIP */}
+      <section className="home-impact-strip">
+        <div className="container home-impact-grid">
+          <div><strong>8+</strong><span>Impact Areas</span></div>
+          <div><strong>1M</strong><span>Tree Plantation Goal</span></div>
+          <div><strong>Section 8</strong><span>Registered Nonprofit</span></div>
+          <div><strong>12A & 80G</strong><span>Registered Foundation</span></div>
+        </div>
+      </section>
+
+      {/* WHO WE ARE */}
+      <section className="home-section home-who-we-are">
+        <div className="container home-two-column">
+          <div className="home-photo-panel">
+            <img src="/piplad-logo.jpg" alt="Piplad Welfare Foundation logo" />
+            <div className="home-photo-badge"><MapPin size={17} /> Rural-first, community-led</div>
+          </div>
+          <div>
+            <SectionHeading
+              eyebrow={whoWeAreData.eyebrow}
+              title={whoWeAreData.title}
+              description={whoWeAreData.description}
+            />
+            <p className="home-secondary-copy">{whoWeAreData.secondaryDescription}</p>
+            <div className="home-highlight-grid">
+              {whoWeAreData.highlights.map((item) => (
+                <div className="home-highlight-card" key={item.title}>
+                  <span>{item.icon}</span>
+                  <div>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div style={{ position: 'absolute', bottom: '-20px', left: '-20px', background: '#059669', color: '#fff', padding: '1.2rem 1.5rem', borderRadius: '14px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <Users size={36} />
-              <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>5,000+</div>
-                <div style={{ fontSize: '0.85rem', color: '#a7f3d0' }}>Lives Impacted</div>
-              </div>
-            </div>
+            <Link to="/about" className="home-text-link">Learn more about Piplad <ArrowRight size={17} /></Link>
           </div>
         </div>
       </section>
 
-      {/* Impact Stats Banner */}
-      <section style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '2.5rem 0' }}>
-        <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', textAlign: 'center' }}>
+      {/* PATHSHALA */}
+      <section className="home-section home-pathshala">
+        <div className="container home-pathshala-grid">
           <div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#059669' }}>₹15L+</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Welfare Funds Raised</div>
+            <SectionHeading
+              eyebrow="Piplad Pathshala"
+              title="Learning should not stop because connectivity is limited."
+              description="Piplad Pathshala is a rural-first digital learning platform designed for low-connectivity and bilingual access."
+              light
+            />
+            <div className="home-check-list">
+              {[
+                'Live interactive classes and recorded lessons',
+                'Bilingual learning and exam preparation',
+                'Teacher training and data-driven learning paths',
+                'Voice-first and offline-friendly distribution',
+              ].map((item) => (
+                <div key={item}><CheckCircle2 size={19} /> <span>{item}</span></div>
+              ))}
+            </div>
+            <a className="home-light-link" href="https://exam.pipladfoundation.in" target="_blank" rel="noreferrer">
+              Explore Piplad Pathshala <ArrowRight size={17} />
+            </a>
           </div>
-          <div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#059669' }}>1,200+</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Children Educated</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#059669' }}>25,000+</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Warm Meals Served</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#059669' }}>100%</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Tax Benefit (80G)</div>
+          <div className="home-pathshala-card">
+            <BookOpen size={48} />
+            <strong>Rural-first digital learning</strong>
+            <span>Accessible · Bilingual · Voice-first · Community-focused</span>
           </div>
         </div>
       </section>
 
-      {/* Featured Causes */}
-      <section className="section-padding" style={{ background: '#f8fafc' }}>
+      {/* CORE PROGRAMS */}
+      <section className="home-section home-programs">
         <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <span className="badge badge-green" style={{ marginBottom: '0.5rem' }}>Active Campaigns</span>
-              <h2 className="heading-lg">Urgent Causes Needing Support</h2>
-            </div>
-            <Link to="/causes" className="btn btn-outline" style={{ borderRadius: '8px' }}>
-              View All Causes <ArrowRight size={18} />
-            </Link>
+          <SectionHeading
+            eyebrow="Core Programs"
+            title="Eight connected areas of community transformation"
+            description="Our programs address interconnected challenges across education, livelihoods, health, environment, agriculture, sports, culture and disaster response."
+          />
+          <div className="home-program-grid">
+            {programs.map((program, index) => {
+              const Icon = programIcons[index] || ShieldCheck;
+              return (
+                <article className="home-program-card" key={program.title}>
+                  <div className="home-program-icon"><Icon size={25} /></div>
+                  <span className="home-program-number">{program.number}</span>
+                  <h3>{program.title}</h3>
+                  <p>{program.description}</p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* PARTNERSHIPS */}
+      <section className="home-section home-partnerships">
+        <div className="container">
+          <SectionHeading
+            eyebrow="Strategic Partnerships"
+            title="Technology and industry expertise, grounded in local trust"
+            description="Our work scales through partnerships that bring technology, logistics, skills and employment pathways to rural communities."
+          />
+          <div className="home-partner-grid">
+            {partnerData.map((partner) => (
+              <article className="home-partner-card" key={partner.short}>
+                <div className="home-partner-mark">{partner.short}</div>
+                <div>
+                  <h3>{partner.name}</h3>
+                  <p>{partner.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* MISSION */}
+      <section className="home-section home-mission">
+        <div className="container home-mission-inner">
+          <SectionHeading
+            eyebrow="Our Mission"
+            title="Inclusive rural transformation, built to last."
+            description="Piplad Pathshala and Piplad Welfare Foundation catalyze inclusive rural transformation by democratizing access to education, healthcare, skills and sustainable livelihoods."
+            light
+          />
+          <div className="home-mission-pillars">
+            <span>Education</span><span>Healthcare</span><span>Skills</span><span>Livelihoods</span><span>Environment</span>
+          </div>
+          <p className="home-mission-tagline">Grassroots-powered. Technology-enabled. Future-focused.</p>
+        </div>
+      </section>
+
+      {/* UPCOMING PROJECTS */}
+      <section className="home-section home-projects">
+        <div className="container">
+          <div className="home-section-heading-row">
+            <SectionHeading
+              eyebrow="Upcoming Projects"
+              title="What is coming next"
+              description="New initiatives published by the Piplad team will appear here automatically."
+            />
+            <Link to="/gallery" className="home-outline-button">View Media <ArrowRight size={17} /></Link>
           </div>
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '3rem 0', color: '#64748b' }}>Loading active causes...</div>
+          {loading.projects ? (
+            <div className="home-empty-state">Loading upcoming projects…</div>
+          ) : featuredProjects.length === 0 ? (
+            <div className="home-empty-state">New upcoming projects will be announced here soon.</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-              {causes.slice(0, 3).map((cause) => (
-                <CauseCard key={cause.id} cause={cause} onDonate={(c) => onSelectCauseToDonate(c)} />
+            <div className="home-project-grid">
+              {featuredProjects.map((project) => (
+                <article className="home-project-card" key={project.id}>
+                  {project.image_url ? (
+                    <img src={resolveMediaUrl(project.image_url)} alt={project.title} />
+                  ) : (
+                    <div className="home-project-placeholder"><Sprout size={34} /></div>
+                  )}
+                  <div className="home-project-body">
+                    <div className="home-project-meta"><CalendarDays size={15} /> {project.expected_date ? formatDate(project.expected_date) : 'Coming soon'}</div>
+                    <h3>{project.title}</h3>
+                    <p>{truncate(project.description, 130)}</p>
+                  </div>
+                </article>
               ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* Mission & Core Pillars */}
-      <section className="section-padding" style={{ background: '#ffffff' }}>
+      {/* BLOG HIGHLIGHTS */}
+      <section className="home-section home-blog">
         <div className="container">
-          <div style={{ textAlign: 'center', maxWidth: '700px', margin: '0 auto 3.5rem auto' }}>
-            <span className="badge badge-amber" style={{ marginBottom: '0.5rem' }}>Why Choose PWF</span>
-            <h2 className="heading-lg" style={{ marginBottom: '1rem' }}>Our Core Pillars of Transformation</h2>
-            <p className="subheading" style={{ margin: '0 auto' }}>
-              We focus our efforts where help is needed most, ensuring every rupee donated creates a direct, measurable impact.
-            </p>
+          <div className="home-section-heading-row">
+            <SectionHeading
+              eyebrow="Blogs"
+              title="Stories, updates and ideas from Piplad"
+              description="The latest posts from the admin-managed blog are highlighted on the homepage."
+            />
+            <Link to="/blog" className="home-outline-button">View All Blogs <ArrowRight size={17} /></Link>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
-            <div className="card" style={{ padding: '2rem' }}>
-              <div style={{ background: '#d1fae5', color: '#059669', width: '56px', height: '56px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-                <Heart size={28} />
-              </div>
-              <h3 className="heading-md" style={{ marginBottom: '0.75rem' }}>Child Healthcare</h3>
-              <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.6 }}>
-                Financial medical assistance for children suffering from cancer, heart diseases, and critical surgical needs.
-              </p>
+          {loading.blogs ? (
+            <div className="home-empty-state">Loading latest stories…</div>
+          ) : featuredBlogs.length === 0 ? (
+            <div className="home-empty-state">New stories and updates will appear here soon.</div>
+          ) : (
+            <div className="home-blog-grid">
+              {featuredBlogs.map((post) => (
+                <article className="home-blog-card" key={post.id}>
+                  <div className="home-blog-image-wrap">
+                    {post.image_url ? (
+                      <img src={resolveMediaUrl(post.image_url)} alt={post.title} />
+                    ) : (
+                      <div className="home-blog-placeholder"><BookOpen size={34} /></div>
+                    )}
+                    <span><BookOpen size={14} /> Blog</span>
+                  </div>
+                  <div className="home-blog-body">
+                    {post.published_date && <div className="home-blog-date"><CalendarDays size={14} /> {formatDate(post.published_date)}</div>}
+                    <h3>{post.title}</h3>
+                    <p>{truncate(post.summary || post.content, 150)}</p>
+                    <Link to={`/blog/${post.id}`}>Read story <ArrowRight size={16} /></Link>
+                  </div>
+                </article>
+              ))}
             </div>
-
-            <div className="card" style={{ padding: '2rem' }}>
-              <div style={{ background: '#fef3c7', color: '#d97706', width: '56px', height: '56px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-                <BookOpen size={28} />
-              </div>
-              <h3 className="heading-md" style={{ marginBottom: '0.75rem' }}>Quality Education</h3>
-              <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.6 }}>
-                Distributing school kits, books, digital tools, and funding school fees for bright underprivileged students.
-              </p>
-            </div>
-
-            <div className="card" style={{ padding: '2rem' }}>
-              <div style={{ background: '#e0f2fe', color: '#0284c7', width: '56px', height: '56px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-                <UtensilsCrossed size={28} />
-              </div>
-              <h3 className="heading-md" style={{ marginBottom: '0.75rem' }}>Zero Hunger Drives</h3>
-              <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.6 }}>
-                Providing nutritious cooked meals and monthly grocery ration kits to impoverished families and homeless children.
-              </p>
-            </div>
-
-            <div className="card" style={{ padding: '2rem' }}>
-              <div style={{ background: '#fce7f3', color: '#db2777', width: '56px', height: '56px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
-                <Users size={28} />
-              </div>
-              <h3 className="heading-md" style={{ marginBottom: '0.75rem' }}>Women Skill Training</h3>
-              <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.6 }}>
-                Vocational workshops in tailoring, digital literacy, and self-reliance skills to foster financial independence.
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
-      {/* Call to Action Banner */}
-      <section style={{ background: '#059669', color: '#ffffff', padding: '4rem 0', textAlign: 'center' }}>
-        <div className="container" style={{ maxWidth: '800px' }}>
-          <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '1rem' }}>
-            Be the Light in Someone's Darkest Hour
-          </h2>
-          <p style={{ fontSize: '1.1rem', opacity: 0.9, marginBottom: '2rem', lineHeight: 1.6 }}>
-            Your small donation today can fund life-saving cancer treatment or educate a child for an entire academic year. Every contribution receives 80G tax benefits.
-          </p>
-          <button className="btn" onClick={() => onOpenDonate()} style={{ background: '#ffffff', color: '#059669', padding: '0.9rem 2.2rem', fontSize: '1.1rem', fontWeight: 800, borderRadius: '999px', boxShadow: '0 10px 20px rgba(0,0,0,0.15)' }}>
-            <Heart size={20} fill="#059669" /> Donate Now
-          </button>
+      {/* CERTIFICATIONS */}
+      <section className="home-section home-certifications">
+        <div className="container">
+          <SectionHeading
+            eyebrow="Our Certifications"
+            title="Registered, accountable and ready to partner"
+            description="Our certifications and registrations help donors, institutions and corporate partners support our work with confidence."
+          />
+
+          {loading.certificates ? (
+            <div className="home-empty-state">Loading certifications…</div>
+          ) : featuredCertificates.length === 0 ? (
+            <div className="home-empty-state">Certification documents will be displayed here soon.</div>
+          ) : (
+            <div className="home-certificate-grid">
+              {featuredCertificates.map((certificate) => (
+                <article className="home-certificate-card" key={certificate.id}>
+                  {certificate.image_url ? (
+                    <img src={resolveMediaUrl(certificate.image_url)} alt={certificate.title} />
+                  ) : (
+                    <div className="home-certificate-placeholder"><Award size={38} /></div>
+                  )}
+                  <div>
+                    <Award size={17} />
+                    <h3>{certificate.title}</h3>
+                    {certificate.description && <p>{truncate(certificate.description, 90)}</p>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          <div className="home-centered-link"><Link to="/certificates" className="home-outline-button">View All Certifications <ArrowRight size={17} /></Link></div>
         </div>
       </section>
-    </div>
+
+      {/* CAUSES */}
+      <section className="home-section home-causes">
+        <div className="container">
+          <div className="home-section-heading-row">
+            <SectionHeading
+              eyebrow="Support Our Work"
+              title="Every contribution can become an opportunity"
+              description="Support active community initiatives and help us continue creating meaningful, measurable impact."
+            />
+            <Link to="/causes" className="home-outline-button">View Causes <ArrowRight size={17} /></Link>
+          </div>
+          {loading.causes ? (
+            <div className="home-empty-state">Loading active causes…</div>
+          ) : causes.length === 0 ? (
+            <div className="home-empty-state">New campaigns will appear here soon.</div>
+          ) : (
+            <div className="home-cause-grid">
+              {causes.slice(0, 3).map((cause) => (
+                <CauseCard key={cause.id} cause={cause} onDonate={(item) => onSelectCauseToDonate(item)} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* DONATE CTA */}
+      <section className="home-donate-cta">
+        <div className="container">
+          <div>
+            <span className="home-eyebrow">Be Part of the Change</span>
+            <h2>Give someone the chance to build a better future.</h2>
+            <p>Whether you support education, healthcare, livelihoods, environment or relief, your contribution helps turn potential into possibility.</p>
+          </div>
+          <button className="btn btn-primary" onClick={() => onOpenDonate()}><Utensils size={18} /> Donate Now</button>
+        </div>
+      </section>
+    </main>
   );
 }
