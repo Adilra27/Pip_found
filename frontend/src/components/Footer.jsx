@@ -11,10 +11,12 @@ export default function Footer({ onOpenDonate }) {
           
           {/* Col 1: Brand & Mission */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{ background: '#059669', color: '#fff', width: '42px', height: '42px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem' }}>
-                PWF
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+              <img
+                src="/piplad-logo.jpg"
+                alt="Piplad Welfare Foundation"
+                style={{ width: '80px', height: '80px', borderRadius: '10px', objectFit: 'contain', flexShrink: 0 }}
+              />
               <div>
                 <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#ffffff' }}>PIPLAD WELFARE</div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#34d399', letterSpacing: '0.08em' }}>FOUNDATION</div>
