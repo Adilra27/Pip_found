@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import DonateModal from './components/DonateModal';
@@ -19,6 +19,16 @@ import Admin from './pages/Admin';
 
 
 import { fetchCauses } from './api';
+
+function ScrollToTop() {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search]);
+
+  return null;
+}
 
 export default function App() {
   const [donateModalOpen, setDonateModalOpen] = useState(false);
@@ -43,6 +53,7 @@ export default function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Header onOpenDonate={() => handleOpenDonate()} />
 
