@@ -10,6 +10,7 @@ import {
 
 export default function Header({ onOpenDonate }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const location = useLocation();
 
   const navItems = [
@@ -99,6 +100,11 @@ export default function Header({ onOpenDonate }) {
     setMobileMenuOpen(false);
   };
 
+  const closeNavigation = () => {
+    setOpenDropdown(null);
+    closeMobileMenu();
+  };
+
   return (
     <header className="header-wrapper">
       {/* ============================================================
@@ -152,7 +158,11 @@ export default function Header({ onOpenDonate }) {
             {navItems.map((item) => (
               <div
                 key={item.path}
-                className="nav-item-group"
+                className={`nav-item-group ${
+                  openDropdown === item.label
+                    ? 'nav-item-group-open'
+                    : ''
+                }`}
               >
                 {item.subItems ? (
                   <>
@@ -163,6 +173,9 @@ export default function Header({ onOpenDonate }) {
                           ? 'active-nav-link'
                           : ''
                       }`}
+                      onClick={() => setOpenDropdown((current) =>
+                        current === item.label ? null : item.label
+                      )}
                     >
                       <span>{item.label}</span>
                       <ChevronDown size={15} />
@@ -174,6 +187,7 @@ export default function Header({ onOpenDonate }) {
                           key={subItem.path}
                           to={subItem.path}
                           className="dropdown-item"
+                          onClick={closeNavigation}
                         >
                           {subItem.label}
                         </Link>
@@ -188,6 +202,7 @@ export default function Header({ onOpenDonate }) {
                         ? 'active-nav-link'
                         : ''
                     }`}
+                    onClick={closeNavigation}
                   >
                     {item.label}
                   </Link>

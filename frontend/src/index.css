@@ -323,8 +323,7 @@ a {
     visibility 0.18s ease;
 }
 
-.nav-item-group:hover .dropdown-menu,
-.nav-item-group:focus-within .dropdown-menu {
+.nav-item-group-open .dropdown-menu {
   opacity: 1;
   visibility: visible;
 
