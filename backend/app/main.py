@@ -66,6 +66,22 @@ with engine.begin() as connection:
                 )
             )
 
+    if "video_gallery" in existing_tables:
+        columns = {
+            column["name"]
+            for column in inspector.get_columns("video_gallery")
+        }
+
+        if "category" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE video_gallery
+                    ADD COLUMN category VARCHAR(100)
+                    """
+                )
+            )
+
 
 # ============================================================
 # FASTAPI APPLICATION

@@ -181,20 +181,31 @@ export async function fetchAdminGallery() {
   return adminFetch('/admin/gallery');
 }
 
+export async function fetchAdminGalleryCategories() {
+  return adminFetch('/admin/gallery/categories');
+}
+
 export async function uploadAdminGalleryImage({
   title,
   description,
-  file,
+  category,
+  files,
 }) {
   const form = new FormData();
 
   form.append('title', title);
 
+  if (category) {
+    form.append('category', category);
+  }
+
   if (description) {
     form.append('description', description);
   }
 
-  form.append('file', file);
+  for (const file of files) {
+    form.append('files', file);
+  }
 
   return adminFetch('/admin/gallery/upload', {
     method: 'POST',
@@ -217,20 +228,31 @@ export async function fetchAdminVideos() {
   return adminFetch('/admin/videos');
 }
 
+export async function fetchAdminVideoCategories() {
+  return adminFetch('/admin/videos/categories');
+}
+
 export async function uploadAdminVideo({
   title,
   description,
-  file,
+  category,
+  files,
 }) {
   const form = new FormData();
 
   form.append('title', title);
 
+  if (category) {
+    form.append('category', category);
+  }
+
   if (description) {
     form.append('description', description);
   }
 
-  form.append('file', file);
+  for (const file of files) {
+    form.append('files', file);
+  }
 
   return adminFetch('/admin/videos/upload', {
     method: 'POST',

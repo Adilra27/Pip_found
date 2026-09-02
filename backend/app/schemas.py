@@ -112,6 +112,7 @@ class VideoGalleryResponse(BaseModel):
     id: int
     title: str
     video_url: str
+    category: Optional[str] = None
     description: Optional[str] = None
     created_at: datetime
 

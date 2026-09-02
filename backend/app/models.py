@@ -142,6 +142,7 @@ class VideoGallery(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     video_url = Column(String(500), nullable=False)
+    category = Column(String(100), default="Video Gallery", index=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

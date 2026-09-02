@@ -187,11 +187,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
           </div>
 
           <div className="home-hero-logo-card">
-            <img src="/piplad-logo.jpg" alt="Piplad Welfare Foundation" />
-            <div className="home-hero-logo-caption">
-              <strong>Creating Opportunities, Creating Lives</strong>
-              <span>Grassroots-powered · Technology-enabled · Future-focused</span>
-            </div>
+            <img src="/piplad-logo.png" alt="Piplad Welfare Foundation" />
           </div>
         </div>
 
@@ -230,7 +226,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
       <section className="home-section home-who-we-are">
         <div className="container home-two-column">
           <div className="home-photo-panel">
-            <img src="/piplad-logo.jpg" alt="Piplad Welfare Foundation logo" />
+            <img src="/piplad-logo.png" alt="Piplad Welfare Foundation logo" />
             <div className="home-photo-badge"><MapPin size={17} /> Rural-first, community-led</div>
           </div>
           <div>

@@ -17,10 +17,9 @@ router = APIRouter(tags=["Media & Awards"])
 
 @router.get("/api/gallery", response_model=List[GalleryItemResponse])
 def get_public_gallery(db: Session = Depends(get_db)):
-    """Return only administrator-managed photo-gallery images."""
+    """Return all administrator-managed photo-gallery images."""
     return (
         db.query(GalleryItem)
-        .filter(GalleryItem.category == "Photo Gallery")
         .order_by(GalleryItem.created_at.desc(), GalleryItem.id.desc())
         .all()
     )

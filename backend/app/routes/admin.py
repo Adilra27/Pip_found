@@ -106,6 +106,24 @@ MAX_VIDEO_SIZE = 100 * 1024 * 1024
 
 
 # ============================================================
+# GALLERY CATEGORIES
+# ============================================================
+
+DEFAULT_GALLERY_CATEGORIES = [
+    "Photo Gallery",
+    "Education",
+    "Healthcare",
+    "Environment",
+    "Agriculture",
+    "Sports",
+    "Culture",
+    "Social Welfare",
+    "Finance & Legal",
+    "General",
+]
+
+
+# ============================================================
 # ADMIN AUTHENTICATION
 # ============================================================
 
@@ -338,10 +356,6 @@ def get_gallery_items(
 ):
     return (
         db.query(GalleryItem)
-        .filter(
-            GalleryItem.category
-            == "Photo Gallery"
-        )
         .order_by(
             GalleryItem.created_at.desc(),
             GalleryItem.id.desc(),
@@ -352,54 +366,80 @@ def get_gallery_items(
 
 @router.post(
     "/gallery/upload",
-    response_model=GalleryItemResponse,
+    response_model=List[GalleryItemResponse],
 )
 def upload_gallery_image(
     title: str = Form(...),
+    category: str = Form("Photo Gallery"),
     description: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
-    _validate_upload(
-        file,
-        ALLOWED_IMAGE_EXTENSIONS,
-        ALLOWED_IMAGE_TYPES,
-        MAX_IMAGE_SIZE,
-    )
+    saved_paths = []
+    items = []
 
-    filename = _safe_name(
-        file.filename,
-        ".jpg",
-    )
+    try:
+        for file in files:
+            _validate_upload(
+                file,
+                ALLOWED_IMAGE_EXTENSIONS,
+                ALLOWED_IMAGE_TYPES,
+                MAX_IMAGE_SIZE,
+            )
 
-    _save_upload(
-        file,
-        GALLERY_DIR,
-        filename,
-        MAX_IMAGE_SIZE,
-    )
+            filename = _safe_name(
+                file.filename,
+                ".jpg",
+            )
 
-    image_url = _public_url(
-        "gallery",
-        filename,
-    )
+            saved_path = _save_upload(
+                file,
+                GALLERY_DIR,
+                filename,
+                MAX_IMAGE_SIZE,
+            )
 
-    item = GalleryItem(
-        title=title.strip(),
-        image_url=image_url,
-        category="Photo Gallery",
-        description=(
-            (description or "").strip()
-            or None
-        ),
-    )
+            saved_paths.append(saved_path)
 
-    db.add(item)
-    db.commit()
-    db.refresh(item)
+            image_url = _public_url(
+                "gallery",
+                filename,
+            )
 
-    return item
+            item = GalleryItem(
+                title=title.strip(),
+                image_url=image_url,
+                category=(category or "").strip() or "Photo Gallery",
+                description=(
+                    (description or "").strip()
+                    or None
+                ),
+            )
+
+            db.add(item)
+            items.append(item)
+
+        db.commit()
+
+        for item in items:
+            db.refresh(item)
+
+    except Exception as exc:
+        db.rollback()
+
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
+
+        if isinstance(exc, HTTPException):
+            raise
+
+        raise HTTPException(
+            500,
+            f"Could not upload images: {exc}",
+        ) from exc
+
+    return items
 
 
 @router.delete(
@@ -462,53 +502,80 @@ def get_video_items(
 
 @router.post(
     "/videos/upload",
-    response_model=VideoGalleryResponse,
+    response_model=List[VideoGalleryResponse],
 )
 def upload_video(
     title: str = Form(...),
+    category: str = Form("Video Gallery"),
     description: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
-    _validate_upload(
-        file,
-        ALLOWED_VIDEO_EXTENSIONS,
-        ALLOWED_VIDEO_TYPES,
-        MAX_VIDEO_SIZE,
-    )
+    saved_paths = []
+    items = []
 
-    filename = _safe_name(
-        file.filename,
-        ".mp4",
-    )
+    try:
+        for file in files:
+            _validate_upload(
+                file,
+                ALLOWED_VIDEO_EXTENSIONS,
+                ALLOWED_VIDEO_TYPES,
+                MAX_VIDEO_SIZE,
+            )
 
-    _save_upload(
-        file,
-        VIDEO_DIR,
-        filename,
-        MAX_VIDEO_SIZE,
-    )
+            filename = _safe_name(
+                file.filename,
+                ".mp4",
+            )
 
-    video_url = _public_url(
-        "videos",
-        filename,
-    )
+            saved_path = _save_upload(
+                file,
+                VIDEO_DIR,
+                filename,
+                MAX_VIDEO_SIZE,
+            )
 
-    item = VideoGallery(
-        title=title.strip(),
-        video_url=video_url,
-        description=(
-            (description or "").strip()
-            or None
-        ),
-    )
+            saved_paths.append(saved_path)
 
-    db.add(item)
-    db.commit()
-    db.refresh(item)
+            video_url = _public_url(
+                "videos",
+                filename,
+            )
 
-    return item
+            item = VideoGallery(
+                title=title.strip(),
+                video_url=video_url,
+                category=(category or "").strip() or "Video Gallery",
+                description=(
+                    (description or "").strip()
+                    or None
+                ),
+            )
+
+            db.add(item)
+            items.append(item)
+
+        db.commit()
+
+        for item in items:
+            db.refresh(item)
+
+    except Exception as exc:
+        db.rollback()
+
+        for path in saved_paths:
+            path.unlink(missing_ok=True)
+
+        if isinstance(exc, HTTPException):
+            raise
+
+        raise HTTPException(
+            500,
+            f"Could not upload videos: {exc}",
+        ) from exc
+
+    return items
 
 
 @router.delete(
@@ -543,6 +610,74 @@ def delete_video(
     return {
         "message": "Video deleted"
     }
+
+
+# ============================================================
+# GALLERY CATEGORIES
+# ============================================================
+
+def _merge_categories(
+    defaults: List[str],
+    used: List[str],
+) -> List[str]:
+    result = []
+    seen = set()
+
+    for value in defaults + used:
+        normalized = (value or "").strip()
+
+        if not normalized or normalized in seen:
+            continue
+
+        seen.add(normalized)
+        result.append(normalized)
+
+    return result
+
+
+@router.get(
+    "/gallery/categories"
+)
+def get_gallery_categories(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    used = [
+        row[0]
+        for row in db.query(
+            GalleryItem.category
+        )
+        .distinct()
+        .all()
+    ]
+
+    return _merge_categories(
+        DEFAULT_GALLERY_CATEGORIES,
+        used,
+    )
+
+
+@router.get(
+    "/videos/categories"
+)
+def get_video_categories(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    used = [
+        row[0]
+        for row in db.query(
+            VideoGallery.category
+        )
+        .distinct()
+        .all()
+    ]
+
+    return _merge_categories(
+        ["Video Gallery"]
+        + DEFAULT_GALLERY_CATEGORIES,
+        used,
+    )
 
 
 # ============================================================

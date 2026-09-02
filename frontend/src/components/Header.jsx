@@ -141,7 +141,7 @@ export default function Header({ onOpenDonate }) {
             onClick={closeMobileMenu}
           >
             <img
-              src="/piplad-logo.jpg"
+              src="/piplad-logo.png"
               alt="Piplad Welfare Foundation"
               className="site-brand-logo"
             />
@@ -202,6 +202,9 @@ export default function Header({ onOpenDonate }) {
             >
               Donate
             </button>
+            <Link to="/admin" className="header-admin-link">
+              Admin Login
+            </Link>
           </nav>
 
           {/* MOBILE MENU BUTTON */}
@@ -289,6 +292,13 @@ export default function Header({ onOpenDonate }) {
             >
               Donate Now
             </button>
+            <Link
+              to="/admin"
+              className="mobile-admin-link"
+              onClick={closeMobileMenu}
+            >
+              Admin Login
+            </Link>
           </div>
         </div>
       )}

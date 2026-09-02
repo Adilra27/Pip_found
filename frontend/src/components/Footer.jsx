@@ -13,7 +13,7 @@ export default function Footer({ onOpenDonate }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
               <img
-                src="/piplad-logo.jpg"
+                src="/piplad-logo.png"
                 alt="Piplad Welfare Foundation"
                 style={{ width: '80px', height: '80px', borderRadius: '10px', objectFit: 'contain', flexShrink: 0 }}
               />

@@ -38,6 +38,8 @@ import {
   fetchAdminTeam,
   fetchAdminVideos,
   fetchAdminVolunteers,
+  fetchAdminGalleryCategories,
+  fetchAdminVideoCategories,
   fetchContactInquiries,
   fetchDonationsList,
   getAdminCredentials,
@@ -60,13 +62,15 @@ import {
 const emptyPhotoForm = {
   title: '',
   description: '',
-  file: null,
+  category: 'Photo Gallery',
+  files: [],
 };
 
 const emptyVideoForm = {
   title: '',
   description: '',
-  file: null,
+  category: 'Video Gallery',
+  files: [],
 };
 
 const emptyProjectForm = {
@@ -137,6 +141,117 @@ function ManagerSection({
 
       {children}
     </section>
+  );
+}
+
+
+// ============================================================
+// CATEGORY PICKER
+// ============================================================
+
+function CategoryPicker({
+  value,
+  onChange,
+  options,
+}) {
+  const [isNew, setIsNew] =
+    useState(false);
+
+  const [newValue, setNewValue] =
+    useState('');
+
+  const selectStyle = {
+    ...inputStyle,
+    appearance: 'auto',
+  };
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gap: '.5rem',
+      }}
+    >
+      {!isNew ? (
+        <select
+          value={options.includes(value)
+            ? value
+            : ''}
+          onChange={(e) => {
+            const selected =
+              e.target.value;
+
+            if (selected === '__new__') {
+              setIsNew(true);
+              setNewValue('');
+              onChange('');
+              return;
+            }
+
+            onChange(selected);
+          }}
+          style={selectStyle}
+        >
+          <option value="" disabled>
+            Select a category
+          </option>
+
+          {options.map((option) => (
+            <option
+              key={option}
+              value={option}
+            >
+              {option}
+            </option>
+          ))}
+
+          <option value="__new__">
+            + Add New / Other…
+          </option>
+        </select>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gap: '.5rem',
+          }}
+        >
+          <input
+            placeholder="Type a new category name"
+            value={newValue}
+            onChange={(e) => {
+              setNewValue(e.target.value);
+              onChange(
+                e.target.value
+              );
+            }}
+            style={inputStyle}
+            autoFocus
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '.5rem',
+            }}
+          >
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setIsNew(false);
+                setNewValue('');
+                onChange(
+                  options[0] || ''
+                );
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -307,6 +422,9 @@ function GalleryManager({ refreshAll }) {
   const [form, setForm] =
     useState(emptyPhotoForm);
 
+  const [categories, setCategories] =
+    useState([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -320,10 +438,14 @@ function GalleryManager({ refreshAll }) {
     setLoading(true);
 
     try {
-      setItems(
-        await fetchAdminGallery()
-      );
+      const [photoData, categoryData] =
+        await Promise.all([
+          fetchAdminGallery(),
+          fetchAdminGalleryCategories(),
+        ]);
 
+      setItems(photoData);
+      setCategories(categoryData);
       setError('');
     } catch (e) {
       setError(e.message);
@@ -341,9 +463,9 @@ function GalleryManager({ refreshAll }) {
 
     setError('');
 
-    if (!form.file) {
+    if (form.files.length === 0) {
       setError(
-        'Please select an image.'
+        'Please select at least one image.'
       );
       return;
     }
@@ -415,20 +537,51 @@ function GalleryManager({ refreshAll }) {
           style={inputStyle}
         />
 
+        <CategoryPicker
+          value={form.category}
+          options={categories}
+          onChange={(category) =>
+            setForm({
+              ...form,
+              category,
+            })
+          }
+        />
+
         <input
           type="file"
+          multiple
           accept="image/jpeg,image/png,image/webp,image/gif"
           onChange={(e) =>
             setForm({
               ...form,
-              file:
-                e.target.files?.[0] ||
-                null,
+              files:
+                Array.from(
+                  e.target.files || []
+                ),
             })
           }
           required
           style={inputStyle}
         />
+
+        {form.files.length > 0 && (
+          <p
+            style={{
+              color: '#475569',
+              fontSize: '.9rem',
+              margin: 0,
+            }}
+          >
+            {form.files.length}
+            {' '}
+            {form.files.length === 1
+              ? 'file'
+              : 'files'}
+            {' '}
+            selected
+          </p>
+        )}
 
         <textarea
           placeholder="Description / caption (optional)"
@@ -452,7 +605,7 @@ function GalleryManager({ refreshAll }) {
 
           {saving
             ? 'Uploading...'
-            : 'Upload Photo'}
+            : 'Upload Photos'}
         </button>
       </form>
 
@@ -493,10 +646,30 @@ function GalleryManager({ refreshAll }) {
                   padding: '1rem',
                 }}
               >
+                {item.category && (
+                  <span
+                    style={{
+                      display:
+                        'inline-block',
+                      background:
+                        '#ecfdf5',
+                      color: '#047857',
+                      fontSize: '.75rem',
+                      fontWeight: 700,
+                      padding:
+                        '.25rem .6rem',
+                      borderRadius: 999,
+                      marginBottom:
+                        '.6rem',
+                    }}
+                  >
+                    {item.category}
+                  </span>
+                )}
+
                 <h3
                   style={{
-                    margin:
-                      '0 0 .4rem',
+                    margin: '0 0 .4rem',
                   }}
                 >
                   {item.title}
@@ -543,6 +716,9 @@ function VideoManager({ refreshAll }) {
   const [form, setForm] =
     useState(emptyVideoForm);
 
+  const [categories, setCategories] =
+    useState([]);
+
   const [saving, setSaving] =
     useState(false);
 
@@ -556,9 +732,15 @@ function VideoManager({ refreshAll }) {
     setLoading(true);
 
     try {
-      setItems(
-        await fetchAdminVideos()
-      );
+      const [videoData, categoryData] =
+        await Promise.all([
+          fetchAdminVideos(),
+          fetchAdminVideoCategories(),
+        ]);
+
+      setItems(videoData);
+      setCategories(categoryData);
+      setError('');
     } catch (e) {
       setError(e.message);
     } finally {
@@ -575,9 +757,9 @@ function VideoManager({ refreshAll }) {
 
     setError('');
 
-    if (!form.file) {
+    if (form.files.length === 0) {
       setError(
-        'Please select a video.'
+        'Please select at least one video.'
       );
       return;
     }
@@ -647,20 +829,51 @@ function VideoManager({ refreshAll }) {
           style={inputStyle}
         />
 
+        <CategoryPicker
+          value={form.category}
+          options={categories}
+          onChange={(category) =>
+            setForm({
+              ...form,
+              category,
+            })
+          }
+        />
+
         <input
           type="file"
+          multiple
           accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
           onChange={(e) =>
             setForm({
               ...form,
-              file:
-                e.target.files?.[0] ||
-                null,
+              files:
+                Array.from(
+                  e.target.files || []
+                ),
             })
           }
           required
           style={inputStyle}
         />
+
+        {form.files.length > 0 && (
+          <p
+            style={{
+              color: '#475569',
+              fontSize: '.9rem',
+              margin: 0,
+            }}
+          >
+            {form.files.length}
+            {' '}
+            {form.files.length === 1
+              ? 'file'
+              : 'files'}
+            {' '}
+            selected
+          </p>
+        )}
 
         <textarea
           placeholder="Description (optional)"
@@ -684,7 +897,7 @@ function VideoManager({ refreshAll }) {
 
           {saving
             ? 'Uploading...'
-            : 'Upload Video'}
+            : 'Upload Videos'}
         </button>
       </form>
 
@@ -737,10 +950,30 @@ function VideoManager({ refreshAll }) {
                   padding: '1rem',
                 }}
               >
+                {item.category && (
+                  <span
+                    style={{
+                      display:
+                        'inline-block',
+                      background:
+                        '#ecfdf5',
+                      color: '#047857',
+                      fontSize: '.75rem',
+                      fontWeight: 700,
+                      padding:
+                        '.25rem .6rem',
+                      borderRadius: 999,
+                      marginBottom:
+                        '.6rem',
+                    }}
+                  >
+                    {item.category}
+                  </span>
+                )}
+
                 <h3
                   style={{
-                    margin:
-                      '0 0 .4rem',
+                    margin: '0 0 .4rem',
                   }}
                 >
                   {item.title}
