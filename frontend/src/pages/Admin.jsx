@@ -154,11 +154,8 @@ function CategoryPicker({
   onChange,
   options,
 }) {
-  const [isNew, setIsNew] =
-    useState(false);
-
-  const [newValue, setNewValue] =
-    useState('');
+  const [isNew, setIsNew] = useState(false);
+  const [newValue, setNewValue] = useState('');
 
   const selectStyle = {
     ...inputStyle,
@@ -174,21 +171,16 @@ function CategoryPicker({
     >
       {!isNew ? (
         <select
-          value={options.includes(value)
-            ? value
-            : ''}
+          value={options.includes(value) ? value : ''}
           onChange={(e) => {
-            const selected =
-              e.target.value;
-
-            if (selected === '__new__') {
+            if (e.target.value === '__new__') {
               setIsNew(true);
               setNewValue('');
               onChange('');
               return;
             }
 
-            onChange(selected);
+            onChange(e.target.value);
           }}
           style={selectStyle}
         >
@@ -197,58 +189,38 @@ function CategoryPicker({
           </option>
 
           {options.map((option) => (
-            <option
-              key={option}
-              value={option}
-            >
+            <option key={option} value={option}>
               {option}
             </option>
           ))}
 
           <option value="__new__">
-            + Add New / Other…
+            + Add New / Other...
           </option>
         </select>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gap: '.5rem',
-          }}
-        >
+        <div style={{ display: 'grid', gap: '.5rem' }}>
           <input
             placeholder="Type a new category name"
             value={newValue}
             onChange={(e) => {
               setNewValue(e.target.value);
-              onChange(
-                e.target.value
-              );
+              onChange(e.target.value);
             }}
             style={inputStyle}
             autoFocus
           />
-
-          <div
-            style={{
-              display: 'flex',
-              gap: '.5rem',
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setIsNew(false);
+              setNewValue('');
+              onChange(options[0] || '');
             }}
           >
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                setIsNew(false);
-                setNewValue('');
-                onChange(
-                  options[0] || ''
-                );
-              }}
-            >
-              Cancel
-            </button>
-          </div>
+            Cancel
+          </button>
         </div>
       )}
     </div>
@@ -525,7 +497,7 @@ function GalleryManager({ refreshAll }) {
         style={formGridStyle}
       >
         <input
-          placeholder="Photo title"
+          placeholder="Event / album title"
           value={form.title}
           onChange={(e) =>
             setForm({

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Award, CalendarDays, Image as ImageIcon, Video } from 'lucide-react';
+import { Award, CalendarDays, Image as ImageIcon, Video, X } from 'lucide-react';
 import { fetchGalleryItems, fetchUpcomingProjects, fetchVideos, resolveMediaUrl } from '../api';
 
 function formatDate(value) {
@@ -27,8 +27,34 @@ function distinctCategories(items, defaultCategory) {
   return result;
 }
 
-function CategoryTabs({ categories, active, onChange }) {
-  const options = ['All', ...categories];
+function groupPhotoAlbums(items) {
+  const albums = new Map();
+
+  items.forEach((item) => {
+    const key = [
+      item.title,
+      item.category || 'Photo Gallery',
+      item.description || '',
+    ].join('|');
+
+    if (!albums.has(key)) {
+      albums.set(key, {
+        id: key,
+        title: item.title,
+        category: item.category || 'Photo Gallery',
+        description: item.description,
+        photos: [],
+      });
+    }
+
+    albums.get(key).photos.push(item);
+  });
+
+  return Array.from(albums.values());
+}
+
+function CategoryTabs({ categories, active, onChange, showAll = true }) {
+  const options = showAll ? ['All', ...categories] : categories;
 
   return (
     <div
@@ -97,6 +123,7 @@ export default function Gallery() {
   const [projects, setProjects] = useState([]);
   const [photoCategory, setPhotoCategory] = useState('All');
   const [videoCategory, setVideoCategory] = useState('All');
+  const [selectedAlbum, setSelectedAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -127,6 +154,11 @@ export default function Gallery() {
       (item) => (item.category || 'Photo Gallery') === photoCategory
     );
   }, [photos, photoCategory]);
+
+  const photoAlbums = useMemo(
+    () => groupPhotoAlbums(filteredPhotos),
+    [filteredPhotos]
+  );
 
   const filteredVideos = useMemo(() => {
     if (videoCategory === 'All') return videos;
@@ -166,9 +198,10 @@ export default function Gallery() {
                     categories={photoCategories}
                     active={photoCategory}
                     onChange={setPhotoCategory}
+                    showAll={false}
                   />
                 )}
-                {filteredPhotos.length === 0 ? (
+                {photoAlbums.length === 0 ? (
                   <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
                     {photoCategory === 'All'
                       ? 'No photographs have been published yet.'
@@ -176,17 +209,34 @@ export default function Gallery() {
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-                    {filteredPhotos.map((item) => (
-                      <article key={item.id} className="card" style={{ overflow: 'hidden' }}>
+                    {photoAlbums.map((album) => (
+                      <button
+                        type="button"
+                        key={album.id}
+                        onClick={() => setSelectedAlbum(album)}
+                        aria-label={`Open ${album.title} album`}
+                        style={{
+                          border: 'none',
+                          padding: 0,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          background: 'transparent',
+                        }}
+                      >
+                      <article className="card" style={{ overflow: 'hidden', height: '100%' }}>
                         <div style={{ height: '230px', overflow: 'hidden' }}>
-                          <img src={resolveMediaUrl(item.image_url)} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={resolveMediaUrl(album.photos[0].image_url)} alt={album.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         <div style={{ padding: '1.25rem' }}>
-                          <CategoryBadge label={item.category || 'Photo Gallery'} />
-                          <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a' }}>{item.title}</h3>
-                          {item.description && <p style={{ margin: 0, color: '#64748b', lineHeight: 1.6 }}>{item.description}</p>}
+                          <CategoryBadge label={album.category} />
+                          <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a' }}>{album.title}</h3>
+                          {album.description && <p style={{ margin: '0 0 1rem', color: '#64748b', lineHeight: 1.6 }}>{album.description}</p>}
+                          <p style={{ margin: '0.8rem 0 0', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
+                            View {album.photos.length} {album.photos.length === 1 ? 'photo' : 'photos'}
+                          </p>
                         </div>
                       </article>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -252,6 +302,67 @@ export default function Gallery() {
                 )}
               </section>
             </>
+          )}
+
+          {selectedAlbum && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${selectedAlbum.title} album`}
+              onClick={() => setSelectedAlbum(null)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 20,
+                overflowY: 'auto',
+                padding: 'clamp(1rem, 4vw, 4rem)',
+                background: 'rgba(15, 23, 42, 0.94)',
+              }}
+            >
+              <button
+                type="button"
+                aria-label="Close album"
+                onClick={() => setSelectedAlbum(null)}
+                style={{
+                  position: 'fixed',
+                  top: '1rem',
+                  right: '1rem',
+                  zIndex: 21,
+                  display: 'grid',
+                  placeItems: 'center',
+                  width: 44,
+                  height: 44,
+                  border: '1px solid rgba(255,255,255,.3)',
+                  borderRadius: '50%',
+                  background: '#fff',
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={22} />
+              </button>
+
+              <div
+                onClick={(event) => event.stopPropagation()}
+                style={{ maxWidth: 1200, margin: '0 auto' }}
+              >
+                <CategoryBadge label={selectedAlbum.category} />
+                <h2 style={{ color: '#fff', margin: '0.25rem 0 0.5rem' }}>{selectedAlbum.title}</h2>
+                {selectedAlbum.description && (
+                  <p style={{ color: '#cbd5e1', margin: '0 0 1.5rem' }}>{selectedAlbum.description}</p>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+                  {selectedAlbum.photos.map((photo) => (
+                    <img
+                      key={photo.id}
+                      src={resolveMediaUrl(photo.image_url)}
+                      alt={selectedAlbum.title}
+                      style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 8, background: '#1e293b' }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </section>
