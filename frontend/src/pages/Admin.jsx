@@ -391,6 +391,9 @@ function GalleryManager({ refreshAll }) {
   const [items, setItems] =
     useState([]);
 
+  const [selectedIds, setSelectedIds] =
+    useState([]);
+
   const [form, setForm] =
     useState(emptyPhotoForm);
 
@@ -417,6 +420,7 @@ function GalleryManager({ refreshAll }) {
         ]);
 
       setItems(photoData);
+      setSelectedIds([]);
       setCategories(categoryData);
       setError('');
     } catch (e) {
@@ -481,6 +485,45 @@ function GalleryManager({ refreshAll }) {
     }
   }
 
+  function toggleSelected(id) {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((selectedId) => selectedId !== id)
+        : [...current, id]
+    );
+  }
+
+  function toggleAll() {
+    setSelectedIds((current) =>
+      current.length === items.length
+        ? []
+        : items.map((item) => item.id)
+    );
+  }
+
+  async function removeSelected() {
+    if (selectedIds.length === 0) return;
+
+    if (
+      !window.confirm(
+        `Delete ${selectedIds.length} selected ${selectedIds.length === 1 ? 'photo' : 'photos'}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedIds.map((id) => deleteAdminGalleryImage(id))
+      );
+
+      await load();
+      refreshAll();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   return (
     <ManagerSection
       title="Photo Gallery"
@@ -491,6 +534,47 @@ function GalleryManager({ refreshAll }) {
       <ErrorMessage
         message={error}
       />
+
+      {items.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '.75rem',
+            flexWrap: 'wrap',
+            marginBottom: '1rem',
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '.5rem',
+              color: '#334155',
+              fontWeight: 600,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={selectedIds.length === items.length}
+              onChange={toggleAll}
+            />
+            Select all photos
+          </label>
+
+          {selectedIds.length > 0 && (
+            <button
+              type="button"
+              className="btn"
+              onClick={removeSelected}
+              style={dangerButton}
+            >
+              <Trash2 size={15} />
+              Delete selected ({selectedIds.length})
+            </button>
+          )}
+        </div>
+      )}
 
       <form
         onSubmit={submit}
@@ -601,6 +685,25 @@ function GalleryManager({ refreshAll }) {
                 overflow: 'hidden',
               }}
             >
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '.5rem',
+                  padding: '.75rem 1rem 0',
+                  color: '#334155',
+                  fontWeight: 600,
+                  fontSize: '.9rem',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(item.id)}
+                  onChange={() => toggleSelected(item.id)}
+                />
+                Select photo
+              </label>
+
               <img
                 src={resolveMediaUrl(
                   item.image_url
