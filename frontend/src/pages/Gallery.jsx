@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Award, CalendarDays, Image as ImageIcon, Video, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { fetchGalleryItems, fetchUpcomingProjects, fetchVideos, resolveMediaUrl } from '../api';
 
 function formatDate(value) {
@@ -53,8 +54,8 @@ function groupPhotoAlbums(items) {
   return Array.from(albums.values());
 }
 
-function CategoryTabs({ categories, active, onChange, showAll = true }) {
-  const options = showAll ? ['All', ...categories] : categories;
+function CategoryTabs({ categories, active, onChange, allLabel = 'All' }) {
+  const options = [allLabel, ...categories];
 
   return (
     <div
@@ -66,7 +67,9 @@ function CategoryTabs({ categories, active, onChange, showAll = true }) {
       }}
     >
       {options.map((option) => {
-        const isActive = active === option;
+        const isActive = active === 'All'
+          ? option === allLabel
+          : active === option;
 
         return (
           <button
@@ -118,6 +121,7 @@ function CategoryBadge({ label }) {
 }
 
 export default function Gallery() {
+  const location = useLocation();
   const [photos, setPhotos] = useState([]);
   const [videos, setVideos] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -138,18 +142,30 @@ export default function Gallery() {
       .finally(() => setLoading(false));
   }, []);
 
-  const photoCategories = useMemo(
-    () => distinctCategories(photos, 'Photo Gallery'),
-    [photos]
-  );
+  useEffect(() => {
+    if (loading || !location.hash) return;
+
+    document.getElementById(location.hash.slice(1))?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  }, [loading, location.hash]);
 
   const videoCategories = useMemo(
     () => distinctCategories(videos, 'Video Gallery'),
     [videos]
   );
 
+  const photoCategories = useMemo(
+    () => distinctCategories(photos, 'Photo Gallery').filter(
+      (category) => category !== 'Photo Gallery'
+    ),
+    [photos]
+  );
+
   const filteredPhotos = useMemo(() => {
     if (photoCategory === 'All') return photos;
+
     return photos.filter(
       (item) => (item.category || 'Photo Gallery') === photoCategory
     );
@@ -188,7 +204,7 @@ export default function Gallery() {
 
           {!loading && !error && (
             <>
-              <section style={{ marginBottom: '4rem' }}>
+              <section id="photos" style={{ marginBottom: '4rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
                   <ImageIcon size={24} color="#059669" />
                   <h2 style={{ margin: 0 }}>Photo Gallery</h2>
@@ -197,15 +213,17 @@ export default function Gallery() {
                   <CategoryTabs
                     categories={photoCategories}
                     active={photoCategory}
-                    onChange={setPhotoCategory}
-                    showAll={false}
+                    onChange={(option) => setPhotoCategory(
+                      option === 'Photo Gallery' ? 'All' : option
+                    )}
+                    allLabel="Photo Gallery"
                   />
                 )}
                 {photoAlbums.length === 0 ? (
                   <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
                     {photoCategory === 'All'
                       ? 'No photographs have been published yet.'
-                      : `No photographs in this category yet.`}
+                      : 'No photographs in this category yet.'}
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
@@ -242,7 +260,7 @@ export default function Gallery() {
                 )}
               </section>
 
-              <section style={{ marginBottom: '4rem' }}>
+              <section id="videos" style={{ marginBottom: '4rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
                   <Video size={24} color="#059669" />
                   <h2 style={{ margin: 0 }}>Video Gallery</h2>
@@ -276,7 +294,7 @@ export default function Gallery() {
                 )}
               </section>
 
-              <section>
+              <section id="projects">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
                   <CalendarDays size={24} color="#059669" />
                   <h2 style={{ margin: 0 }}>Upcoming Projects</h2>

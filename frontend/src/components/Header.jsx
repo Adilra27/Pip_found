@@ -68,9 +68,9 @@ export default function Header({ onOpenDonate }) {
       label: 'Media & Awards',
       path: '/gallery',
       subItems: [
-        { label: 'Photo Gallery', path: '/gallery' },
-        { label: 'Video Gallery', path: '/gallery/videos' },
-        { label: 'Upcoming Projects', path: '/projects' },
+        { label: 'Photo Gallery', path: '/gallery#photos' },
+        { label: 'Video Gallery', path: '/gallery#videos' },
+        { label: 'Upcoming Projects', path: '/gallery#projects' },
       ],
     },
     {
