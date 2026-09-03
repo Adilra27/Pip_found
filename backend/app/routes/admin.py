@@ -452,11 +452,7 @@ def delete_gallery_image(
 ):
     item = (
         db.query(GalleryItem)
-        .filter(
-            GalleryItem.id == item_id,
-            GalleryItem.category
-            == "Photo Gallery",
-        )
+        .filter(GalleryItem.id == item_id)
         .first()
     )
 
