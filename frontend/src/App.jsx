@@ -16,6 +16,7 @@ import Team from './pages/Team';
 import Certificates from './pages/Certificates';
 import JoinUs from './pages/JoinUs';
 import Admin from './pages/Admin';
+import Partner from './pages/Partner';
 
 
 import { fetchCauses } from './api';
@@ -73,6 +74,7 @@ export default function App() {
             <Route path="/certificates" element={<Certificates />} />
             <Route path="/join" element={<JoinUs />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/partners/:partnerSlug" element={<Partner />} />
           </Routes>
         </main>
 

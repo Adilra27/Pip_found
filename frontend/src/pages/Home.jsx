@@ -28,6 +28,7 @@ import {
 } from '../api';
 import CauseCard from '../components/CauseCard';
 import { impactAreasData, whoWeAreData } from '../data/aboutdata';
+import { partnerData } from '../data/partnerData';
 import '../styles/home.css';
 
 const heroSlides = [
@@ -70,21 +71,6 @@ const programIcons = [
   Trophy,
   Users,
   ShieldCheck,
-];
-
-const partnerData = [
-  {
-    short: 'TCS',
-    name: 'Tata Consultancy Services',
-    description:
-      'Supports digital education, telemedicine, analytics and volunteer engagement under the HOPE Initiative.',
-  },
-  {
-    short: 'TCI',
-    name: 'Transport Corporation of India',
-    description:
-      'Enables industry-aligned vocational training, apprenticeships and direct placement pathways in logistics and supply chain.',
-  },
 ];
 
 function SectionHeading({ eyebrow, title, description, light = false }) {
@@ -318,13 +304,18 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
           />
           <div className="home-partner-grid">
             {partnerData.map((partner) => (
-              <article className="home-partner-card" key={partner.short}>
+              <Link
+                className="home-partner-card"
+                key={partner.slug}
+                to={`/partners/${partner.slug}`}
+              >
                 <div className="home-partner-mark">{partner.short}</div>
                 <div>
                   <h3>{partner.name}</h3>
                   <p>{partner.description}</p>
                 </div>
-              </article>
+                <ArrowRight className="home-partner-arrow" size={20} />
+              </Link>
             ))}
           </div>
         </div>

@@ -72,10 +72,47 @@
 
 .home-partnerships { background: #fff; }
 .home-partner-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1.25rem; }
-.home-partner-card { display: flex; gap: 1.2rem; align-items: center; padding: 1.6rem; border-radius: 20px; border: 1px solid #e2e8f0; background: linear-gradient(135deg,#fff,#f8fafc); }
+.home-partner-card { display: flex; gap: 1.2rem; align-items: center; padding: 1.6rem; border-radius: 20px; border: 1px solid #e2e8f0; background: linear-gradient(135deg,#fff,#f8fafc); color: inherit; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.home-partner-card:hover { transform: translateY(-3px); border-color: #a3e635; box-shadow: 0 14px 30px rgba(15,23,42,.08); }
+.home-partner-arrow { margin-left: auto; color: #65a30d; flex: 0 0 auto; }
 .home-partner-mark { flex: 0 0 78px; height: 78px; border-radius: 20px; display: grid; place-items: center; background: #84cc16; color: #fff; font-size: 1.5rem; font-weight: 900; box-shadow: 0 10px 25px rgba(132,204,22,.2); }
 .home-partner-card h3 { margin: 0 0 .35rem; font-size: 1.1rem; }
 .home-partner-card p { margin: 0; color: #64748b; line-height: 1.65; font-size: .88rem; }
+.home-partner-back-link { display: inline-flex; align-items: center; gap: .4rem; color: #d9f99d; text-decoration: none; font-weight: 700; margin-bottom: 2rem; }
+.home-partner-detail-mark { display: grid; place-items: center; width: 68px; height: 68px; margin-bottom: 1.5rem; border-radius: 16px; background: #84cc16; color: #fff; font-size: 1.4rem; font-weight: 800; }
+.home-partner-detail-mark img { width: 100%; height: 100%; object-fit: contain; border-radius: 16px; background: #fff; padding: .35rem; box-sizing: border-box; }
+.partner-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+.partner-detail-card { padding: 1.5rem; }
+.partner-detail-card h2 { margin: 1rem 0 .5rem; font-size: 1.15rem; }
+.partner-detail-card p { margin: 0; color: #64748b; line-height: 1.7; }
+
+.partner-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+
+.partner-logo-row { margin-bottom: 1.5rem; }
+.partner-logo-box { display: flex; align-items: center; width: fit-content; padding: 1.25rem 1.5rem; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; box-shadow: 0 4px 14px rgba(15,23,42,.06); }
+.partner-logo-img { max-width: 220px; max-height: 90px; object-fit: contain; }
+.partner-logo-fallback { display: none; font-size: 1.6rem; font-weight: 900; color: #334155; }
+.partner-logo-box img[style*="none"] ~ .partner-logo-fallback { display: block; }
+
+.partner-appreciation-card { padding: 1.75rem; }
+.partner-developers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.partner-developer { display: flex; align-items: center; gap: .9rem; padding: 1rem 1.25rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
+.partner-developer-avatar { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #f7fee7; color: #65a30d; flex: 0 0 auto; }
+.partner-developer strong { display: block; color: #0f172a; font-size: 1.05rem; }
+.partner-developer span { display: block; color: #64748b; font-size: .85rem; margin-top: .15rem; }
+.partner-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
+.partner-photo-card { margin: 0; border: 1px solid #e2e8f0; border-radius: 18px; overflow: hidden; background: #fff; }
+.partner-photo-img { display: grid; place-items: center; height: 210px; background: linear-gradient(135deg, #e2e8f0, #f1f5f9); color: #94a3b8; }
+.partner-photo-card img { width: 100%; height: 210px; object-fit: cover; display: block; }
+.partner-photo-card figcaption { padding: 1.25rem; }
+.partner-photo-card h3 { margin: 0 0 .4rem; font-size: 1.05rem; color: #0f172a; }
+.partner-photo-card p { margin: 0; color: #64748b; font-size: .88rem; line-height: 1.6; }
+
+@media (max-width: 640px) {
+  .partner-detail-grid { grid-template-columns: 1fr; }
+  .partner-info-grid { grid-template-columns: 1fr; }
+  .partner-developers, .partner-photo-grid { grid-template-columns: 1fr; }
+}
 
 .home-mission { background: #0f172a; color: #fff; }
 .home-mission-inner { text-align: center; }
