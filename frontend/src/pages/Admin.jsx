@@ -18,6 +18,8 @@ import {
   X,
   Award,
   Edit3,
+  Mail,
+  MailX,
 } from 'lucide-react';
 
 import {
@@ -51,6 +53,7 @@ import {
   uploadAdminGalleryImage,
   uploadAdminVideo,
   deleteAdminVolunteer,
+  resendAdminVolunteerCard,
   API_ORIGIN,
 } from '../api';
 
@@ -1143,6 +1146,27 @@ function VolunteerManager() {
     }
   }
 
+  async function resendCard(id) {
+    try {
+      const updated =
+        await resendAdminVolunteerCard(id);
+
+      setItems((current) =>
+        current.map((item) =>
+          item.id === id
+            ? updated
+            : item
+        )
+      );
+
+      if (updated && updated.card_sent_at) {
+        setError('');
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   async function remove(id) {
     if (
       !window.confirm(
@@ -1284,6 +1308,41 @@ function VolunteerManager() {
                 >
                   {item.status}
                 </span>
+
+                {item.status ===
+                  'accepted' && (
+                  <span
+                    className="badge"
+                    style={{
+                      display:
+                        'inline-flex',
+                      alignItems: 'center',
+                      gap: '.3rem',
+                      background: item.card_sent_at
+                        ? '#d1fae5'
+                        : '#fef3c7',
+                      color: item.card_sent_at
+                        ? '#065f46'
+                        : '#92400e',
+                    }}
+                    title={
+                      item.card_sent_at
+                        ? `Welcome card sent on ${new Date(
+                            item.card_sent_at
+                          ).toLocaleString()}`
+                        : 'Welcome card not emailed yet'
+                    }
+                  >
+                    {item.card_sent_at ? (
+                      <Mail size={13} />
+                    ) : (
+                      <MailX size={13} />
+                    )}
+                    {item.card_sent_at
+                      ? 'Card emailed'
+                      : 'Card not sent'}
+                  </span>
+                )}
               </div>
 
               <div
@@ -1321,6 +1380,24 @@ function VolunteerManager() {
                   <X size={15} />
                   Reject
                 </button>
+
+                {item.status ===
+                  'accepted' && (
+                  <button
+                    className="btn"
+                    onClick={() =>
+                      resendCard(item.id)
+                    }
+                    style={{
+                      ...outlineButton,
+                    }}
+                  >
+                    <Mail size={15} />
+                    {item.card_sent_at
+                      ? 'Resend card'
+                      : 'Send card'}
+                  </button>
+                )}
 
                 <button
                   className="btn"
@@ -3275,6 +3352,13 @@ const dangerButton = {
   color: '#b91c1c',
   border:
     '1px solid #fecaca',
+};
+
+const outlineButton = {
+  background: '#fff',
+  color: '#0f172a',
+  border:
+    '1px solid #cbd5e1',
 };
 
 const tableStyle = {

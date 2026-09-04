@@ -5,7 +5,7 @@ import uuid
 import cloudinary
 import cloudinary.uploader
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -45,6 +45,12 @@ from ..schemas import (
     UpcomingProjectResponse,
     VideoGalleryResponse,
     VolunteerApplicationResponse,
+)
+
+from ..email_service import send_volunteer_welcome_email
+from ..welcome_card import (
+    build_welcome_card_html,
+    load_profile_photo,
 )
 
 
@@ -1222,4 +1228,188 @@ def delete_certificate(
 
     return {
         "message": "Certificate deleted"
+    }
+
+
+# ============================================================
+# VOLUNTEER APPLICATIONS ADMIN
+# ============================================================
+
+VALID_VOLUNTEER_STATUSES = {
+    "pending",
+    "accepted",
+    "rejected",
+}
+
+
+def _issue_volunteer_id(volunteer: VolunteerApplication) -> str:
+    if volunteer.volunteer_id:
+        return volunteer.volunteer_id
+    return f"PWF-{date.today().year}-{volunteer.id:04d}"
+
+
+def _send_volunteer_welcome_card(
+    db: Session,
+    volunteer: VolunteerApplication,
+) -> None:
+    """Email the welcome card for an accepted volunteer.
+
+    Sets volunteer.card_sent_at only when the email was delivered. Never
+    raises; failures are logged so the admin can retry later.
+    """
+    volunteer_id = _issue_volunteer_id(volunteer)
+    volunteer.volunteer_id = volunteer_id
+
+    image_bytes, image_mime = load_profile_photo(
+        volunteer.profile_pic_url
+    )
+
+    card_html = build_welcome_card_html(
+        full_name=volunteer.full_name,
+        volunteer_id=volunteer_id,
+        interest_area=volunteer.interest_area,
+        phone=volunteer.phone,
+        accepted_at=datetime.utcnow(),
+        use_photo_cid=bool(image_bytes),
+    )
+
+    sent = send_volunteer_welcome_email(
+        to_email=volunteer.email,
+        volunteer_name=volunteer.full_name,
+        card_html=card_html,
+        profile_image_bytes=image_bytes,
+        profile_image_mime=image_mime,
+    )
+
+    if sent:
+        volunteer.card_sent_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(volunteer)
+
+
+@router.get(
+    "/volunteers",
+    response_model=List[VolunteerApplicationResponse],
+)
+def get_volunteer_applications(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(VolunteerApplication)
+        .order_by(
+            VolunteerApplication.created_at.desc(),
+            VolunteerApplication.id.desc(),
+        )
+        .all()
+    )
+
+
+@router.patch(
+    "/volunteers/{volunteer_id}/status",
+    response_model=VolunteerApplicationResponse,
+)
+def update_volunteer_status(
+    volunteer_id: int,
+    status_value: str,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    volunteer = (
+        db.query(VolunteerApplication)
+        .filter(VolunteerApplication.id == volunteer_id)
+        .first()
+    )
+
+    if not volunteer:
+        raise HTTPException(
+            404,
+            "Volunteer application not found",
+        )
+
+    if status_value not in VALID_VOLUNTEER_STATUSES:
+        raise HTTPException(
+            400,
+            f"Invalid status. Choose one of: "
+            f"{', '.join(sorted(VALID_VOLUNTEER_STATUSES))}",
+        )
+
+    volunteer.status = status_value
+
+    if (
+        status_value == "accepted"
+        and not volunteer.card_sent_at
+    ):
+        _send_volunteer_welcome_card(db, volunteer)
+    else:
+        db.commit()
+        db.refresh(volunteer)
+
+    return volunteer
+
+
+@router.post(
+    "/volunteers/{volunteer_id}/resend-card",
+    response_model=VolunteerApplicationResponse,
+)
+def resend_volunteer_welcome_card(
+    volunteer_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    volunteer = (
+        db.query(VolunteerApplication)
+        .filter(VolunteerApplication.id == volunteer_id)
+        .first()
+    )
+
+    if not volunteer:
+        raise HTTPException(
+            404,
+            "Volunteer application not found",
+        )
+
+    if volunteer.status != "accepted":
+        raise HTTPException(
+            400,
+            "Welcome cards can only be sent to accepted volunteers.",
+        )
+
+    _send_volunteer_welcome_card(db, volunteer)
+
+    return volunteer
+
+
+@router.delete(
+    "/volunteers/{volunteer_id}",
+)
+def delete_volunteer_application(
+    volunteer_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    volunteer = (
+        db.query(VolunteerApplication)
+        .filter(VolunteerApplication.id == volunteer_id)
+        .first()
+    )
+
+    if not volunteer:
+        raise HTTPException(
+            404,
+            "Volunteer application not found",
+        )
+
+    old_photo = volunteer.profile_pic_url
+
+    db.delete(volunteer)
+    db.commit()
+
+    if old_photo:
+        _delete_local_file(old_photo)
+        _delete_cloudinary_file(old_photo, "image")
+
+    return {
+        "message": "Volunteer application deleted"
     }

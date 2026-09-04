@@ -82,6 +82,32 @@ with engine.begin() as connection:
                 )
             )
 
+    if "volunteer_applications" in existing_tables:
+        columns = {
+            column["name"]
+            for column in inspector.get_columns("volunteer_applications")
+        }
+
+        if "volunteer_id" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN volunteer_id VARCHAR(100)
+                    """
+                )
+            )
+
+        if "card_sent_at" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN card_sent_at TIMESTAMP WITHOUT TIME ZONE
+                    """
+                )
+            )
+
 
 # ============================================================
 # FASTAPI APPLICATION

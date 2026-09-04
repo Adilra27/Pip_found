@@ -95,6 +95,7 @@ export default function JoinUs() {
         phone: formData.phone,
         interest_area: formData.interestArea,
         about_yourself: formData.aboutYourself,
+        profile_pic: formData.profilePic,
       });
       setLoading(false);
       setSubmitted(true);

@@ -33,10 +33,24 @@ export async function submitContact(data) {
 }
 
 export async function submitVolunteerApplication(data) {
+  const form = new FormData();
+
+  form.append('full_name', data.full_name || '');
+  form.append('email', data.email || '');
+  form.append('phone', data.phone || '');
+  form.append('interest_area', data.interest_area || '');
+
+  if (data.about_yourself) {
+    form.append('about_yourself', data.about_yourself);
+  }
+
+  if (data.profile_pic) {
+    form.append('profile_pic', data.profile_pic);
+  }
+
   const res = await fetch(`${API_BASE_URL}/volunteers`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: form,
   });
 
   if (!res.ok) {
@@ -170,6 +184,12 @@ export async function updateAdminVolunteerStatus(id, status) {
 
 export async function deleteAdminVolunteer(id) {
   return adminFetch(`/admin/volunteers/${id}`, { method: 'DELETE' });
+}
+
+export async function resendAdminVolunteerCard(id) {
+  return adminFetch(`/admin/volunteers/${id}/resend-card`, {
+    method: 'POST',
+  });
 }
 
 
