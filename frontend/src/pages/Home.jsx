@@ -173,7 +173,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
           </div>
 
           <div className="home-hero-logo-card">
-            <img src="/piplad-logo.png" alt="Piplad Welfare Foundation" />
+            <img src="/piplad-logo.jpg" alt="Piplad Welfare Foundation" />
           </div>
         </div>
 
