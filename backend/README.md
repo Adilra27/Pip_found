@@ -53,6 +53,20 @@ runs on Render with **PostgreSQL** (no SQLite).
 python seed_data.py
 ```
 
+## Deploying the frontend to Render
+
+The repository root contains `render.yaml` for the Vite static site. In Render,
+create a Blueprint from this repository, or create a Static Site with:
+
+- Root directory: `frontend`
+- Build command: `npm ci && npm run build`
+- Publish directory: `dist`
+- Environment variable: `VITE_API_URL=https://piplad-api.onrender.com/api`
+
+The blueprint also adds the SPA rewrite required by React Router. Set the
+backend `CORS_ORIGINS` variable to the exact Render frontend URL after the site
+is created. The example assumes `https://pip-found-frontend.onrender.com`.
+
 ## Migrating legacy SQLite data (one-time, already run in prod)
 
 `backend/pwf_app.db` was the old SQLite database. To copy its rows into a fresh
