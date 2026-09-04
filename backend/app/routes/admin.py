@@ -2,6 +2,9 @@ import os
 import secrets
 import uuid
 
+import cloudinary
+import cloudinary.uploader
+
 from datetime import date
 from pathlib import Path
 from typing import List, Optional
@@ -262,6 +265,64 @@ def _save_upload(
     return destination
 
 
+def _upload_to_cloudinary(
+    file: UploadFile,
+    folder: str,
+    max_size: int,
+    resource_type: str,
+) -> str:
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key = os.getenv("CLOUDINARY_API_KEY")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+
+    if not all((cloud_name, api_key, api_secret)):
+        raise HTTPException(
+            503,
+            "Cloudinary storage is not configured on the backend.",
+        )
+
+    file.file.seek(0)
+    content = file.file.read(max_size + 1)
+
+    if len(content) > max_size:
+        raise HTTPException(
+            413,
+            "File is too large. "
+            f"Maximum allowed size is {max_size // (1024 * 1024)} MB.",
+        )
+
+    try:
+        cloudinary.config(
+            cloud_name=cloud_name,
+            api_key=api_key,
+            api_secret=api_secret,
+            secure=True,
+        )
+
+        result = cloudinary.uploader.upload(
+            content,
+            folder=f"piplad/{folder}",
+            resource_type=resource_type,
+            public_id=uuid.uuid4().hex,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            502,
+            f"Could not upload file to Cloudinary: {exc}",
+        ) from exc
+
+    secure_url = result.get("secure_url")
+
+    if not secure_url:
+        raise HTTPException(
+            502,
+            "Cloudinary did not return a media URL.",
+        )
+
+    return secure_url
+
+
 def _delete_local_file(
     url: str | None,
 ):
@@ -289,6 +350,44 @@ def _delete_local_file(
         candidate.unlink(
             missing_ok=True
         )
+
+
+def _delete_cloudinary_file(
+    url: str | None,
+    resource_type: str,
+):
+    if not url or "res.cloudinary.com" not in url:
+        return
+
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key = os.getenv("CLOUDINARY_API_KEY")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+
+    if not all((cloud_name, api_key, api_secret)):
+        return
+
+    try:
+        cloudinary.config(
+            cloud_name=cloud_name,
+            api_key=api_key,
+            api_secret=api_secret,
+            secure=True,
+        )
+
+        public_id = url.split("/upload/", 1)[-1]
+
+        if public_id.startswith("v") and "/" in public_id:
+            public_id = public_id.split("/", 1)[1]
+
+        public_id = public_id.rsplit(".", 1)[0]
+
+        cloudinary.uploader.destroy(
+            public_id,
+            resource_type=resource_type,
+            invalidate=True,
+        )
+    except Exception:
+        return
 
 
 def _public_url(
@@ -376,7 +475,6 @@ def upload_gallery_image(
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
-    saved_paths = []
     items = []
 
     try:
@@ -388,23 +486,11 @@ def upload_gallery_image(
                 MAX_IMAGE_SIZE,
             )
 
-            filename = _safe_name(
-                file.filename,
-                ".jpg",
-            )
-
-            saved_path = _save_upload(
+            image_url = _upload_to_cloudinary(
                 file,
-                GALLERY_DIR,
-                filename,
-                MAX_IMAGE_SIZE,
-            )
-
-            saved_paths.append(saved_path)
-
-            image_url = _public_url(
                 "gallery",
-                filename,
+                MAX_IMAGE_SIZE,
+                "image",
             )
 
             item = GalleryItem(
@@ -427,9 +513,6 @@ def upload_gallery_image(
 
     except Exception as exc:
         db.rollback()
-
-        for path in saved_paths:
-            path.unlink(missing_ok=True)
 
         if isinstance(exc, HTTPException):
             raise
@@ -468,6 +551,7 @@ def delete_gallery_image(
     db.commit()
 
     _delete_local_file(old_url)
+    _delete_cloudinary_file(old_url, "image")
 
     return {
         "message": "Gallery image deleted"
@@ -508,7 +592,6 @@ def upload_video(
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
-    saved_paths = []
     items = []
 
     try:
@@ -520,23 +603,11 @@ def upload_video(
                 MAX_VIDEO_SIZE,
             )
 
-            filename = _safe_name(
-                file.filename,
-                ".mp4",
-            )
-
-            saved_path = _save_upload(
+            video_url = _upload_to_cloudinary(
                 file,
-                VIDEO_DIR,
-                filename,
-                MAX_VIDEO_SIZE,
-            )
-
-            saved_paths.append(saved_path)
-
-            video_url = _public_url(
                 "videos",
-                filename,
+                MAX_VIDEO_SIZE,
+                "video",
             )
 
             item = VideoGallery(
@@ -559,9 +630,6 @@ def upload_video(
 
     except Exception as exc:
         db.rollback()
-
-        for path in saved_paths:
-            path.unlink(missing_ok=True)
 
         if isinstance(exc, HTTPException):
             raise
@@ -602,6 +670,7 @@ def delete_video(
     db.commit()
 
     _delete_local_file(old_url)
+    _delete_cloudinary_file(old_url, "video")
 
     return {
         "message": "Video deleted"
@@ -720,21 +789,11 @@ def create_project(
             MAX_IMAGE_SIZE,
         )
 
-        filename = _safe_name(
-            file.filename,
-            ".jpg",
-        )
-
-        _save_upload(
+        image_url = _upload_to_cloudinary(
             file,
-            PROJECT_DIR,
-            filename,
-            MAX_IMAGE_SIZE,
-        )
-
-        image_url = _public_url(
             "projects",
-            filename,
+            MAX_IMAGE_SIZE,
+            "image",
         )
 
     project = UpcomingProject(
@@ -805,21 +864,11 @@ def update_project(
             MAX_IMAGE_SIZE,
         )
 
-        filename = _safe_name(
-            file.filename,
-            ".jpg",
-        )
-
-        _save_upload(
+        project.image_url = _upload_to_cloudinary(
             file,
-            PROJECT_DIR,
-            filename,
-            MAX_IMAGE_SIZE,
-        )
-
-        project.image_url = _public_url(
             "projects",
-            filename,
+            MAX_IMAGE_SIZE,
+            "image",
         )
 
     elif remove_image:
@@ -833,6 +882,7 @@ def update_project(
         and old_image != project.image_url
     ):
         _delete_local_file(old_image)
+        _delete_cloudinary_file(old_image, "image")
 
     return project
 
@@ -866,6 +916,7 @@ def delete_project(
     db.commit()
 
     _delete_local_file(old_image)
+    _delete_cloudinary_file(old_image, "image")
 
     return {
         "message": "Project deleted"
@@ -927,21 +978,11 @@ def create_team_member(
             MAX_IMAGE_SIZE,
         )
 
-        filename = _safe_name(
-            file.filename,
-            ".jpg",
-        )
-
-        _save_upload(
+        photo_url = _upload_to_cloudinary(
             file,
-            TEAM_DIR,
-            filename,
-            MAX_IMAGE_SIZE,
-        )
-
-        photo_url = _public_url(
             "team",
-            filename,
+            MAX_IMAGE_SIZE,
+            "image",
         )
 
     member = TeamMember(
@@ -993,6 +1034,7 @@ def delete_team_member(
     db.commit()
 
     _delete_local_file(old_photo)
+    _delete_cloudinary_file(old_photo, "image")
 
     return {
         "message": "Team member deleted"
@@ -1050,21 +1092,11 @@ def create_certificate(
             MAX_IMAGE_SIZE,
         )
 
-        filename = _safe_name(
-            file.filename,
-            ".jpg",
-        )
-
-        _save_upload(
+        image_url = _upload_to_cloudinary(
             file,
-            CERTIFICATE_DIR,
-            filename,
-            MAX_IMAGE_SIZE,
-        )
-
-        image_url = _public_url(
             "certificates",
-            filename,
+            MAX_IMAGE_SIZE,
+            "image",
         )
 
     certificate = Certificate(
@@ -1135,21 +1167,11 @@ def update_certificate(
             MAX_IMAGE_SIZE,
         )
 
-        filename = _safe_name(
-            file.filename,
-            ".jpg",
-        )
-
-        _save_upload(
+        certificate.image_url = _upload_to_cloudinary(
             file,
-            CERTIFICATE_DIR,
-            filename,
-            MAX_IMAGE_SIZE,
-        )
-
-        certificate.image_url = _public_url(
             "certificates",
-            filename,
+            MAX_IMAGE_SIZE,
+            "image",
         )
 
     elif remove_image:
@@ -1163,6 +1185,7 @@ def update_certificate(
         and old_image != certificate.image_url
     ):
         _delete_local_file(old_image)
+        _delete_cloudinary_file(old_image, "image")
 
     return certificate
 
@@ -1195,6 +1218,7 @@ def delete_certificate(
     db.commit()
 
     _delete_local_file(old_image)
+    _delete_cloudinary_file(old_image, "image")
 
     return {
         "message": "Certificate deleted"
