@@ -91,6 +91,9 @@ class DonationResponse(BaseModel):
     amount: float
     cause_id: Optional[int] = None
     status: str
+    razorpay_order_id: Optional[str] = None
+    razorpay_payment_id: Optional[str] = None
+    receipt_sent_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

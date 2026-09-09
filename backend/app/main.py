@@ -108,6 +108,32 @@ with engine.begin() as connection:
                 )
             )
 
+    if "donations" in existing_tables:
+        columns = {
+            column["name"]
+            for column in inspector.get_columns("donations")
+        }
+
+        if "razorpay_signature" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE donations
+                    ADD COLUMN razorpay_signature VARCHAR(512)
+                    """
+                )
+            )
+
+        if "receipt_sent_at" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE donations
+                    ADD COLUMN receipt_sent_at TIMESTAMP WITHOUT TIME ZONE
+                    """
+                )
+            )
+
 
 # ============================================================
 # FASTAPI APPLICATION

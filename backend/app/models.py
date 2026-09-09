@@ -34,7 +34,9 @@ class Donation(Base):
     cause_id = Column(Integer, ForeignKey("causes.id"), nullable=True)
     razorpay_order_id = Column(String(255), nullable=True)
     razorpay_payment_id = Column(String(255), nullable=True)
+    razorpay_signature = Column(String(512), nullable=True)
     status = Column(String(50), default="pending")
+    receipt_sent_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     cause = relationship("Cause", back_populates="donations")

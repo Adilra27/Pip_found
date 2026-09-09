@@ -68,7 +68,10 @@ export async function createRazorpayOrder(data) {
     body: JSON.stringify(data),
   });
 
-  if (!res.ok) throw new Error('Failed to create donation order');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || 'Failed to create donation order');
+  }
   return res.json();
 }
 
@@ -79,7 +82,10 @@ export async function verifyPayment(data) {
     body: JSON.stringify(data),
   });
 
-  if (!res.ok) throw new Error('Failed to verify payment');
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || 'Failed to verify payment');
+  }
   return res.json();
 }
 

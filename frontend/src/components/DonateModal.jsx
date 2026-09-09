@@ -54,8 +54,13 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
         cause_id: causeId ? parseInt(causeId) : null
       });
 
-      // 2. Open Razorpay Checkout Window if Razorpay SDK is loaded on window
-      if (window.Razorpay && orderRes.key_id && !orderRes.key_id.includes('test')) {
+      // 2. Open Razorpay Checkout if the backend created a real order
+      if (!orderRes.use_mock) {
+        if (!window.Razorpay) {
+          setLoading(false);
+          setErrorMsg('Payment gateway failed to load. Please refresh the page and try again.');
+          return;
+        }
         const options = {
           key: orderRes.key_id,
           amount: finalAmount * 100,
@@ -69,15 +74,16 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
             contact: donorPhone
           },
           handler: async function (response) {
-            // Verify payment
-            await verifyPayment({
+            // Verify payment on the backend (signature check)
+            const res = await verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               donation_id: orderRes.donation_id
             });
             setLoading(false);
-            setSuccessMsg(`Thank you, ${donorName}! Your donation of ₹${finalAmount.toLocaleString('en-IN')} was received successfully. An 80G tax receipt will be emailed to ${donorEmail}.`);
+            const receiptNote = res.receipt_emailed ? 'has been sent' : 'will be emailed';
+            setSuccessMsg(`Thank you, ${donorName}! Your donation of ₹${finalAmount.toLocaleString('en-IN')} was received successfully. An 80G tax receipt ${receiptNote} to ${donorEmail}.`);
           },
           modal: {
             ondismiss: function () {
@@ -88,15 +94,16 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
         const rzp = new window.Razorpay(options);
         rzp.open();
       } else {
-        // Fallback for test/sandbox mode - directly verify order
-        await verifyPayment({
+        // Simulated mode (RAZORPAY_MODE=mock) - no real money is collected
+        const res = await verifyPayment({
           razorpay_order_id: orderRes.order_id,
           razorpay_payment_id: `pay_test_${Date.now()}`,
           razorpay_signature: 'test_sig',
           donation_id: orderRes.donation_id
         });
         setLoading(false);
-        setSuccessMsg(`Thank you, ${donorName}! Your donation of ₹${finalAmount.toLocaleString('en-IN')} was completed successfully in test mode. An 80G tax receipt will be sent to ${donorEmail}.`);
+        const receiptNote = res.receipt_emailed ? 'has been sent' : 'will be emailed';
+        setSuccessMsg(`Thank you, ${donorName}! Your donation of ₹${finalAmount.toLocaleString('en-IN')} was completed successfully (simulated mode - no payment was actually collected). An 80G tax receipt ${receiptNote} to ${donorEmail}.`);
       }
     } catch (err) {
       setLoading(false);
