@@ -23,6 +23,7 @@ import {
   fetchBlogPosts,
   fetchCauses,
   fetchCertificates,
+  fetchPublicImpact,
   fetchUpcomingProjects,
   resolveMediaUrl,
 } from '../api';
@@ -106,7 +107,8 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
   const [blogs, setBlogs] = useState([]);
   const [projects, setProjects] = useState([]);
   const [certificates, setCertificates] = useState([]);
-  const [loading, setLoading] = useState({ causes: true, blogs: true, projects: true, certificates: true });
+  const [impact, setImpact] = useState(null);
+  const [loading, setLoading] = useState({ causes: true, blogs: true, projects: true, certificates: true, impact: true });
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -135,6 +137,18 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
     load('projects', fetchUpcomingProjects, setProjects);
     load('certificates', fetchCertificates, setCertificates);
 
+    fetchPublicImpact()
+      .then((result) => {
+        if (mounted) setImpact(result);
+      })
+      .catch((error) => {
+        console.error('Failed to load homepage impact:', error);
+        if (mounted) setImpact(null);
+      })
+      .finally(() => {
+        if (mounted) setLoading((state) => ({ ...state, impact: false }));
+      });
+
     return () => {
       mounted = false;
     };
@@ -145,6 +159,32 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
   const featuredCertificates = useMemo(() => certificates.slice(0, 6), [certificates]);
   const featuredProjects = useMemo(() => projects.slice(0, 3), [projects]);
   const programs = impactAreasData.areas.slice(0, 8);
+
+  const impactCards = useMemo(() => {
+    if (!impact) return [];
+
+    const people = impact.groups?.find((g) => g.key === 'people')?.metrics || [];
+    const environmental = impact.groups?.find((g) => g.key === 'environmental')?.metrics || [];
+
+    const cards = [];
+
+    const studentMetric = people.find((m) => m.key === 'students_supported');
+    if (studentMetric) {
+      cards.push({ icon: <BookOpen size={22} />, value: `${Number(studentMetric.value).toLocaleString('en-IN')}+`, label: studentMetric.name });
+    }
+
+    const communityMetric = people.find((m) => m.key === 'community_reached');
+    if (communityMetric) {
+      cards.push({ icon: <Users size={22} />, value: `${Number(communityMetric.value).toLocaleString('en-IN')}+`, label: communityMetric.name });
+    }
+
+    const treeMetric = environmental.find((m) => m.key === 'trees_planted');
+    if (treeMetric) {
+      cards.push({ icon: <Leaf size={22} />, value: `${Number(treeMetric.value).toLocaleString('en-IN')}+`, label: treeMetric.name });
+    }
+
+    return cards;
+  }, [impact]);
 
   return (
     <main className="home-page">
@@ -290,6 +330,37 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
                 </article>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* IMPACT AT A GLANCE */}
+      <section className="home-section home-impact-at-glance">
+        <div className="container">
+          <SectionHeading
+            eyebrow="Impact at a Glance"
+            title="Creating measurable change across communities"
+            description="Published, verified numbers from our programmes — updated automatically whenever they change."
+          />
+
+          {loading.impact ? (
+            <div className="home-empty-state">Loading impact data…</div>
+          ) : impactCards.length === 0 ? (
+            <div className="home-empty-state">Impact figures will be published here as programmes grow.</div>
+          ) : (
+            <div className="home-at-glance-grid">
+              {impactCards.map((card) => (
+                <article className="home-at-glance-card" key={card.label}>
+                  <div className="home-at-glance-icon">{card.icon}</div>
+                  <div className="home-at-glance-value">{card.value}</div>
+                  <div className="home-at-glance-label">{card.label}</div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          <div className="home-centered-link">
+            <Link to="/impact" className="home-outline-button">View Full Impact Report <ArrowRight size={17} /></Link>
           </div>
         </div>
       </section>

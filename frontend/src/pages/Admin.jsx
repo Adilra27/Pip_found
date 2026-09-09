@@ -20,6 +20,9 @@ import {
   Edit3,
   Mail,
   MailX,
+  BarChart3,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 import {
@@ -54,6 +57,8 @@ import {
   uploadAdminVideo,
   deleteAdminVolunteer,
   resendAdminVolunteerCard,
+  fetchAdminImpact,
+  updateAdminImpact,
   API_ORIGIN,
 } from '../api';
 
@@ -2543,6 +2548,253 @@ function CertificateManager({ refreshAll }) {
 
 
 // ============================================================
+// IMPACT METRICS MANAGER
+// ============================================================
+
+const categoryLabels = {
+  people: 'People Impact',
+  environmental: 'Environmental Impact',
+  carbon: 'Verified Carbon Credits',
+};
+
+function ImpactManager() {
+  const [metrics, setMetrics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      setMetrics(await fetchAdminImpact());
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function updateMetric(index, patch) {
+    setMetrics((current) =>
+      current.map((metric, i) =>
+        i === index ? { ...metric, ...patch } : metric
+      )
+    );
+  }
+
+  async function save(e) {
+    e.preventDefault();
+
+    setError('');
+    setSaving(true);
+
+    try {
+      const payload = metrics.map((metric) => ({
+        value: Number(metric.value) || 0,
+        is_published: Boolean(metric.is_published),
+      }));
+
+      setMetrics(await updateAdminImpact(payload));
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const grouped = metrics.reduce((acc, metric) => {
+    const key = metric.category || 'people';
+    acc[key] = acc[key] || [];
+    acc[key].push(metric);
+    return acc;
+  }, {});
+
+  return (
+    <ManagerSection
+      title="Impact Metrics"
+      icon={<BarChart3 size={22} />}
+    >
+      <ErrorMessage message={error} />
+
+      <p style={{ color: '#64748b', lineHeight: 1.7, marginTop: 0 }}>
+        These figures appear on the public Impact page and the
+        "Impact at a Glance" section of the homepage. Change a value
+        and save — the website updates automatically. Carbon credits
+        should stay at 0 until formally verified.
+      </p>
+
+      {loading ? (
+        <p>Loading impact metrics…</p>
+      ) : metrics.length === 0 ? (
+        <p style={{ color: '#64748b' }}>
+          No impact metrics found.
+        </p>
+      ) : (
+        <form onSubmit={save}>
+          {Object.entries(grouped).map(([category, items]) => (
+            <div
+              key={category}
+              style={{
+                marginBottom: '1.5rem',
+                padding: '1.25rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: 12,
+                background: '#f8fafc',
+              }}
+            >
+              <h3
+                style={{
+                  margin: '0 0 1rem',
+                  fontSize: '1rem',
+                  color: '#0f172a',
+                }}
+              >
+                {categoryLabels[category] || category}
+              </h3>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gap: '1rem',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                }}
+              >
+                {items.map((metric) => {
+                  const idx = metrics.indexOf(metric);
+
+                  return (
+                    <div
+                      key={metric.id}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '.5rem',
+                        padding: '1rem',
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 10,
+                      }}
+                    >
+                      <label style={{ fontWeight: 700, fontSize: '.88rem' }}>
+                        {metric.metric_name}
+                      </label>
+
+                      {metric.description && (
+                        <small style={{ color: '#64748b', lineHeight: 1.5 }}>
+                          {metric.description}
+                        </small>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={metric.value}
+                          onChange={(e) =>
+                            updateMetric(idx, {
+                              value: e.target.value,
+                            })
+                          }
+                          style={{ ...inputStyle, flex: 1 }}
+                        />
+                        {metric.unit && (
+                          <span
+                            style={{
+                              color: '#64748b',
+                              fontSize: '.82rem',
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {metric.unit}
+                          </span>
+                        )}
+                      </div>
+
+                      <label
+                        style={{
+                          display: 'inline-flex',
+                          gap: '.5rem',
+                          alignItems: 'center',
+                          fontSize: '.85rem',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(metric.is_published)}
+                          onChange={(e) =>
+                            updateMetric(idx, {
+                              is_published: e.target.checked,
+                            })
+                          }
+                        />
+                        {metric.is_published
+                          ? <><Eye size={15} /> Published</>
+                          : <><EyeOff size={15} /> Hidden</>}
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '.75rem',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
+          >
+            <button
+              className="btn"
+              disabled={saving}
+              style={primaryButton}
+            >
+              <Upload size={17} />
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+
+            {metrics.length > 0 && (
+              <span style={{ color: '#64748b', fontSize: '.85rem' }}>
+                Last updated:{' '}
+                {metrics
+                  .map((m) => m.last_updated)
+                  .filter(Boolean)
+                  .sort()
+                  .slice(-1)[0]
+                  ? new Date(
+                      metrics
+                        .map((m) => m.last_updated)
+                        .filter(Boolean)
+                        .sort()
+                        .slice(-1)[0]
+                    ).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : 'Never'}
+              </span>
+            )}
+          </div>
+        </form>
+      )}
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
 // MAIN ADMIN PAGE
 // ============================================================
 
@@ -2669,6 +2921,10 @@ export default function Admin() {
     [
       'certificates',
       'Certificates',
+    ],
+    [
+      'impact',
+      'Impact Metrics',
     ],
   ];
 
@@ -2942,6 +3198,10 @@ export default function Admin() {
                 loadDashboard
               }
             />
+          )}
+
+          {tab === 'impact' && (
+            <ImpactManager />
           )}
 
           {/* =================================================

@@ -83,6 +83,10 @@ export default function Header({ onOpenDonate }) {
       ],
     },
     {
+      label: 'Our Impact',
+      path: '/impact',
+    },
+    {
       label: 'Blog',
       path: '/blog',
     },

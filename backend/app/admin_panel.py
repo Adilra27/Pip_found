@@ -9,6 +9,7 @@ from .models import (
     ContactInquiry,
     Donation,
     GalleryItem,
+    ImpactMetric,
     Media,
     TeamMember,
     UpcomingProject,
@@ -71,6 +72,20 @@ class MediaAdmin(ModelView, model=Media):
     icon = "fa-solid fa-newspaper"
 
 
+class ImpactMetricAdmin(ModelView, model=ImpactMetric):
+    column_list = [
+        ImpactMetric.id,
+        ImpactMetric.metric_key,
+        ImpactMetric.metric_name,
+        ImpactMetric.category,
+        ImpactMetric.value,
+        ImpactMetric.is_published,
+        ImpactMetric.last_updated,
+    ]
+    column_searchable_list = [ImpactMetric.metric_key, ImpactMetric.metric_name]
+    icon = "fa-solid fa-chart-simple"
+
+
 def setup_admin(app):
     admin = Admin(app, engine, title="PWF Admin Dashboard")
     admin.add_view(CauseAdmin)
@@ -82,5 +97,6 @@ def setup_admin(app):
     admin.add_view(UpcomingProjectAdmin)
     admin.add_view(CertificateAdmin)
     admin.add_view(MediaAdmin)
+    admin.add_view(ImpactMetricAdmin)
     admin.add_view(ContactInquiryAdmin)
     admin.add_view(AboutAdmin)

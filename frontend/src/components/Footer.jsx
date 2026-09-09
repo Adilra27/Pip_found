@@ -37,6 +37,7 @@ export default function Footer({ onOpenDonate }) {
             <h4 style={{ color: '#ffffff', fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Quick Links</h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
               <li><Link to="/about" style={{ color: '#cbd5e1', hover: { color: '#34d399' } }}>About Our Foundation</Link></li>
+              <li><Link to="/impact" style={{ color: '#cbd5e1' }}>Our Impact</Link></li>
               <li><Link to="/causes" style={{ color: '#cbd5e1' }}>Current Welfare Causes</Link></li>
               <li><Link to="/donate" style={{ color: '#cbd5e1' }}>Donate & 80G Benefits</Link></li>
               <li><Link to="/gallery" style={{ color: '#cbd5e1' }}>Media & Awards Gallery</Link></li>

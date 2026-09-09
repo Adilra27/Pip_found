@@ -611,3 +611,29 @@ export async function fetchBlogPost(id) {
 
   return res.json();
 }
+
+// ============================================================
+// IMPACT
+// ============================================================
+
+export async function fetchPublicImpact() {
+  const res = await fetch(`${API_BASE_URL}/impact`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch impact data');
+  }
+
+  return res.json();
+}
+
+export async function fetchAdminImpact() {
+  return adminFetch('/impact/admin');
+}
+
+export async function updateAdminImpact(metrics) {
+  return adminFetch('/impact/admin', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ metrics }),
+  });
+}

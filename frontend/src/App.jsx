@@ -15,6 +15,7 @@ import BlogPost from './pages/BlogPost';
 import Team from './pages/Team';
 import Certificates from './pages/Certificates';
 import JoinUs from './pages/JoinUs';
+import Impact from './pages/Impact';
 import Admin from './pages/Admin';
 import Partner from './pages/Partner';
 
@@ -22,11 +23,15 @@ import Partner from './pages/Partner';
 import { fetchCauses } from './api';
 
 function ScrollToTop() {
-  const location = useLocation();
+  const { pathname, hash } = useLocation();
 
   useEffect(() => {
+    // Scroll to the top whenever the route/path changes. Skip when
+    // navigation only targets an in-page anchor (e.g. /about#founders),
+    // which are handled by the pages themselves.
+    if (hash) return;
     window.scrollTo(0, 0);
-  }, [location.pathname, location.search]);
+  }, [pathname, hash]);
 
   return null;
 }
@@ -73,6 +78,7 @@ export default function App() {
             <Route path="/team/:teamName" element={<Team />} />
             <Route path="/certificates" element={<Certificates />} />
             <Route path="/join" element={<JoinUs />} />
+            <Route path="/impact" element={<Impact />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/partners/:partnerSlug" element={<Partner />} />
           </Routes>

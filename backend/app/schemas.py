@@ -228,3 +228,54 @@ class MediaResponse(MediaBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================
+# IMPACT METRICS
+# ============================================================
+
+class ImpactMetricResponse(BaseModel):
+    id: int
+    metric_key: str
+    metric_name: str
+    category: str
+    value: float
+    unit: Optional[str] = None
+    description: Optional[str] = None
+    is_published: bool
+    display_order: int
+    last_updated: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ImpactMetricUpdate(BaseModel):
+    value: float
+    is_published: bool = True
+    metric_name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ImpactMetricsUpdateRequest(BaseModel):
+    metrics: List[ImpactMetricUpdate]
+
+
+class PublicImpactMetric(BaseModel):
+    key: str
+    name: str
+    value: float
+    unit: Optional[str] = None
+    display_order: int
+
+
+class PublicImpactGroup(BaseModel):
+    key: str
+    name: str
+    metrics: List[PublicImpactMetric]
+
+
+class PublicImpactResponse(BaseModel):
+    last_updated: Optional[date] = None
+    groups: List[PublicImpactGroup]
+    has_verified_carbon_credits: bool
+    verified_carbon_credits_value: Optional[float] = None

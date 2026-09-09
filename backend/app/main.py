@@ -16,6 +16,7 @@ from .routes import (
     certificates,
     contact,
     donation,
+    impact,
     media,
     team,
     volunteers,
@@ -223,6 +224,11 @@ app.include_router(
 app.include_router(
     volunteers.router,
     tags=["Volunteers"],
+)
+
+app.include_router(
+    impact.router,
+    tags=["Impact"],
 )
 
 

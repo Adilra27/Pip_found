@@ -70,6 +70,14 @@
 .home-program-card h3 { font-size: 1.05rem; margin: 0 0 .55rem; }
 .home-program-card p { margin: 0; color: #64748b; font-size: .82rem; line-height: 1.65; }
 
+.home-impact-at-glance { background: #f8fafc; }
+.home-at-glance-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+.home-at-glance-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 2rem; display: flex; flex-direction: column; align-items: center; text-align: center; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.home-at-glance-card:hover { transform: translateY(-5px); border-color: #bbf7d0; box-shadow: 0 18px 35px rgba(15,23,42,.09); }
+.home-at-glance-icon { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; background: #dcfce7; color: #15803d; margin-bottom: 1rem; }
+.home-at-glance-value { font-size: clamp(2.2rem,4vw,3rem); line-height: 1; font-weight: 850; letter-spacing: -.04em; color: #0f172a; }
+.home-at-glance-label { margin-top: .7rem; color: #64748b; font-weight: 750; font-size: .9rem; }
+
 .home-partnerships { background: #fff; }
 .home-partner-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1.25rem; }
 .home-partner-card { display: flex; gap: 1.2rem; align-items: center; padding: 1.6rem; border-radius: 20px; border: 1px solid #e2e8f0; background: linear-gradient(135deg,#fff,#f8fafc); color: inherit; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
@@ -178,6 +186,7 @@
   .home-impact-grid > div:nth-child(2) { border-right: 0; }
   .home-impact-grid > div:nth-child(-n+2) { border-bottom: 1px solid #e2e8f0; }
   .home-two-column,.home-pathshala-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .home-at-glance-grid { grid-template-columns: 1fr; }
   .home-partner-grid,.home-project-grid,.home-certificate-grid,.home-cause-grid { grid-template-columns: 1fr; }
   .home-section-heading-row { align-items: flex-start; flex-direction: column; }
   .home-donate-cta .container { flex-direction: column; align-items: flex-start; }

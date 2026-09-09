@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -214,4 +214,74 @@ class Media(Base):
     created_at = Column(
         DateTime,
         default=datetime.utcnow,
+    )
+
+
+class ImpactMetric(Base):
+    __tablename__ = "impact_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Stable machine-readable key, e.g. "students_supported".
+    metric_key = Column(
+        String(100),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    # Human-readable name, e.g. "Students & Learners Supported".
+    metric_name = Column(
+        String(255),
+        nullable=False,
+    )
+
+    # Grouping used by the public API, e.g. "people" | "environmental".
+    category = Column(
+        String(100),
+        nullable=False,
+        default="people",
+        index=True,
+    )
+
+    # Numeric value for the metric.
+    value = Column(
+        Numeric(18, 2),
+        nullable=False,
+        default=0.0,
+    )
+
+    # Unit label, e.g. "people", "trees", "tonnes", "credits".
+    unit = Column(
+        String(100),
+        nullable=True,
+    )
+
+    description = Column(
+        Text,
+        nullable=True,
+    )
+
+    # Whether the metric is shown on the public site.
+    is_published = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+    )
+
+    display_order = Column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+    )
+
+    last_updated = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )
