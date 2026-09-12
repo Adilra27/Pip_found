@@ -23,6 +23,7 @@ import {
   BarChart3,
   Eye,
   EyeOff,
+  Send,
 } from 'lucide-react';
 
 import {
@@ -57,6 +58,9 @@ import {
   uploadAdminVideo,
   deleteAdminVolunteer,
   resendAdminVolunteerCard,
+  resendAdminVolunteerRejection,
+  fetchAdminDonations,
+  resendAdminDonationReceipt,
   fetchAdminImpact,
   updateAdminImpact,
   API_ORIGIN,
@@ -1184,6 +1188,27 @@ function VolunteerManager() {
     }
   }
 
+  async function resendRejection(id) {
+    try {
+      const updated =
+        await resendAdminVolunteerRejection(id);
+
+      setItems((current) =>
+        current.map((item) =>
+          item.id === id
+            ? updated
+            : item
+        )
+      );
+
+      if (updated && updated.rejection_email_sent_at) {
+        setError('');
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   async function remove(id) {
     if (
       !window.confirm(
@@ -1373,6 +1398,41 @@ function VolunteerManager() {
                       : 'Card not sent'}
                   </span>
                 )}
+
+                {item.status ===
+                  'rejected' && (
+                  <span
+                    className="badge"
+                    style={{
+                      display:
+                        'inline-flex',
+                      alignItems: 'center',
+                      gap: '.3rem',
+                      background: item.rejection_email_sent_at
+                        ? '#d1fae5'
+                        : '#fef3c7',
+                      color: item.rejection_email_sent_at
+                        ? '#065f46'
+                        : '#92400e',
+                    }}
+                    title={
+                      item.rejection_email_sent_at
+                        ? `Rejection email sent on ${new Date(
+                            item.rejection_email_sent_at
+                          ).toLocaleString()}`
+                        : 'Rejection email not sent yet'
+                    }
+                  >
+                    {item.rejection_email_sent_at ? (
+                      <Mail size={13} />
+                    ) : (
+                      <MailX size={13} />
+                    )}
+                    {item.rejection_email_sent_at
+                      ? 'Rejection emailed'
+                      : 'Rejection not sent'}
+                  </span>
+                )}
               </div>
 
               <div
@@ -1429,6 +1489,24 @@ function VolunteerManager() {
                   </button>
                 )}
 
+                {item.status ===
+                  'rejected' && (
+                  <button
+                    className="btn"
+                    onClick={() =>
+                      resendRejection(item.id)
+                    }
+                    style={{
+                      ...outlineButton,
+                    }}
+                  >
+                    <Mail size={15} />
+                    {item.rejection_email_sent_at
+                      ? 'Resend rejection email'
+                      : 'Send rejection email'}
+                  </button>
+                )}
+
                 <button
                   className="btn"
                   onClick={() =>
@@ -1440,6 +1518,166 @@ function VolunteerManager() {
                   Remove
                 </button>
               </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
+// DONATION MANAGER
+// ============================================================
+
+function DonationManager() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  async function load() {
+    setLoading(true);
+    try {
+      setItems(await fetchAdminDonations());
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function resendReceipt(id) {
+    try {
+      const updated = await resendAdminDonationReceipt(id);
+      setItems((current) =>
+        current.map((item) =>
+          item.id === id ? updated : item
+        )
+      );
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  const panelStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '1rem',
+    flexWrap: 'wrap',
+    marginBottom: '1rem',
+  };
+
+  const badgeStyle = (status) => {
+    const completed = status === 'completed';
+    return {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '.3rem',
+      borderRadius: '9999px',
+      padding: '.25rem .75rem',
+      fontSize: '0.78rem',
+      fontWeight: 700,
+      background: completed ? '#d1fae5' : '#fef3c7',
+      color: completed ? '#065f46' : '#92400e',
+    };
+  };
+
+  return (
+    <ManagerSection
+      title="Donations"
+      icon={<DollarSign size={22} />}
+    >
+      <ErrorMessage message={error} />
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : items.length === 0 ? (
+        <p style={{ color: '#64748b' }}>
+          No donation records yet.
+        </p>
+      ) : (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {items.map((item) => (
+            <article
+              key={item.id}
+              className="card"
+              style={{ padding: '1rem' }}
+            >
+              <div style={panelStyle}>
+                <div>
+                  <h3 style={{ margin: 0 }}>
+                    {item.donor_name}
+                  </h3>
+                  <p style={{ color: '#475569', margin: '.35rem 0' }}>
+                    {item.donor_email}
+                    {item.donor_phone ? ` · ${item.donor_phone}` : ''}
+                  </p>
+                  <p style={{ color: '#64748b', margin: 0 }}>
+                    {item.razorpay_order_id || '—'} ·{' '}
+                    {new Date(item.created_at).toLocaleString()}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '.75rem',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#059669' }}>
+                    ₹{Number(item.amount).toLocaleString('en-IN')}
+                  </span>
+
+                  <span style={badgeStyle(item.status)}>
+                    {item.status}
+                  </span>
+
+                  {item.status === 'completed' && (
+                    <span
+                      style={badgeStyle('completed')}
+                      title={
+                        item.receipt_sent_at
+                          ? `Documents emailed on ${new Date(item.receipt_sent_at).toLocaleString()}`
+                          : 'Certificates not emailed yet'
+                      }
+                    >
+                      {item.receipt_sent_at ? (
+                        <Mail size={13} />
+                      ) : (
+                        <MailX size={13} />
+                      )}
+                      {item.receipt_sent_at
+                        ? 'Emailed'
+                        : 'Not sent'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {item.status === 'completed' && (
+                <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '.75rem' }}>
+                  <button
+                    className="btn"
+                    onClick={() => resendReceipt(item.id)}
+                    style={{ ...outlineButton }}
+                  >
+                    <Send size={15} />
+                    {item.receipt_sent_at
+                      ? 'Resend certificate & receipt'
+                      : 'Send certificate & receipt'}
+                  </button>
+                </div>
+              )}
             </article>
           ))}
         </div>
@@ -2924,6 +3162,10 @@ export default function Admin() {
       'Dashboard',
     ],
     [
+      'donations',
+      'Donations',
+    ],
+    [
       'volunteers',
       'Volunteers',
     ],
@@ -3191,6 +3433,10 @@ export default function Admin() {
 
           {tab === 'volunteers' && (
             <VolunteerManager />
+          )}
+
+          {tab === 'donations' && (
+            <DonationManager />
           )}
 
           {tab === 'videos' && (

@@ -66,6 +66,7 @@ class VolunteerApplication(Base):
     status = Column(String(50), nullable=False, default="pending", index=True)
     volunteer_id = Column(String(100), nullable=True, unique=True, index=True)
     card_sent_at = Column(DateTime, nullable=True)
+    rejection_email_sent_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
