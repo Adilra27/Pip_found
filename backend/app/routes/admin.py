@@ -1258,56 +1258,6 @@ def _issue_volunteer_id(volunteer: VolunteerApplication) -> str:
     return f"PWF-{date.today().year}-{volunteer.id:04d}"
 
 
-def _send_volunteer_welcome_card(
-    db: Session,
-    volunteer: VolunteerApplication,
-) -> None:
-    """Email the welcome card + PDF certificate for an accepted volunteer."""
-    image_bytes, image_mime = load_profile_photo(volunteer.profile_pic_url)
-    qr_data_uri = build_volunteer_qr_data_uri(_issue_volunteer_id(volunteer))
-    card_html = build_welcome_card_html(
-        full_name=volunteer.full_name,
-        volunteer_id=_issue_volunteer_id(volunteer),
-        interest_area=volunteer.interest_area,
-        phone=volunteer.phone,
-        accepted_at=datetime.utcnow(),
-        use_photo_cid=bool(image_bytes),
-        qr_data_uri=qr_data_uri,
-    )
-
-    try:
-        certificate_image = build_volunteer_certificate_image(
-            full_name=volunteer.full_name,
-        )
-    except Exception as exc:
-        logger.error(
-            "Failed to generate volunteer certificate image for volunteer %s: %s",
-            volunteer.id,
-            exc,
-        )
-        certificate_image = None
-
-    sent = send_volunteer_welcome_email(
-        to_email=volunteer.email,
-        volunteer_name=volunteer.full_name,
-        card_html=card_html,
-        certificate_image=certificate_image,
-        profile_image_bytes=image_bytes,
-        profile_image_mime=image_mime,
-    )
-
-    if sent:
-        volunteer.card_sent_at = datetime.utcnow()
-        db.commit()
-        db.refresh(volunteer)
-        logger.info("Welcome card emailed to volunteer %s", volunteer.id)
-    else:
-        logger.error(
-            "Welcome card email FAILED for volunteer %s (status left as accepted; use resend-card)",
-            volunteer.id,
-        )
-
-
 def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
     """Background task that emails an accepted volunteer's welcome card.
 
@@ -1422,6 +1372,53 @@ def _send_volunteer_rejection_email(
     db.refresh(volunteer)
 
 
+def _send_volunteer_rejection_email_background(volunteer_id: int) -> None:
+    """Background task that emails a rejected volunteer the notification.
+
+    Runs after the PATCH response is sent and opens its own DB session.
+    Never raises.
+    """
+    db = SessionLocal()
+    try:
+        volunteer = (
+            db.query(VolunteerApplication)
+            .filter(VolunteerApplication.id == volunteer_id)
+            .first()
+        )
+        if not volunteer:
+            logger.error(
+                "Rejection email background task: volunteer %s not found",
+                volunteer_id,
+            )
+            return
+
+        if volunteer.status != "rejected":
+            logger.warning(
+                "Rejection email background task: volunteer %s is %s, skipping",
+                volunteer_id,
+                volunteer.status,
+            )
+            return
+
+        if volunteer.rejection_email_sent_at:
+            logger.info(
+                "Rejection email already sent for volunteer %s",
+                volunteer_id,
+            )
+            return
+
+        _send_volunteer_rejection_email(db, volunteer)
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            "Unexpected error in rejection email background task for volunteer %s: %s",
+            volunteer_id,
+            exc,
+        )
+    finally:
+        db.close()
+
+
 @router.get(
     "/volunteers",
     response_model=List[VolunteerApplicationResponse],
@@ -1474,25 +1471,27 @@ def update_volunteer_status(
 
     if status_value == "accepted":
         volunteer.volunteer_id = _issue_volunteer_id(volunteer)
-        if not volunteer.card_sent_at:
-            _send_volunteer_welcome_card(db, volunteer)
-    elif (
-        status_value == "rejected"
-        and not volunteer.rejection_email_sent_at
-    ):
-        _send_volunteer_rejection_email(db, volunteer)
-    else:
-        db.commit()
-        db.refresh(volunteer)
 
-    card_emailed = False
+    db.commit()
+    db.refresh(volunteer)
+
     if status_value == "accepted" and not volunteer.card_sent_at:
         background_tasks.add_task(
             _send_volunteer_welcome_card_background,
             volunteer.id,
         )
-    elif status_value == "accepted" and volunteer.card_sent_at:
-        card_emailed = True
+    elif (
+        status_value == "rejected"
+        and not volunteer.rejection_email_sent_at
+    ):
+        background_tasks.add_task(
+            _send_volunteer_rejection_email_background,
+            volunteer.id,
+        )
+
+    card_emailed = (
+        status_value == "accepted" and volunteer.card_sent_at is not None
+    )
 
     db.commit()
     db.refresh(volunteer)
@@ -1550,6 +1549,7 @@ def resend_volunteer_welcome_card(
 )
 def resend_volunteer_rejection_email(
     volunteer_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
@@ -1571,7 +1571,10 @@ def resend_volunteer_rejection_email(
             "Rejection emails can only be sent to rejected volunteers.",
         )
 
-    _send_volunteer_rejection_email(db, volunteer)
+    background_tasks.add_task(
+        _send_volunteer_rejection_email_background,
+        volunteer.id,
+    )
 
     return volunteer
 

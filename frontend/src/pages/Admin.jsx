@@ -1110,6 +1110,12 @@ function VolunteerManager() {
   const [error, setError] =
     useState('');
 
+  const [notice, setNotice] =
+    useState('');
+
+  const [busyId, setBusyId] =
+    useState(null);
+
   async function load() {
     setLoading(true);
 
@@ -1134,6 +1140,10 @@ function VolunteerManager() {
     id,
     status
   ) {
+    setBusyId(id);
+    setError('');
+    setNotice('');
+
     try {
       const updated =
         await updateAdminVolunteerStatus(
@@ -1156,18 +1166,28 @@ function VolunteerManager() {
         updated.card_emailed === false &&
         !updated.card_sent_at
       ) {
-        setError(
-          'Volunteer accepted. The welcome card could not be emailed yet - use "Send card" to retry.'
+        setNotice(
+          'Volunteer accepted. The welcome card is being emailed automatically and may take a minute - use "Send card" to resend it later if needed.'
+        );
+      } else if (status === 'rejected') {
+        setNotice(
+          'Volunteer rejected. The rejection email is being sent automatically and may take a minute.'
         );
       } else {
-        setError('');
+        setNotice('');
       }
     } catch (e) {
       setError(e.message);
+    } finally {
+      setBusyId(null);
     }
   }
 
   async function resendCard(id) {
+    setBusyId(id);
+    setError('');
+    setNotice('');
+
     try {
       const updated =
         await resendAdminVolunteerCard(id);
@@ -1181,14 +1201,24 @@ function VolunteerManager() {
       );
 
       if (updated && updated.card_sent_at) {
-        setError('');
+        setNotice('Welcome card emailed.');
+      } else {
+        setNotice(
+          'Welcome card is being emailed and may take a minute.'
+        );
       }
     } catch (e) {
       setError(e.message);
+    } finally {
+      setBusyId(null);
     }
   }
 
   async function resendRejection(id) {
+    setBusyId(id);
+    setError('');
+    setNotice('');
+
     try {
       const updated =
         await resendAdminVolunteerRejection(id);
@@ -1202,10 +1232,16 @@ function VolunteerManager() {
       );
 
       if (updated && updated.rejection_email_sent_at) {
-        setError('');
+        setNotice('Rejection email sent.');
+      } else {
+        setNotice(
+          'Rejection email is being sent and may take a minute.'
+        );
       }
     } catch (e) {
       setError(e.message);
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -1218,6 +1254,10 @@ function VolunteerManager() {
       return;
     }
 
+    setBusyId(id);
+    setError('');
+    setNotice('');
+
     try {
       await deleteAdminVolunteer(
         id
@@ -1226,6 +1266,8 @@ function VolunteerManager() {
       await load();
     } catch (e) {
       setError(e.message);
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -1237,6 +1279,20 @@ function VolunteerManager() {
       <ErrorMessage
         message={error}
       />
+
+      {notice && (
+        <div
+          style={{
+            padding: '0.85rem 1rem',
+            marginBottom: '1rem',
+            borderRadius: 8,
+            background: '#dcfce7',
+            color: '#166534',
+          }}
+        >
+          {notice}
+        </div>
+      )}
 
       {loading ? (
         <p>Loading...</p>
@@ -1451,10 +1507,13 @@ function VolunteerManager() {
                       'accepted'
                     )
                   }
+                  disabled={busyId === item.id}
                   style={primaryButton}
                 >
                   <Check size={15} />
-                  Accept
+                  {busyId === item.id
+                    ? 'Processing...'
+                    : 'Accept'}
                 </button>
 
                 <button
@@ -1465,10 +1524,13 @@ function VolunteerManager() {
                       'rejected'
                     )
                   }
+                  disabled={busyId === item.id}
                   style={dangerButton}
                 >
                   <X size={15} />
-                  Reject
+                  {busyId === item.id
+                    ? 'Processing...'
+                    : 'Reject'}
                 </button>
 
                 {item.status ===
@@ -1478,12 +1540,15 @@ function VolunteerManager() {
                     onClick={() =>
                       resendCard(item.id)
                     }
+                    disabled={busyId === item.id}
                     style={{
                       ...outlineButton,
                     }}
                   >
                     <Mail size={15} />
-                    {item.card_sent_at
+                    {busyId === item.id
+                      ? 'Processing...'
+                      : item.card_sent_at
                       ? 'Resend card'
                       : 'Send card'}
                   </button>
@@ -1496,12 +1561,15 @@ function VolunteerManager() {
                     onClick={() =>
                       resendRejection(item.id)
                     }
+                    disabled={busyId === item.id}
                     style={{
                       ...outlineButton,
                     }}
                   >
                     <Mail size={15} />
-                    {item.rejection_email_sent_at
+                    {busyId === item.id
+                      ? 'Processing...'
+                      : item.rejection_email_sent_at
                       ? 'Resend rejection email'
                       : 'Send rejection email'}
                   </button>
@@ -1512,10 +1580,13 @@ function VolunteerManager() {
                   onClick={() =>
                     remove(item.id)
                   }
+                  disabled={busyId === item.id}
                   style={dangerButton}
                 >
                   <Trash2 size={15} />
-                  Remove
+                  {busyId === item.id
+                    ? 'Processing...'
+                    : 'Remove'}
                 </button>
               </div>
             </article>
