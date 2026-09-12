@@ -21,9 +21,12 @@ import {
   Mail,
   MailX,
   BarChart3,
+  ChevronRight,
   Eye,
   EyeOff,
+  LayoutDashboard,
   Send,
+  UserCheck,
 } from 'lucide-react';
 
 import {
@@ -407,6 +410,33 @@ function GalleryManager({ refreshAll }) {
   const [selectedIds, setSelectedIds] =
     useState([]);
 
+  const pageSize = 9;
+
+  const [page, setPage] =
+    useState(1);
+
+  const currentPage = Math.min(
+    page,
+    Math.max(
+      1,
+      Math.ceil(
+        items.length / pageSize
+      )
+    )
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      items.length / pageSize
+    )
+  );
+
+  const pageItems = items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   const [form, setForm] =
     useState(emptyPhotoForm);
 
@@ -690,7 +720,7 @@ function GalleryManager({ refreshAll }) {
             No photos uploaded yet.
           </p>
         ) : (
-          items.map((item) => (
+          pageItems.map((item) => (
             <article
               key={item.id}
               className="card"
@@ -788,6 +818,12 @@ function GalleryManager({ refreshAll }) {
           ))
         )}
       </div>
+
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        onPage={setPage}
+      />
     </ManagerSection>
   );
 }
@@ -815,6 +851,33 @@ function VideoManager({ refreshAll }) {
 
   const [loading, setLoading] =
     useState(true);
+
+  const pageSize = 9;
+
+  const [page, setPage] =
+    useState(1);
+
+  const currentPage = Math.min(
+    page,
+    Math.max(
+      1,
+      Math.ceil(
+        items.length / pageSize
+      )
+    )
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      items.length / pageSize
+    )
+  );
+
+  const pageItems = items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   async function load() {
     setLoading(true);
@@ -1012,7 +1075,7 @@ function VideoManager({ refreshAll }) {
             No videos uploaded yet.
           </p>
         ) : (
-          items.map((item) => (
+          pageItems.map((item) => (
             <article
               key={item.id}
               className="card"
@@ -1092,6 +1155,12 @@ function VideoManager({ refreshAll }) {
           ))
         )}
       </div>
+
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        onPage={setPage}
+      />
     </ManagerSection>
   );
 }
@@ -1127,6 +1196,37 @@ function VolunteerManager() {
           (item) =>
             item.status === filter
         );
+
+  const pageSize = 5;
+
+  const [page, setPage] =
+    useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  const currentPage = Math.min(
+    page,
+    Math.max(
+      1,
+      Math.ceil(
+        filteredItems.length / pageSize
+      )
+    )
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      filteredItems.length / pageSize
+    )
+  );
+
+  const pageItems = filteredItems.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   async function load() {
     setLoading(true);
@@ -1390,7 +1490,7 @@ function VolunteerManager() {
             gap: '1rem',
           }}
         >
-          {filteredItems.map((item) => (
+          {pageItems.map((item) => (
             <article
               key={item.id}
               className="card"
@@ -1738,6 +1838,11 @@ function VolunteerManager() {
               </div>
             </article>
           ))}
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            onPage={setPage}
+          />
         </div>
       )}
     </ManagerSection>
@@ -1753,7 +1858,7 @@ function DonationManager() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(5);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -2082,6 +2187,33 @@ function ProjectManager({
   const [loading, setLoading] =
     useState(true);
 
+  const pageSize = 6;
+
+  const [page, setPage] =
+    useState(1);
+
+  const currentPage = Math.min(
+    page,
+    Math.max(
+      1,
+      Math.ceil(
+        items.length / pageSize
+      )
+    )
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      items.length / pageSize
+    )
+  );
+
+  const pageItems = items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   async function load() {
     setLoading(true);
 
@@ -2312,7 +2444,7 @@ function ProjectManager({
             No upcoming projects yet.
           </p>
         ) : (
-          items.map((item) => (
+          pageItems.map((item) => (
             <article
               key={item.id}
               className="card"
@@ -2407,6 +2539,12 @@ function ProjectManager({
           ))
         )}
       </div>
+
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        onPage={setPage}
+      />
     </ManagerSection>
   );
 }
@@ -2421,6 +2559,33 @@ function TeamManager({
 }) {
   const [items, setItems] =
     useState([]);
+
+  const pageSize = 12;
+
+  const [page, setPage] =
+    useState(1);
+
+  const currentPage = Math.min(
+    page,
+    Math.max(
+      1,
+      Math.ceil(
+        items.length / pageSize
+      )
+    )
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      items.length / pageSize
+    )
+  );
+
+  const visibleItems = items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const [form, setForm] =
     useState({
@@ -2545,7 +2710,7 @@ function TeamManager({
   }
 
   const groupedItems =
-    items.reduce(
+    visibleItems.reduce(
       (groups, item) => {
         const team =
           item.team || 'General';
@@ -2705,6 +2870,26 @@ function TeamManager({
             gap: '2rem',
           }}
         >
+          <p
+            style={{
+              color: '#64748b',
+              fontSize: '.9rem',
+              margin: 0,
+            }}
+          >
+            Showing{' '}
+            {(currentPage - 1) * pageSize + 1}–
+            {Math.min(
+              currentPage * pageSize,
+              items.length
+            )}{' '}
+            of {items.length} team
+            member
+            {items.length === 1
+              ? ''
+              : 's'}
+          </p>
+
           {Object.entries(
             groupedItems
           ).map(
@@ -2865,6 +3050,12 @@ function TeamManager({
               </div>
             )
           )}
+
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            onPage={setPage}
+          />
         </div>
       )}
     </ManagerSection>
@@ -2890,6 +3081,32 @@ function CertificateManager({ refreshAll }) {
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState('');
+
+  const pageSize = 9;
+
+  const [page, setPage] = useState(1);
+
+  const currentPage = Math.min(
+    page,
+    Math.max(
+      1,
+      Math.ceil(
+        items.length / pageSize
+      )
+    )
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      items.length / pageSize
+    )
+  );
+
+  const pageItems = items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   async function load() {
     setLoading(true);
@@ -3102,7 +3319,7 @@ function CertificateManager({ refreshAll }) {
             No certificates added yet.
           </p>
         ) : (
-          items.map((item) => (
+          pageItems.map((item) => (
             <article
               key={item.id}
               className="card"
@@ -3172,6 +3389,12 @@ function CertificateManager({ refreshAll }) {
           ))
         )}
       </div>
+
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        onPage={setPage}
+      />
     </ManagerSection>
   );
 }
@@ -3450,6 +3673,9 @@ export default function Admin() {
   const [donationPage, setDonationPage] =
     useState(1);
 
+  const [inquiryPage, setInquiryPage] =
+    useState(1);
+
   const [inquiries, setInquiries] =
     useState([]);
 
@@ -3530,38 +3756,47 @@ export default function Admin() {
     [
       'dashboard',
       'Dashboard',
+      LayoutDashboard,
     ],
     [
       'donations',
       'Donations',
+      Heart,
     ],
     [
       'volunteers',
       'Volunteers',
+      Users,
     ],
     [
       'gallery',
       'Photos',
+      ImageIcon,
     ],
     [
       'videos',
       'Videos',
+      Video,
     ],
     [
       'projects',
       'Upcoming Projects',
+      CalendarDays,
     ],
     [
       'team',
       'Team Members',
+      UserCheck,
     ],
     [
       'certificates',
       'Certificates',
+      Award,
     ],
     [
       'impact',
       'Impact Metrics',
+      BarChart3,
     ],
   ];
 
@@ -3644,58 +3879,76 @@ export default function Admin() {
           background: '#f8fafc',
         }}
       >
-        <div className="container">
-
+        <div
+          className="container"
+          style={{
+            display: 'flex',
+            gap: '1.5rem',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+          }}
+        >
           {/* TABS */}
 
           <div
+            className="admin-sidebar"
             style={{
-              display: 'flex',
-              gap: '.5rem',
-              flexWrap: 'wrap',
-              marginBottom: '2rem',
+              width: 250,
+              flexShrink: 0,
             }}
           >
-            {tabs.map(
-              ([id, label]) => (
-                <button
-                  key={id}
-                  className="btn"
-                  onClick={() =>
-                    setTab(id)
-                  }
-                  style={
-                    tab === id
-                      ? primaryButton
-                      : {}
-                  }
-                >
-                  {label}
-                </button>
-              )
-            )}
-
-            <a
-              href={`${API_ORIGIN}/admin`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn"
+            <div
               style={{
-                textDecoration:
-                  'none',
-                marginLeft: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '.45rem',
+                position: 'sticky',
+                top: '1rem',
               }}
             >
-              <ShieldCheck
-                size={16}
-              />
-              SQL Admin
-            </a>
+              <span className="admin-nav-label">
+                Manage
+              </span>
+
+              {tabs.map(
+                ([id, label, Icon]) => (
+                  <button
+                    key={id}
+                    className={
+                      tab === id
+                        ? 'btn admin-nav-btn active'
+                        : 'btn admin-nav-btn'
+                    }
+                    onClick={() =>
+                      setTab(id)
+                    }
+                  >
+                    <Icon
+                      size={17}
+                      className="admin-nav-icon"
+                    />
+                    <span>{label}</span>
+                    {tab === id && (
+                      <ChevronRight
+                        size={16}
+                        className="admin-nav-chevron"
+                      />
+                    )}
+</button>
+              )
+            )}
+            </div>
           </div>
 
-          <ErrorMessage
-            message={error}
-          />
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <ErrorMessage
+              message={error}
+            />
 
           {/* =================================================
               DASHBOARD
@@ -4133,7 +4386,10 @@ export default function Admin() {
 
                   <tbody>
                     {inquiries
-                      .slice(0, 20)
+                      .slice(
+                        (inquiryPage - 1) * 8,
+                        inquiryPage * 8
+                      )
                       .map(
                         (i) => (
                           <tr
@@ -4231,9 +4487,37 @@ export default function Admin() {
                     )}
                   </tbody>
                 </table>
+
+                {inquiries.length >
+                  8 && (
+                  <Pagination
+                    page={Math.min(
+                      inquiryPage,
+                      Math.max(
+                        1,
+                        Math.ceil(
+                          inquiries.length /
+                            8
+                        )
+                      )
+                    )}
+                    totalPages={Math.max(
+                      1,
+                      Math.ceil(
+                        inquiries.length /
+                          8
+                      )
+                    )}
+                    onPage={
+                      setInquiryPage
+                    }
+                  />
+                )}
               </div>
             </div>
           )}
+
+          </div>
         </div>
       </section>
     </div>
@@ -4288,6 +4572,128 @@ function Stat({
         </strong>
       </div>
     </div>
+  );
+}
+
+
+// ============================================================
+// PAGINATION
+// ============================================================
+
+function Pagination({
+  page,
+  totalPages,
+  onPage,
+}) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  const start = Math.max(
+    1,
+    page - 2
+  );
+
+  const end = Math.min(
+    totalPages,
+    page + 2
+  );
+
+  const pages = [];
+
+  for (
+    let i = start;
+    i <= end;
+    i++
+  ) {
+    pages.push(i);
+  }
+
+  const pagerStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '.5rem',
+    flexWrap: 'wrap',
+    marginTop: '1.5rem',
+  };
+
+  const dotsStyle = {
+    color: '#64748b',
+    padding: '0 .15rem',
+  };
+
+  return (
+    <nav style={pagerStyle}>
+      <button
+        className="btn"
+        disabled={page <= 1}
+        onClick={() =>
+          onPage(page - 1)
+        }
+        style={outlineButton}
+      >
+        Previous
+      </button>
+
+      {start > 2 && (
+        <button
+          className="btn"
+          onClick={() => onPage(1)}
+          style={outlineButton}
+        >
+          1
+        </button>
+      )}
+
+      {start > 2 && (
+        <span style={dotsStyle}>…</span>
+      )}
+
+      {pages.map((n) => (
+        <button
+          key={n}
+          className="btn"
+          onClick={() => onPage(n)}
+          style={
+            n === page
+              ? primaryButton
+              : outlineButton
+          }
+        >
+          {n}
+        </button>
+      ))}
+
+      {end < totalPages - 1 && (
+        <span style={dotsStyle}>…</span>
+      )}
+
+      {end < totalPages && (
+        <button
+          className="btn"
+          onClick={() =>
+            onPage(totalPages)
+          }
+          style={outlineButton}
+        >
+          {totalPages}
+        </button>
+      )}
+
+      <button
+        className="btn"
+        disabled={
+          page >= totalPages
+        }
+        onClick={() =>
+          onPage(page + 1)
+        }
+        style={outlineButton}
+      >
+        Next
+      </button>
+    </nav>
   );
 }
 

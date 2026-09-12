@@ -794,6 +794,318 @@ a {
 }
 
 /* ============================================================
+   ADMIN NAV BUTTONS (sidebar)
+============================================================ */
+
+.admin-sidebar {
+  position: relative;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+
+  border-radius: 16px;
+
+  padding: 1.1rem;
+
+  box-shadow:
+    0 10px 30px rgb(2 6 23 / 0.08);
+}
+
+.admin-sidebar::before {
+  content: '';
+
+  position: absolute;
+
+  top: 0;
+
+  left: 0;
+
+  right: 0;
+
+  height: 4px;
+
+  background: linear-gradient(
+    90deg,
+    #059669,
+    #10b981,
+    #6ee7b7,
+    #10b981,
+    #059669
+  );
+
+  background-size: 200% 100%;
+
+  border-radius: 16px 16px 0 0;
+
+  animation: admin-bar-flow 4s linear infinite;
+}
+
+@keyframes admin-bar-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.admin-nav-label {
+  display: block;
+
+  margin: 0 0 0.55rem 0.25rem;
+
+  font-size: 0.7rem;
+
+  font-weight: 700;
+
+  letter-spacing: 0.14em;
+
+  text-transform: uppercase;
+
+  color: #94a3b8;
+}
+
+.admin-nav-btn {
+  width: 100%;
+
+  justify-content: flex-start;
+
+  text-align: left;
+
+  position: relative;
+
+  background: #e2e8f0;
+
+  color: #334155;
+
+  border: 1px solid #cbd5e1;
+
+  border-radius: 10px;
+
+  padding: 0.7rem 0.85rem;
+
+  font-size: 0.92rem;
+
+  font-weight: 600;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 1px 2px rgb(2 6 23 / 0.06);
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease,
+    padding-left 0.2s ease;
+}
+
+.admin-nav-btn::after {
+  content: '';
+
+  position: absolute;
+
+  top: 0;
+
+  left: 0;
+
+  height: 100%;
+
+  width: 45%;
+
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.5),
+    transparent
+  );
+
+  transform: translateX(-200%) skewX(-20deg);
+
+  transition: transform 0.55s ease;
+
+  pointer-events: none;
+}
+
+.admin-nav-btn:hover::after {
+  transform: translateX(320%) skewX(-20deg);
+}
+
+.admin-nav-btn:active {
+  transform: scale(0.97);
+}
+
+.admin-nav-icon {
+  flex-shrink: 0;
+
+  transition: transform 0.2s ease;
+}
+
+.admin-nav-btn:hover {
+  background: #f8fafc;
+
+  color: #047857;
+
+  border-color: #6ee7b7;
+
+  box-shadow:
+    0 8px 20px rgb(5 150 105 / 0.2);
+
+  transform: translateY(-2px);
+
+  padding-left: 1.15rem;
+}
+
+.admin-nav-btn:hover .admin-nav-icon {
+  animation: admin-icon-pop 0.45s ease;
+}
+
+@keyframes admin-icon-pop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+
+  40% {
+    transform: scale(1.3) rotate(-10deg);
+  }
+
+  70% {
+    transform: scale(1.05) rotate(4deg);
+  }
+
+  100% {
+    transform: scale(1.15) rotate(-4deg);
+  }
+}
+
+.admin-nav-btn:focus-visible {
+  outline: 3px solid #6ee7b7;
+
+  outline-offset: 2px;
+}
+
+.admin-nav-chevron {
+  margin-left: auto;
+
+  opacity: 0;
+
+  transform: translateX(-4px);
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.admin-nav-btn:hover .admin-nav-chevron {
+  opacity: 0.8;
+
+  transform: translateX(2px);
+}
+
+.admin-nav-btn.active {
+  background: linear-gradient(
+    135deg,
+    #059669,
+    #047857,
+    #059669
+  );
+
+  background-size: 200% 200%;
+
+  color: #ffffff;
+
+  border-color: #047857;
+
+  animation: admin-glow 3s ease infinite;
+}
+
+@keyframes admin-glow {
+  0%,
+  100% {
+    box-shadow: 0 8px 20px rgb(5 150 105 / 0.35);
+  }
+
+  50% {
+    box-shadow: 0 8px 28px rgb(16 185 129 / 0.6);
+  }
+}
+
+.admin-nav-btn.active::before {
+  content: '';
+
+  position: absolute;
+
+  left: 0;
+
+  top: 0;
+
+  bottom: 0;
+
+  width: 4px;
+
+  background: #a7f3d0;
+
+  animation: admin-bar-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes admin-bar-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.admin-nav-btn.active .admin-nav-chevron {
+  opacity: 1;
+
+  transform: translateX(0);
+}
+
+.admin-nav-btn.active:hover {
+  background: linear-gradient(
+    135deg,
+    #047857,
+    #065f46,
+    #047857
+  );
+
+  background-size: 200% 200%;
+
+  animation: admin-glow 3s ease infinite;
+
+  border-color: #059669;
+
+  transform: translateY(-1px);
+
+  padding-left: 0.85rem;
+}
+
+.admin-nav-btn.active:active {
+  transform: scale(0.97) translateY(0);
+}
+
+.admin-nav-divider {
+  height: 1px;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #cbd5e1,
+    transparent
+  );
+
+  margin: 0.7rem 0;
+}
+
+/* ============================================================
    CARD COMPONENTS
 ============================================================ */
 
