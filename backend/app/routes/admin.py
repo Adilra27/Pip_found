@@ -59,7 +59,7 @@ from ..welcome_card import (
     build_welcome_card_html,
     load_profile_photo,
 )
-from ..certificate_pdf import build_volunteer_certificate_pdf
+from ..volunteer_certificate import build_volunteer_certificate_image
 
 
 logger = logging.getLogger(__name__)
@@ -1276,25 +1276,22 @@ def _send_volunteer_welcome_card(
     )
 
     try:
-        certificate_pdf = build_volunteer_certificate_pdf(
+        certificate_image = build_volunteer_certificate_image(
             full_name=volunteer.full_name,
-            volunteer_id=volunteer.id,
-            interest_area=volunteer.interest_area,
-            accepted_at=datetime.utcnow(),
         )
     except Exception as exc:
         logger.error(
-            "Failed to generate volunteer certificate PDF for volunteer %s: %s",
+            "Failed to generate volunteer certificate image for volunteer %s: %s",
             volunteer.id,
             exc,
         )
-        certificate_pdf = None
+        certificate_image = None
 
     sent = send_volunteer_welcome_email(
         to_email=volunteer.email,
         volunteer_name=volunteer.full_name,
         card_html=card_html,
-        certificate_pdf=certificate_pdf,
+        certificate_image=certificate_image,
         profile_image_bytes=image_bytes,
         profile_image_mime=image_mime,
     )
@@ -1363,25 +1360,22 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
         )
 
         try:
-            certificate_pdf = build_volunteer_certificate_pdf(
+            certificate_image = build_volunteer_certificate_image(
                 full_name=volunteer.full_name,
-                volunteer_id=volunteer_id,
-                interest_area=volunteer.interest_area,
-                accepted_at=datetime.utcnow(),
             )
         except Exception as exc:
             logger.error(
-                "Failed to generate volunteer certificate PDF for volunteer %s: %s",
+                "Failed to generate volunteer certificate image for volunteer %s: %s",
                 volunteer_id,
                 exc,
             )
-            certificate_pdf = None
+            certificate_image = None
 
         sent = send_volunteer_welcome_email(
             to_email=volunteer.email,
             volunteer_name=volunteer.full_name,
             card_html=card_html,
-            certificate_pdf=certificate_pdf,
+            certificate_image=certificate_image,
             profile_image_bytes=image_bytes,
             profile_image_mime=image_mime,
         )

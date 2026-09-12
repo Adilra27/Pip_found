@@ -120,11 +120,11 @@ def send_volunteer_welcome_email(
     to_email: str,
     volunteer_name: str,
     card_html: str,
-    certificate_pdf: bytes | None = None,
+    certificate_image: bytes | None = None,
     profile_image_bytes=None,
     profile_image_mime="image/jpeg",
 ) -> bool:
-    """Send the volunteer welcome card email with a PDF certificate attached."""
+    """Send the volunteer welcome card email with the certificate image attached."""
     text_body = (
         f"Dear {volunteer_name},\n\n"
         "Congratulations and welcome! Your volunteer application with the "
@@ -136,13 +136,13 @@ def send_volunteer_welcome_email(
     )
 
     attachments = []
-    if certificate_pdf:
+    if certificate_image:
         attachments.append(
             {
-                "filename": "Volunteer_Certificate.pdf",
-                "data": certificate_pdf,
-                "maintype": "application",
-                "subtype": "pdf",
+                "filename": "Volunteer_Certificate.jpg",
+                "data": certificate_image,
+                "maintype": "image",
+                "subtype": "jpeg",
             }
         )
 
