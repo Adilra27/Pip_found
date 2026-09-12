@@ -114,7 +114,7 @@ def create_volunteer_application(
     phone: str = Form(...),
     interest_area: str = Form(...),
     about_yourself: Optional[str] = Form(None),
-    profile_pic: Optional[UploadFile] = File(None),
+    profile_pic: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
     full_name = full_name.strip()
@@ -124,6 +124,9 @@ def create_volunteer_application(
 
     if not full_name or not email or not phone or not interest_area:
         raise HTTPException(400, "All required volunteer fields must be provided")
+
+    if not profile_pic or not profile_pic.filename:
+        raise HTTPException(400, "A profile picture is required")
 
     profile_pic_url = _profile_pic_url(profile_pic)
 

@@ -45,7 +45,11 @@ def send_volunteer_welcome_email(
         return False
 
     host = os.getenv("SMTP_HOST", "").strip()
-    port = int(os.getenv("SMTP_PORT", "587") or "587")
+    try:
+        port = int(os.getenv("SMTP_PORT", "587") or "587")
+    except ValueError:
+        logger.error("Invalid SMTP_PORT value; not emailing welcome card to %s", to_email)
+        return False
     username = os.getenv("SMTP_USER", "").strip()
     password = os.getenv("SMTP_PASSWORD", "")
     use_ssl = (os.getenv("SMTP_SSL", "false") or "false").lower() == "true"
@@ -81,13 +85,22 @@ def send_volunteer_welcome_email(
             subtype="html",
         )
 
-        if profile_image_bytes:
-            subtype = (profile_image_mime or "image/jpeg").split("/")[-1].lower()
+        if (
+            profile_image_bytes
+            and (profile_image_mime or "").lower().startswith("image/")
+        ):
+            subtype = profile_image_mime.split("/")[-1].lower() or "jpeg"
             message.get_payload()[1].add_related(
                 profile_image_bytes,
                 maintype="image",
-                subtype=subtype or "jpeg",
+                subtype=subtype,
                 cid="volunteer_photo",
+            )
+        elif profile_image_bytes:
+            logger.warning(
+                "Skipping invalid photo MIME %r for welcome card to %s; sending with initials avatar",
+                profile_image_mime,
+                to_email,
             )
 
         if use_ssl:
@@ -133,7 +146,11 @@ def send_donation_receipt_email(
         return False
 
     host = os.getenv("SMTP_HOST", "").strip()
-    port = int(os.getenv("SMTP_PORT", "587") or "587")
+    try:
+        port = int(os.getenv("SMTP_PORT", "587") or "587")
+    except ValueError:
+        logger.error("Invalid SMTP_PORT value; not emailing donation receipt to %s", to_email)
+        return False
     username = os.getenv("SMTP_USER", "").strip()
     password = os.getenv("SMTP_PASSWORD", "")
     use_ssl = (os.getenv("SMTP_SSL", "false") or "false").lower() == "true"

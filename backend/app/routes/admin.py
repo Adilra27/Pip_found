@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 import uuid
@@ -11,6 +12,7 @@ from typing import List, Optional
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -24,7 +26,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..database import get_db
+from ..database import SessionLocal, get_db
 
 from ..models import (
     Cause,
@@ -49,10 +51,13 @@ from ..schemas import (
 
 from ..email_service import send_volunteer_welcome_email
 from ..welcome_card import (
+    build_volunteer_qr_data_uri,
     build_welcome_card_html,
     load_profile_photo,
 )
 
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBasic()
 
@@ -1248,44 +1253,85 @@ def _issue_volunteer_id(volunteer: VolunteerApplication) -> str:
     return f"PWF-{date.today().year}-{volunteer.id:04d}"
 
 
-def _send_volunteer_welcome_card(
-    db: Session,
-    volunteer: VolunteerApplication,
-) -> None:
-    """Email the welcome card for an accepted volunteer.
+def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
+    """Background task that emails an accepted volunteer's welcome card.
 
-    Sets volunteer.card_sent_at only when the email was delivered. Never
-    raises; failures are logged so the admin can retry later.
+    Runs after the PATCH response is sent and opens its own DB session,
+    because the request-scoped session is closed by then. Never raises.
     """
-    volunteer_id = _issue_volunteer_id(volunteer)
-    volunteer.volunteer_id = volunteer_id
+    db = SessionLocal()
+    try:
+        volunteer = (
+            db.query(VolunteerApplication)
+            .filter(VolunteerApplication.id == volunteer_id)
+            .first()
+        )
+        if not volunteer:
+            logger.error(
+                "Welcome card background task: volunteer %s not found",
+                volunteer_id,
+            )
+            return
 
-    image_bytes, image_mime = load_profile_photo(
-        volunteer.profile_pic_url
-    )
+        if volunteer.status != "accepted":
+            logger.warning(
+                "Welcome card background task: volunteer %s is %s, skipping",
+                volunteer_id,
+                volunteer.status,
+            )
+            return
 
-    card_html = build_welcome_card_html(
-        full_name=volunteer.full_name,
-        volunteer_id=volunteer_id,
-        interest_area=volunteer.interest_area,
-        phone=volunteer.phone,
-        accepted_at=datetime.utcnow(),
-        use_photo_cid=bool(image_bytes),
-    )
+        if volunteer.card_sent_at:
+            logger.info(
+                "Welcome card already sent for volunteer %s",
+                volunteer_id,
+            )
+            return
 
-    sent = send_volunteer_welcome_email(
-        to_email=volunteer.email,
-        volunteer_name=volunteer.full_name,
-        card_html=card_html,
-        profile_image_bytes=image_bytes,
-        profile_image_mime=image_mime,
-    )
+        image_bytes, image_mime = load_profile_photo(
+            volunteer.profile_pic_url
+        )
 
-    if sent:
-        volunteer.card_sent_at = datetime.utcnow()
+        qr_data_uri = build_volunteer_qr_data_uri(
+            _issue_volunteer_id(volunteer)
+        )
 
-    db.commit()
-    db.refresh(volunteer)
+        card_html = build_welcome_card_html(
+            full_name=volunteer.full_name,
+            volunteer_id=_issue_volunteer_id(volunteer),
+            interest_area=volunteer.interest_area,
+            phone=volunteer.phone,
+            accepted_at=datetime.utcnow(),
+            use_photo_cid=bool(image_bytes),
+            qr_data_uri=qr_data_uri,
+        )
+
+        sent = send_volunteer_welcome_email(
+            to_email=volunteer.email,
+            volunteer_name=volunteer.full_name,
+            card_html=card_html,
+            profile_image_bytes=image_bytes,
+            profile_image_mime=image_mime,
+        )
+
+        if sent:
+            volunteer.card_sent_at = datetime.utcnow()
+            db.commit()
+            logger.info("Welcome card emailed to volunteer %s", volunteer_id)
+        else:
+            logger.error(
+                "Welcome card email FAILED for volunteer %s (status left as accepted; use resend-card)",
+                volunteer_id,
+            )
+    except Exception as exc:
+        db.rollback()
+        logger.error(
+            "Unexpected error in welcome card background task for volunteer %s: %s",
+            volunteer_id,
+            exc,
+        )
+    finally:
+        db.close()
 
 
 @router.get(
@@ -1313,6 +1359,7 @@ def get_volunteer_applications(
 def update_volunteer_status(
     volunteer_id: int,
     status_value: str,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
@@ -1337,16 +1384,24 @@ def update_volunteer_status(
 
     volunteer.status = status_value
 
-    if (
-        status_value == "accepted"
-        and not volunteer.card_sent_at
-    ):
-        _send_volunteer_welcome_card(db, volunteer)
-    else:
-        db.commit()
-        db.refresh(volunteer)
+    if status_value == "accepted":
+        volunteer.volunteer_id = _issue_volunteer_id(volunteer)
 
-    return volunteer
+    card_emailed = False
+    if status_value == "accepted" and not volunteer.card_sent_at:
+        background_tasks.add_task(
+            _send_volunteer_welcome_card_background,
+            volunteer.id,
+        )
+    elif status_value == "accepted" and volunteer.card_sent_at:
+        card_emailed = True
+
+    db.commit()
+    db.refresh(volunteer)
+
+    data = VolunteerApplicationResponse.model_validate(volunteer).model_dump()
+    data["card_emailed"] = card_emailed
+    return data
 
 
 @router.post(
@@ -1355,6 +1410,7 @@ def update_volunteer_status(
 )
 def resend_volunteer_welcome_card(
     volunteer_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
@@ -1376,9 +1432,18 @@ def resend_volunteer_welcome_card(
             "Welcome cards can only be sent to accepted volunteers.",
         )
 
-    _send_volunteer_welcome_card(db, volunteer)
+    volunteer.volunteer_id = _issue_volunteer_id(volunteer)
+    db.commit()
+    db.refresh(volunteer)
 
-    return volunteer
+    background_tasks.add_task(
+        _send_volunteer_welcome_card_background,
+        volunteer.id,
+    )
+
+    data = VolunteerApplicationResponse.model_validate(volunteer).model_dump()
+    data["card_emailed"] = False
+    return data
 
 
 @router.delete(

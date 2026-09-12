@@ -1,15 +1,18 @@
 """HTML welcome-card generator for accepted volunteers."""
 
 import html
+import logging
 import mimetypes
 from datetime import datetime
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
 
 ORG_NAME = "Piplad Welfare Foundation"
 ORG_TAGLINE = "Creating Opportunities, Creating Lives"
 
 PROFILE_IMAGE_MIME = "image/jpeg"
+MAX_EMAIL_PHOTO_BYTES = 2 * 1024 * 1024
 
 
 def build_volunteer_id(volunteer_id: str) -> str:
@@ -33,6 +36,49 @@ def _format_date(value) -> str:
     if isinstance(value, datetime):
         return value.strftime("%d %B %Y")
     return str(value)
+
+
+def build_volunteer_qr_data_uri(volunteer_id: str) -> str | None:
+    """Return a ``data:image/png;base64,...`` QR code for the volunteer ID.
+
+    Returns None if QR generation fails so the card can still be emailed.
+    """
+    try:
+        import segno
+
+        qr = segno.make(
+            build_volunteer_id(volunteer_id or ""),
+            error="m",
+            micro=False,
+        )
+        try:
+            return qr.png_data_uri(scale=6, border=2)
+        except AttributeError:
+            import io
+
+            buffer = io.BytesIO()
+            qr.save(buffer, kind="png", scale=6, border=2)
+            from base64 import b64encode
+
+            return "data:image/png;base64," + b64encode(buffer.getvalue()).decode("ascii")
+    except Exception as exc:
+        logger.error("Failed to generate volunteer QR code: %s", exc)
+        return None
+
+
+def _qr_html(volunteer_id: str, qr_data_uri: str | None) -> str:
+    if not qr_data_uri:
+        return ""
+    vid = html.escape(build_volunteer_id(volunteer_id))
+    return f"""
+          <tr>
+            <td style="padding:18px 40px;text-align:center;">
+              <img src="{qr_data_uri}"
+                   alt="Volunteer QR code"
+                   style="width:150px;height:150px;display:block;margin:0 auto;border-radius:8px;" />
+              <div style="margin-top:8px;font-size:13px;font-weight:700;color:#0f172a;">Scan to verify: {vid}</div>
+            </td>
+          </tr>"""
 
 
 def _photo_html(full_name: str, use_photo_cid: bool) -> str:
@@ -60,6 +106,7 @@ def build_welcome_card_html(
     phone: str,
     accepted_at,
     use_photo_cid: bool = False,
+    qr_data_uri: str | None = None,
 ) -> str:
     name = html.escape(full_name)
     vid = html.escape(build_volunteer_id(volunteer_id))
@@ -67,6 +114,7 @@ def build_welcome_card_html(
     phone_esc = html.escape(phone or "")
     joined = html.escape(_format_date(accepted_at))
     photo = _photo_html(full_name, use_photo_cid)
+    qr_section = _qr_html(volunteer_id, qr_data_uri)
     reach_note = (
         f" and to reach him/her at {phone_esc}" if phone_esc else ""
     )
@@ -128,6 +176,7 @@ def build_welcome_card_html(
               </table>
             </td>
           </tr>
+          {qr_section}
           <tr>
             <td style="padding:0 40px 8px;">
               <p style="margin:0;color:#334155;font-size:14px;line-height:1.7;">
@@ -157,35 +206,54 @@ def load_profile_photo(profile_pic_url: str):
     """Return (content_bytes, mime) for a volunteer profile picture.
 
     Supports Cloudinary/http(s) URLs and local /media/ paths. Returns
-    (None, None) if the image cannot be loaded; the card then falls back
-    to an initials avatar.
+    (None, None) if the image cannot be loaded or is not a valid image;
+    the card then falls back to an initials avatar. Failures are logged.
     """
     if not profile_pic_url:
         return None, None
 
     try:
+        mime = None
         if profile_pic_url.startswith(("/media/", "media/", "./", ".")):
             relative = profile_pic_url.removeprefix("/media/")
             candidate = Path(__file__).resolve().parents[1] / "media" / relative
             if not candidate.is_file():
+                logger.warning("Profile photo not found on disk: %s", profile_pic_url)
+                return None, None
+            if candidate.stat().st_size > MAX_EMAIL_PHOTO_BYTES:
+                logger.warning("Profile photo too large to email: %s", profile_pic_url)
                 return None, None
             mime = mimetypes.guess_type(candidate.name)[0] or PROFILE_IMAGE_MIME
-            return candidate.read_bytes(), mime
+            data = candidate.read_bytes()
+        else:
+            import requests
 
-        import requests
+            session = requests.Session()
+            adapter = requests.adapters.HTTPAdapter(max_retries=1)
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
 
-        response = requests.get(
-            profile_pic_url,
-            timeout=15,
-            headers={"User-Agent": "Piplad-Welcome-Card/1.0", "Accept": "image/*"},
-        )
-        response.raise_for_status()
-        mime = (
-            (response.headers.get("Content-Type") or PROFILE_IMAGE_MIME)
-            .split(";")[0]
-            .strip()
-            or PROFILE_IMAGE_MIME
-        )
-        return response.content, mime
-    except Exception:
+            response = session.get(
+                profile_pic_url,
+                timeout=(3.05, 5),
+                headers={"User-Agent": "Piplad-Welcome-Card/1.0", "Accept": "image/*"},
+            )
+            response.raise_for_status()
+            if len(response.content) > MAX_EMAIL_PHOTO_BYTES:
+                logger.warning("Profile photo too large to email: %s", profile_pic_url)
+                return None, None
+            mime = (
+                (response.headers.get("Content-Type") or PROFILE_IMAGE_MIME)
+                .split(";")[0]
+                .strip()
+                or PROFILE_IMAGE_MIME
+            )
+            data = response.content
+
+        if not mime.lower().startswith("image/"):
+            logger.warning("Profile photo has non-image MIME %r: %s", mime, profile_pic_url)
+            return None, None
+        return data, mime
+    except Exception as exc:
+        logger.warning("Could not load profile photo %s: %s", profile_pic_url, exc)
         return None, None

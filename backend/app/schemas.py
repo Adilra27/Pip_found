@@ -55,6 +55,7 @@ class VolunteerApplicationResponse(VolunteerApplicationCreate):
     status: str
     volunteer_id: Optional[str] = None
     card_sent_at: Optional[datetime] = None
+    card_emailed: Optional[bool] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 

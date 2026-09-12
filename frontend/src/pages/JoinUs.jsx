@@ -320,17 +320,18 @@ export default function JoinUs() {
 
                 <div className="form-group">
                   <label style={{ fontWeight: 600, color: '#0f172a', marginBottom: '0.5rem', display: 'block' }}>
-                    Profile Picture
+                    Profile Picture <span style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     type="file"
                     onChange={handleFileChange}
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    required
                     className="form-input"
                     style={{ padding: '0.75rem' }}
                   />
                   <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>
-                    Optional: Add a profile picture to help us know you better.
+                    Required: Add a profile picture. This will be displayed on your volunteer card.
                   </p>
                 </div>
 

@@ -1145,7 +1145,19 @@ function VolunteerManager() {
         )
       );
 
-      setError('');
+      if (
+        status === 'accepted' &&
+        updated &&
+        updated.volunteer_id &&
+        updated.card_emailed === false &&
+        !updated.card_sent_at
+      ) {
+        setError(
+          'Volunteer accepted. The welcome card could not be emailed yet - use "Send card" to retry.'
+        );
+      } else {
+        setError('');
+      }
     } catch (e) {
       setError(e.message);
     }
@@ -1286,6 +1298,19 @@ function VolunteerManager() {
                       {
                         item.about_yourself
                       }
+                    </p>
+                  )}
+
+                  {item.volunteer_id && (
+                    <p
+                      style={{
+                        color: '#059669',
+                        marginTop: '.35rem',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Volunteer ID:{' '}
+                      {item.volunteer_id}
                     </p>
                   )}
                 </div>

@@ -14,6 +14,7 @@ from .models import (
     TeamMember,
     UpcomingProject,
     VideoGallery,
+    VolunteerApplication,
 )
 
 
@@ -30,6 +31,30 @@ class DonationAdmin(ModelView, model=Donation):
 class ContactInquiryAdmin(ModelView, model=ContactInquiry):
     column_list = [ContactInquiry.id, ContactInquiry.name, ContactInquiry.email, ContactInquiry.subject, ContactInquiry.created_at]
     icon = "fa-solid fa-envelope"
+
+
+class VolunteerApplicationAdmin(ModelView, model=VolunteerApplication):
+    column_list = [
+        VolunteerApplication.id,
+        VolunteerApplication.full_name,
+        VolunteerApplication.email,
+        VolunteerApplication.interest_area,
+        VolunteerApplication.status,
+        VolunteerApplication.volunteer_id,
+        VolunteerApplication.card_sent_at,
+        VolunteerApplication.created_at,
+    ]
+    column_searchable_list = [
+        VolunteerApplication.full_name,
+        VolunteerApplication.email,
+        VolunteerApplication.volunteer_id,
+    ]
+    column_sortable_list = [
+        VolunteerApplication.created_at,
+        VolunteerApplication.status,
+        VolunteerApplication.card_sent_at,
+    ]
+    icon = "fa-solid fa-handshake-angle"
 
 
 class TeamMemberAdmin(ModelView, model=TeamMember):
@@ -99,4 +124,5 @@ def setup_admin(app):
     admin.add_view(MediaAdmin)
     admin.add_view(ImpactMetricAdmin)
     admin.add_view(ContactInquiryAdmin)
+    admin.add_view(VolunteerApplicationAdmin)
     admin.add_view(AboutAdmin)
