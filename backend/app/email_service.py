@@ -1,26 +1,126 @@
-"""SMTP email sending via Python's standard library smtplib."""
+"""Email sending via the Brevo HTTPS API, falling back to stdlib smtplib.
 
+Render's free tier blocks outbound SMTP ports (25, 465, 587), so production
+sends go through Brevo's REST API over HTTPS (port 443), which is never
+blocked. The smtplib path remains as a local-development fallback when no
+BREVO_API_KEY is configured.
+"""
+
+import base64
 import logging
 import os
 import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
 
+import requests
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_FROM_NAME = "Piplad Welfare Foundation"
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 def is_smtp_configured() -> bool:
     return bool(os.getenv("SMTP_HOST"))
 
 
+def is_brevo_configured() -> bool:
+    return bool(os.getenv("BREVO_API_KEY"))
+
+
 def _from_address() -> tuple[str, str] | None:
-    display = os.getenv("SMTP_FROM_NAME", DEFAULT_FROM_NAME) or DEFAULT_FROM_NAME
-    address = os.getenv("SMTP_FROM") or os.getenv("SMTP_USER")
+    display = (
+        os.getenv("EMAIL_FROM_NAME") or os.getenv("SMTP_FROM_NAME") or DEFAULT_FROM_NAME
+    ) or DEFAULT_FROM_NAME
+    address = os.getenv("EMAIL_FROM") or os.getenv("SMTP_FROM") or os.getenv("SMTP_USER")
     if not address:
         return None
     return display, address
+
+
+def _embed_related_images(html_body: str, related: list[dict]) -> str:
+    """Replace `cid:...` image references in HTML with inline base64 data URIs.
+
+    Almost every HTTP email API needs inline images embedded as data URIs
+    instead of MIME CID parts, so this is done up front for the API path.
+    """
+    for image in related or []:
+        mime = f"{image.get('maintype', 'image')}/{image.get('subtype') or 'jpeg'}"
+        encoded = base64.b64encode(image["data"]).decode("ascii")
+        data_uri = f"data:{mime};base64,{encoded}"
+        html_body = html_body.replace(f"cid:{image['cid']}", data_uri)
+    return html_body
+
+
+def _brevo_attachment(attachment: dict) -> dict:
+    return {
+        "name": attachment["filename"],
+        "content": base64.b64encode(attachment["data"]).decode("ascii"),
+    }
+
+
+def _deliver_via_brevo(
+    *,
+    to_email: str,
+    subject: str,
+    text_body: str,
+    html_body: str | None = None,
+    attachments: list[dict] | None = None,
+    related: list[dict] | None = None,
+) -> bool:
+    """Send via Brevo's transactional email API (POST over HTTPS, port 443).
+
+    Returns False instead of raising when the API call fails, logging the
+    reason so the admin panel can retry later.
+    """
+    api_key = os.getenv("BREVO_API_KEY", "").strip()
+    from_addr = _from_address()
+    if not api_key or not from_addr:
+        logger.warning("Brevo API key/from not configured; email NOT sent to %s", to_email)
+        return False
+
+    payload = {
+        "sender": {"name": from_addr[0], "email": from_addr[1]},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": text_body,
+    }
+    if html_body:
+        payload["htmlContent"] = _embed_related_images(html_body, related)
+    if attachments:
+        payload["attachment"] = [_brevo_attachment(a) for a in attachments]
+
+    try:
+        response = requests.post(
+            BREVO_API_URL,
+            headers={
+                "api-key": api_key,
+                "Content-Type": "application/json",
+                "accept": "application/json",
+            },
+            json=payload,
+            timeout=60,
+        )
+        if response.status_code not in (200, 201):
+            logger.error(
+                "Brevo API error (%s) for %s (%s): %s",
+                response.status_code,
+                to_email,
+                subject,
+                response.text[:2000],
+            )
+            return False
+        logger.info("Email sent via Brevo to %s: %s", to_email, subject)
+        return True
+    except Exception as exc:
+        logger.error(
+            "Failed to send email via Brevo to %s (%s): %s",
+            to_email,
+            subject,
+            exc,
+        )
+        return False
 
 
 def _deliver_email(
@@ -32,17 +132,30 @@ def _deliver_email(
     attachments: list[dict] | None = None,
     related: list[dict] | None = None,
 ) -> bool:
-    """Core SMTP sender supporting HTML bodies, CID images, and attachments.
+    """Core sender supporting HTML bodies, CID images, and attachments.
 
     `attachments` is a list of {"filename", "data", "maintype", "subtype"}.
     `related`    is a list of {"cid", "data", "maintype", "subtype"} whose
                  items are embedded into the HTML part (e.g. profile photo).
 
-    Always returns False (instead of raising) when SMTP is unavailable or the
+    Uses the Brevo HTTPS API when BREVO_API_KEY is set (production/Render),
+    otherwise falls back to the standard-library SMTP path for local dev.
+
+    Always returns False (instead of raising) when email is unavailable or the
     send fails, logging the reason for the admin panel to show later.
     """
+    if is_brevo_configured():
+        return _deliver_via_brevo(
+            to_email=to_email,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+            attachments=attachments,
+            related=related,
+        )
+
     if not is_smtp_configured():
-        logger.warning("SMTP is not configured; email NOT sent to %s", to_email)
+        logger.warning("No email transport configured; email NOT sent to %s", to_email)
         return False
 
     host = os.getenv("SMTP_HOST", "").strip()
@@ -103,7 +216,7 @@ def _deliver_email(
                 smtp.login(username, password)
             smtp.send_message(message)
 
-        logger.info("Email sent to %s: %s", to_email, subject)
+        logger.info("Email sent via SMTP to %s: %s", to_email, subject)
         return True
     except Exception as exc:
         logger.error(
