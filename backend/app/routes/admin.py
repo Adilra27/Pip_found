@@ -1263,14 +1263,56 @@ def _send_volunteer_welcome_card(
     volunteer: VolunteerApplication,
 ) -> None:
     """Email the welcome card + PDF certificate for an accepted volunteer."""
+    image_bytes, image_mime = load_profile_photo(volunteer.profile_pic_url)
+    qr_data_uri = build_volunteer_qr_data_uri(_issue_volunteer_id(volunteer))
+    card_html = build_welcome_card_html(
+        full_name=volunteer.full_name,
+        volunteer_id=_issue_volunteer_id(volunteer),
+        interest_area=volunteer.interest_area,
+        phone=volunteer.phone,
+        accepted_at=datetime.utcnow(),
+        use_photo_cid=bool(image_bytes),
+        qr_data_uri=qr_data_uri,
+    )
+
+    try:
+        certificate_pdf = build_volunteer_certificate_pdf(
+            full_name=volunteer.full_name,
+            volunteer_id=volunteer.id,
+            interest_area=volunteer.interest_area,
+            accepted_at=datetime.utcnow(),
+        )
+    except Exception as exc:
+        logger.error(
+            "Failed to generate volunteer certificate PDF for volunteer %s: %s",
+            volunteer.id,
+            exc,
+        )
+        certificate_pdf = None
+
+    sent = send_volunteer_welcome_email(
+        to_email=volunteer.email,
+        volunteer_name=volunteer.full_name,
+        card_html=card_html,
+        certificate_pdf=certificate_pdf,
+        profile_image_bytes=image_bytes,
+        profile_image_mime=image_mime,
+    )
+
+    if sent:
+        volunteer.card_sent_at = datetime.utcnow()
+        db.commit()
+        db.refresh(volunteer)
+        logger.info("Welcome card emailed to volunteer %s", volunteer.id)
+    else:
+        logger.error(
+            "Welcome card email FAILED for volunteer %s (status left as accepted; use resend-card)",
+            volunteer.id,
+        )
 
 
 def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
     """Background task that emails an accepted volunteer's welcome card.
-
-    Runs after the PATCH response is sent and opens its own DB session,
-    because the request-scoped session is closed by then. Never raises.
-    """
 
     Runs after the PATCH response is sent and opens its own DB session,
     because the request-scoped session is closed by then. Never raises.
@@ -1307,32 +1349,9 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
         image_bytes, image_mime = load_profile_photo(
             volunteer.profile_pic_url
         )
-
-    try:
-        certificate_pdf = build_volunteer_certificate_pdf(
-            full_name=volunteer.full_name,
-            volunteer_id=volunteer_id,
-            interest_area=volunteer.interest_area,
-            accepted_at=datetime.utcnow(),
-        )
-    except Exception as exc:
-        logger = logging.getLogger(__name__)
-        logger.error("Failed to generate volunteer certificate PDF: %s", exc)
-        certificate_pdf = None
-
-    sent = send_volunteer_welcome_email(
-        to_email=volunteer.email,
-        volunteer_name=volunteer.full_name,
-        card_html=card_html,
-        certificate_pdf=certificate_pdf,
-        profile_image_bytes=image_bytes,
-        profile_image_mime=image_mime,
-    )
-
         qr_data_uri = build_volunteer_qr_data_uri(
             _issue_volunteer_id(volunteer)
         )
-
         card_html = build_welcome_card_html(
             full_name=volunteer.full_name,
             volunteer_id=_issue_volunteer_id(volunteer),
@@ -1343,10 +1362,26 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
             qr_data_uri=qr_data_uri,
         )
 
+        try:
+            certificate_pdf = build_volunteer_certificate_pdf(
+                full_name=volunteer.full_name,
+                volunteer_id=volunteer_id,
+                interest_area=volunteer.interest_area,
+                accepted_at=datetime.utcnow(),
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to generate volunteer certificate PDF for volunteer %s: %s",
+                volunteer_id,
+                exc,
+            )
+            certificate_pdf = None
+
         sent = send_volunteer_welcome_email(
             to_email=volunteer.email,
             volunteer_name=volunteer.full_name,
             card_html=card_html,
+            certificate_pdf=certificate_pdf,
             profile_image_bytes=image_bytes,
             profile_image_mime=image_mime,
         )
