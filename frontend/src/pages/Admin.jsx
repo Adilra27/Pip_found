@@ -24,6 +24,7 @@ import {
   Eye,
   EyeOff,
   Send,
+  FileText,
 } from 'lucide-react';
 
 import {
@@ -1116,6 +1117,17 @@ function VolunteerManager() {
   const [busyId, setBusyId] =
     useState(null);
 
+  const [filter, setFilter] =
+    useState('all');
+
+  const filteredItems =
+    filter === 'all'
+      ? items
+      : items.filter(
+          (item) =>
+            item.status === filter
+        );
+
   async function load() {
     setLoading(true);
 
@@ -1294,9 +1306,76 @@ function VolunteerManager() {
         </div>
       )}
 
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent:
+            'space-between',
+          gap: '.75rem',
+          flexWrap: 'wrap',
+          marginBottom: '1rem',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            gap: '.5rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          {[
+            ['all', 'All'],
+            ['pending', 'Pending'],
+            ['accepted', 'Accepted'],
+            ['rejected', 'Rejected'],
+          ].map(
+            ([key, label]) => (
+              <button
+                key={key}
+                className="btn"
+                onClick={() =>
+                  setFilter(key)
+                }
+                style={{
+                  ...outlineButton,
+                  background:
+                    filter === key
+                      ? '#059669'
+                      : 'transparent',
+                  color:
+                    filter === key
+                      ? '#ffffff'
+                      : '#059669',
+                  borderColor:
+                    filter === key
+                      ? '#059669'
+                      : '#059669',
+                }}
+              >
+                {label}
+              </button>
+            )
+          )}
+        </div>
+
+        <span
+          style={{
+            color: '#64748b',
+            fontSize: '.9rem',
+          }}
+        >
+          {filteredItems.length} of{' '}
+          {items.length} application
+          {items.length === 1
+            ? ''
+            : 's'}
+        </span>
+      </div>
+
       {loading ? (
         <p>Loading...</p>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <p
           style={{
             color: '#64748b',
@@ -1311,7 +1390,7 @@ function VolunteerManager() {
             gap: '1rem',
           }}
         >
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <article
               key={item.id}
               className="card"
@@ -1338,38 +1417,105 @@ function VolunteerManager() {
                   flexWrap: 'wrap',
                 }}
               >
-                <div>
-                  <h3
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '.85rem',
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  {item.profile_pic_url ? (
+                    <img
+                      src={resolveMediaUrl(
+                        item.profile_pic_url
+                      )}
+                      alt={item.full_name}
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 12,
+                        objectFit: 'cover',
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 12,
+                        background: '#e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#64748b',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Users size={22} />
+                    </div>
+                  )}
+
+                  <div
                     style={{
-                      margin: 0,
+                      minWidth: 0,
                     }}
                   >
-                    {item.full_name}
-                  </h3>
+                    <h3
+                      style={{
+                        margin: 0,
+                      }}
+                    >
+                      {item.full_name}
+                    </h3>
 
-                  <p
-                    style={{
-                      color: '#475569',
-                      margin:
-                        '.35rem 0',
-                    }}
-                  >
-                    {item.email}
-                    {' · '}
-                    {item.phone}
-                  </p>
+                    <p
+                      style={{
+                        color: '#475569',
+                        margin:
+                          '.35rem 0',
+                      }}
+                    >
+                      {item.email}
+                      {' · '}
+                      {item.phone}
+                      <br />
+                      <span
+                        style={{
+                          color: '#64748b',
+                          fontSize:
+                            '.85rem',
+                        }}
+                      >
+                        Applied{' '}
+                        {new Date(
+                          item.created_at
+                        ).toLocaleString()}
+                      </span>
+                    </p>
 
-                  <p
-                    style={{
-                      color: '#64748b',
-                      margin: 0,
-                    }}
-                  >
-                    Interest:{' '}
-                    {item.interest_area}
-                  </p>
+                    <span
+                      style={{
+                        display:
+                          'inline-block',
+                        background:
+                          '#ecfdf5',
+                        color: '#047857',
+                        fontSize:
+                          '.75rem',
+                        fontWeight: 700,
+                        padding:
+                          '.25rem .6rem',
+                        borderRadius: 999,
+                        marginTop:
+                          '.35rem',
+                      }}
+                    >
+                      {item.interest_area}
+                    </span>
 
-                  {item.about_yourself && (
+                    {item.about_yourself && (
                     <p
                       style={{
                         color: '#475569',
@@ -1394,6 +1540,7 @@ function VolunteerManager() {
                       {item.volunteer_id}
                     </p>
                   )}
+                  </div>
                 </div>
 
                 <span
@@ -1604,13 +1751,21 @@ function VolunteerManager() {
 
 function DonationManager() {
   const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function load() {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  async function load(nextPage = page) {
     setLoading(true);
     try {
-      setItems(await fetchAdminDonations());
+      const data = await fetchAdminDonations(nextPage, pageSize);
+      setItems(data.items || []);
+      setTotal(data.total || 0);
+      setPage(data.page || 1);
       setError('');
     } catch (e) {
       setError(e.message);
@@ -1620,8 +1775,8 @@ function DonationManager() {
   }
 
   useEffect(() => {
-    load();
-  }, []);
+    load(1);
+  }, [pageSize]);
 
   async function resendReceipt(id) {
     try {
@@ -1661,12 +1816,41 @@ function DonationManager() {
     };
   };
 
+  const paginationStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '.75rem',
+    flexWrap: 'wrap',
+    marginTop: '1.25rem',
+  };
+
+  const metaStyle = {
+    color: '#64748b',
+    fontSize: '.9rem',
+    marginBottom: '1rem',
+  };
+
+  function goTo(next) {
+    if (next < 1 || next > totalPages) {
+      return;
+    }
+    load(next);
+  }
+
   return (
     <ManagerSection
       title="Donations"
       icon={<DollarSign size={22} />}
     >
       <ErrorMessage message={error} />
+
+      {!loading && total > 0 && (
+        <p style={metaStyle}>
+          Showing {((page - 1) * pageSize) + 1}–
+          {Math.min(page * pageSize, total)} of {total} donations
+        </p>
+      )}
 
       {loading ? (
         <p>Loading...</p>
@@ -1747,10 +1931,66 @@ function DonationManager() {
                       ? 'Resend certificate & receipt'
                       : 'Send certificate & receipt'}
                   </button>
+
+                  {item.certificate_document_path && (
+                    <a
+                      className="btn"
+                      href={resolveMediaUrl(
+                        item.certificate_document_path
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ ...outlineButton, textDecoration: 'none' }}
+                    >
+                      <Award size={15} />
+                      View certificate
+                    </a>
+                  )}
+
+                  {item.invoice_document_path && (
+                    <a
+                      className="btn"
+                      href={resolveMediaUrl(
+                        item.invoice_document_path
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ ...outlineButton, textDecoration: 'none' }}
+                    >
+                      <FileText size={15} />
+                      View invoice
+                    </a>
+                  )}
                 </div>
               )}
             </article>
           ))}
+        </div>
+      )}
+
+      {!loading && total > 0 && (
+        <div style={paginationStyle}>
+          <button
+            className="btn"
+            onClick={() => goTo(page - 1)}
+            disabled={page <= 1}
+            style={outlineButton}
+          >
+            Previous
+          </button>
+
+          <span style={{ color: '#475569', fontSize: '.9rem' }}>
+            Page {page} of {totalPages}
+          </span>
+
+          <button
+            className="btn"
+            onClick={() => goTo(page + 1)}
+            disabled={page >= totalPages}
+            style={outlineButton}
+          >
+            Next
+          </button>
         </div>
       )}
     </ManagerSection>
@@ -3151,6 +3391,9 @@ export default function Admin() {
   const [donations, setDonations] =
     useState([]);
 
+  const [donationPage, setDonationPage] =
+    useState(1);
+
   const [inquiries, setInquiries] =
     useState([]);
 
@@ -3610,7 +3853,10 @@ export default function Admin() {
 
                   <tbody>
                     {donations
-                      .slice(0, 10)
+                      .slice(
+                        (donationPage - 1) * 5,
+                        donationPage * 5
+                      )
                       .map(
                         (d) => (
                           <tr
@@ -3680,6 +3926,86 @@ export default function Admin() {
                     )}
                   </tbody>
                 </table>
+
+                {donations.length >
+                  5 && (
+                  <div
+                    style={{
+                      display:
+                        'flex',
+                      alignItems:
+                        'center',
+                      justifyContent:
+                        'center',
+                      gap: '.75rem',
+                      padding:
+                        '0.75rem 1rem',
+                      flexWrap:
+                        'wrap',
+                    }}
+                  >
+                    <button
+                      className="btn"
+                      disabled={
+                        donationPage <=
+                        1
+                      }
+                      onClick={() =>
+                        setDonationPage(
+                          (p) =>
+                            Math.max(
+                              1,
+                              p - 1
+                            )
+                        )
+                      }
+                      style={
+                        outlineButton
+                      }
+                    >
+                      Previous
+                    </button>
+
+                    <span
+                      style={{
+                        color: '#475569',
+                        fontSize:
+                          '.9rem',
+                      }}
+                    >
+                      Page{' '}
+                      {donationPage} of{' '}
+                      {Math.max(
+                        1,
+                        Math.ceil(
+                          donations.length /
+                            5
+                        )
+                      )}
+                    </span>
+
+                    <button
+                      className="btn"
+                      disabled={
+                        donationPage >=
+                        Math.ceil(
+                          donations.length /
+                            5
+                        )
+                      }
+                      onClick={() =>
+                        setDonationPage(
+                          (p) => p + 1
+                        )
+                      }
+                      style={
+                        outlineButton
+                      }
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div

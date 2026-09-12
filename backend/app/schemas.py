@@ -96,9 +96,18 @@ class DonationResponse(BaseModel):
     razorpay_order_id: Optional[str] = None
     razorpay_payment_id: Optional[str] = None
     receipt_sent_at: Optional[datetime] = None
+    certificate_document_path: Optional[str] = None
+    invoice_document_path: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DonationListResponse(BaseModel):
+    items: List[DonationResponse]
+    total: int
+    page: int
+    page_size: int
 
 
 class GalleryItemBase(BaseModel):

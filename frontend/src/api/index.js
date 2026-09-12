@@ -441,8 +441,8 @@ export async function fetchDonationsList() {
   return res.json();
 }
 
-export async function fetchAdminDonations() {
-  return adminFetch('/admin/donations');
+export async function fetchAdminDonations(page = 1, pageSize = 10) {
+  return adminFetch(`/admin/donations?page=${page}&page_size=${pageSize}`);
 }
 
 export async function resendAdminDonationReceipt(id) {

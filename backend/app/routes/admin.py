@@ -48,6 +48,7 @@ from ..schemas import (
     VideoGalleryResponse,
     VolunteerApplicationResponse,
     DonationResponse,
+    DonationListResponse,
 )
 
 from ..email_service import (
@@ -1619,17 +1620,31 @@ def delete_volunteer_application(
 
 @router.get(
     "/donations",
-    response_model=List[DonationResponse],
+    response_model=DonationListResponse,
 )
 def get_admin_donations(
+    page: int = 1,
+    page_size: int = 10,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
-    return (
+    page = max(1, page)
+    page_size = min(100, max(1, page_size))
+
+    query = (
         db.query(Donation)
         .order_by(Donation.created_at.desc(), Donation.id.desc())
-        .all()
     )
+
+    total = query.count()
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 
 @router.post(

@@ -3,6 +3,8 @@ import hmac
 import hashlib
 import json
 from datetime import datetime
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
@@ -109,11 +111,56 @@ def _find_donation_by_order(db: Session, order_id: str):
     return db.query(Donation).filter(Donation.razorpay_order_id == order_id).first()
 
 
+def _invoice_storage_dir(donation_id: int) -> Path:
+    """Local folder that holds a donation's PDF certificate + invoice.
+
+    PDF documents are stored on disk (and served through the /media static
+    mount); only their web paths live in the database so the DB stays light.
+    """
+    base = Path(__file__).resolve().parents[1] / "media"
+    folder = base / "invoices" / f"donation_{donation_id}"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def _save_donation_documents(
+    donation: Donation,
+    certificate_pdf: bytes | None,
+    receipt_pdf: bytes | None,
+) -> None:
+    """Persist the generated PDFs to disk and record their web paths.
+
+    Called on every (re)generation so the latest version is always stored.
+    The returned /media/... URLs are served by the backend static mount.
+    """
+    folder = _invoice_storage_dir(donation.id)
+
+    if certificate_pdf:
+        try:
+            (folder / "certificate.pdf").write_bytes(certificate_pdf)
+            donation.certificate_document_path = (
+                f"/media/invoices/donation_{donation.id}/certificate.pdf"
+            )
+        except Exception:
+            print("Failed to store donation certificate PDF")
+
+    if receipt_pdf:
+        try:
+            (folder / "invoice.pdf").write_bytes(receipt_pdf)
+            donation.invoice_document_path = (
+                f"/media/invoices/donation_{donation.id}/invoice.pdf"
+            )
+        except Exception:
+            print("Failed to store donation invoice PDF")
+
+
 def _email_donation_documents(
     donation: Donation,
     payment_id: str,
 ) -> bool:
-    """Generate the PDF certificate + receipt and email them to the donor."""
+    """Generate the PDF certificate + receipt, store them on disk, and email
+    them to the donor.
+    """
     receipt_html = build_donation_receipt_html(
         full_name=donation.donor_name,
         email=donation.donor_email,
@@ -144,6 +191,8 @@ def _email_donation_documents(
         )
     except Exception:
         print("Failed to generate donation PDF documents")
+
+    _save_donation_documents(donation, certificate_pdf, receipt_pdf)
 
     return send_donation_documents_email(
         to_email=donation.donor_email,
