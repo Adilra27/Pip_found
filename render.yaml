@@ -1,5 +1,47 @@
 services:
   - type: web
+    name: piplad-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql+psycopg://piplad_db_user:v6n1ZS3GB91r1kYEOAcmAYDw7ncMXQX2@dpg-da8sqlk9v7es73cgu6hg-a.oregon-postgres.render.com/piplad_db?sslmode=require
+      - key: CORS_ORIGINS
+        value: http://localhost:5173,https://www.pip-dev.in,https://pip-found.pages.dev,https://pip-found-frontend.onrender.com
+      - key: RAZORPAY_KEY_ID
+        value: rzp_test_TZEtC3OHZZibvB
+      - key: RAZORPAY_KEY_SECRET
+        value: AWHDjijjgeWdmIVPFYFle52p
+      - key: RAZORPAY_MODE
+        value: mock
+      - key: CLOUDINARY_CLOUD_NAME
+        value: dpxev3aj
+      - key: CLOUDINARY_API_KEY
+        value: 381893617789635
+      - key: CLOUDINARY_API_SECRET
+        value: kuGNl0fNJ7lZnpuWy14auTh3G_E
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        value: adil.ra2704@gmail.com
+      - key: SMTP_PASSWORD
+        value: budlaajpmkoznnhs
+      - key: SMTP_FROM
+        value: adil.ra2704@gmail.com
+      - key: SMTP_FROM_NAME
+        value: Piplad Welfare Foundation
+      - key: SMTP_SSL
+        value: false
+      - key: SMTP_STARTTLS
+        value: true
+      - key: SMTP_NO_AUTH
+        value: false
+
+  - type: web
     name: pip-found-frontend
     runtime: static
     rootDir: frontend
