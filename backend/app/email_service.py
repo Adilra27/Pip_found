@@ -74,18 +74,6 @@ def _deliver_email(
         if html_body:
             message.add_alternative(html_body, subtype="html")
 
-        if (
-            profile_image_bytes
-            and (profile_image_mime or "").lower().startswith("image/")
-        ):
-            subtype = profile_image_mime.split("/")[-1].lower() or "jpeg"
-            message.get_payload()[-1].add_related(
-                profile_image_bytes,
-                maintype="image",
-                subtype=subtype,
-                cid="volunteer_photo",
-            )
-
         for image in related or []:
             subtype = image.get("subtype") or ""
             message.get_payload()[-1].add_related(
@@ -101,13 +89,6 @@ def _deliver_email(
                 maintype=attachment.get("maintype", "application"),
                 subtype=attachment.get("subtype", "octet-stream"),
                 filename=attachment["filename"],
-            )
-            )
-        elif profile_image_bytes:
-            logger.warning(
-                "Skipping invalid photo MIME %r for welcome card to %s; sending with initials avatar",
-                profile_image_mime,
-                to_email,
             )
 
         if use_ssl:
@@ -250,7 +231,6 @@ def send_donation_documents_email(
                 "maintype": "application",
                 "subtype": "pdf",
             }
-        )
         )
 
     return _deliver_email(
