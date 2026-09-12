@@ -232,23 +232,41 @@ def send_volunteer_welcome_email(
     *,
     to_email: str,
     volunteer_name: str,
-    card_html: str,
+    volunteer_email: str,
+    volunteer_id: str,
+    joined_date,
+    card_jpg: bytes,
     certificate_image: bytes | None = None,
-    profile_image_bytes=None,
-    profile_image_mime="image/jpeg",
 ) -> bool:
-    """Send the volunteer welcome card email with the certificate image attached."""
-    text_body = (
-        f"Dear {volunteer_name},\n\n"
-        "Congratulations and welcome! Your volunteer application with the "
-        "Piplad Welfare Foundation has been accepted. Please find your "
-        "Volunteer Certificate attached to this email and keep it handy for "
-        "future events and communication.\n\n"
-        "Thank you for choosing to serve your community.\n"
-        "Piplad Welfare Foundation\nCreating Opportunities, Creating Lives"
+    """Send the volunteer welcome e-mail: message body + card JPG + certificate.
+
+    The e-mail body is the friendly welcome message (HTML + plain text); the
+    graphical welcome card (QR + profile photo) and the official certificate
+    are attached as JPEG files so they display in every e-mail client.
+    """
+    from .welcome_card import build_welcome_message_html, build_welcome_message_text
+
+    text_body = build_welcome_message_text(
+        full_name=volunteer_name,
+        volunteer_email=volunteer_email,
+        volunteer_id=volunteer_id,
+        joined_date=joined_date,
+    )
+    html_body = build_welcome_message_html(
+        full_name=volunteer_name,
+        volunteer_email=volunteer_email,
+        volunteer_id=volunteer_id,
+        joined_date=joined_date,
     )
 
-    attachments = []
+    attachments = [
+        {
+            "filename": "Volunteer_Card.jpg",
+            "data": card_jpg,
+            "maintype": "image",
+            "subtype": "jpeg",
+        }
+    ]
     if certificate_image:
         attachments.append(
             {
@@ -259,24 +277,12 @@ def send_volunteer_welcome_email(
             }
         )
 
-    related = []
-    if profile_image_bytes:
-        related.append(
-            {
-                "cid": "volunteer_photo",
-                "data": profile_image_bytes,
-                "maintype": "image",
-                "subtype": (profile_image_mime or "image/jpeg").split("/")[-1] or "jpeg",
-            }
-        )
-
     return _deliver_email(
         to_email=to_email,
-        subject="Your Volunteer Certificate - Piplad Welfare Foundation",
+        subject="Welcome to Piplad Welfare Foundation!",
         text_body=text_body,
-        html_body=card_html,
+        html_body=html_body,
         attachments=attachments,
-        related=related,
     )
 
 

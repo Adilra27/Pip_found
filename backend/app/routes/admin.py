@@ -56,10 +56,10 @@ from ..email_service import (
     send_volunteer_welcome_email,
 )
 from ..welcome_card import (
-    build_volunteer_qr_data_uri,
-    build_welcome_card_html,
+    build_volunteer_qr_png,
     load_profile_photo,
 )
+from ..volunteer_card import build_volunteer_card_jpg
 from ..volunteer_certificate import build_volunteer_certificate_image
 
 
@@ -1297,18 +1297,27 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
         image_bytes, image_mime = load_profile_photo(
             volunteer.profile_pic_url
         )
-        qr_data_uri = build_volunteer_qr_data_uri(
-            _issue_volunteer_id(volunteer)
-        )
-        card_html = build_welcome_card_html(
-            full_name=volunteer.full_name,
-            volunteer_id=_issue_volunteer_id(volunteer),
-            interest_area=volunteer.interest_area,
-            phone=volunteer.phone,
-            accepted_at=datetime.utcnow(),
-            use_photo_cid=bool(image_bytes),
-            qr_data_uri=qr_data_uri,
-        )
+        volunteer_id = _issue_volunteer_id(volunteer)
+        qr_png = build_volunteer_qr_png(volunteer_id)
+
+        try:
+            card_jpg = build_volunteer_card_jpg(
+                full_name=volunteer.full_name,
+                volunteer_id=volunteer_id,
+                interest_area=volunteer.interest_area,
+                phone=volunteer.phone,
+                joined_date=datetime.utcnow(),
+                photo_bytes=image_bytes,
+                photo_mime=image_mime,
+                qr_png=qr_png,
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to generate volunteer card image for volunteer %s: %s",
+                volunteer_id,
+                exc,
+            )
+            card_jpg = None
 
         try:
             certificate_image = build_volunteer_certificate_image(
@@ -1325,10 +1334,11 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
         sent = send_volunteer_welcome_email(
             to_email=volunteer.email,
             volunteer_name=volunteer.full_name,
-            card_html=card_html,
+            volunteer_email=volunteer.email,
+            volunteer_id=volunteer_id,
+            joined_date=datetime.utcnow(),
+            card_jpg=card_jpg,
             certificate_image=certificate_image,
-            profile_image_bytes=image_bytes,
-            profile_image_mime=image_mime,
         )
 
         if sent:

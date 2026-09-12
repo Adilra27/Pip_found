@@ -33,6 +33,12 @@ services:
         value: adil.ra2704@gmail.com
       - key: EMAIL_FROM_NAME
         value: Piplad Welfare Foundation
+      - key: CONTACT_WEBSITE
+        sync: false
+        value: https://www.pipladfoundation.in
+      - key: CONTACT_EMAIL
+        sync: false
+        value: info@pipladfoundation.in
 
   - type: web
     name: pip-found-frontend
