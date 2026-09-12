@@ -46,10 +46,9 @@ runs on Render with **PostgreSQL** (no SQLite).
 | `CORS_ORIGINS` | No | Comma-separated allowed browser origins (defaults to localhost dev ports) |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | No | Razorpay credentials; absent => mock orders for sandbox testing |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | No | Basic-auth credentials for `/api/admin` and SQL admin |
-| `BREVO_API_KEY` | No | Brevo HTTPS API key; production email transport. Absent => falls back to SMTP (see below) |
-| `EMAIL_FROM` / `EMAIL_FROM_NAME` | No | Verified sender used for outbound email (defaults to the SMTP `from`) |
+| `BREVO_API_KEY` | No | Brevo HTTPS API key; the only email transport. Absent => email sending is skipped (logged) so failures stay visible |
+| `EMAIL_FROM` / `EMAIL_FROM_NAME` | No | Verified Brevo sender used for outbound email |
 | `CONTACT_WEBSITE`/`CONTACT_EMAIL`/`CONTACT_PHONE` | No | Contact footer for the volunteer welcome email (defaults to the foundation website/email; phone only when set) |
-| `SMTP_HOST`/`SMTP_USER`/etc. | No | Local-dev fallback only. **Not usable on Render free** – it blocks outbound SMTP ports (25/465/587) |
 
 ## Seeding
 

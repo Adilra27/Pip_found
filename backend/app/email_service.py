@@ -1,17 +1,15 @@
-"""Email sending via the Brevo HTTPS API, falling back to stdlib smtplib.
+"""Email sending via the Brevo HTTPS API only.
 
-Render's free tier blocks outbound SMTP ports (25, 465, 587), so production
-sends go through Brevo's REST API over HTTPS (port 443), which is never
-blocked. The smtplib path remains as a local-development fallback when no
-BREVO_API_KEY is configured.
+Render's free tier blocks outbound SMTP ports (25, 465, 587), so all email
+sends through Brevo's REST API over HTTPS (port 443), which is never blocked.
+
+When BREVO_API_KEY is missing the send is skipped with a logged warning so the
+failure is visible (e.g. in the admin panel) instead of raising.
 """
 
 import base64
 import logging
 import os
-import smtplib
-from email.message import EmailMessage
-from email.utils import formataddr
 
 import requests
 
@@ -21,36 +19,16 @@ DEFAULT_FROM_NAME = "Piplad Welfare Foundation"
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
-def is_smtp_configured() -> bool:
-    return bool(os.getenv("SMTP_HOST"))
-
-
 def is_brevo_configured() -> bool:
     return bool(os.getenv("BREVO_API_KEY"))
 
 
 def _from_address() -> tuple[str, str] | None:
-    display = (
-        os.getenv("EMAIL_FROM_NAME") or os.getenv("SMTP_FROM_NAME") or DEFAULT_FROM_NAME
-    ) or DEFAULT_FROM_NAME
-    address = os.getenv("EMAIL_FROM") or os.getenv("SMTP_FROM") or os.getenv("SMTP_USER")
+    display = os.getenv("EMAIL_FROM_NAME") or DEFAULT_FROM_NAME
+    address = os.getenv("EMAIL_FROM")
     if not address:
         return None
     return display, address
-
-
-def _embed_related_images(html_body: str, related: list[dict]) -> str:
-    """Replace `cid:...` image references in HTML with inline base64 data URIs.
-
-    Almost every HTTP email API needs inline images embedded as data URIs
-    instead of MIME CID parts, so this is done up front for the API path.
-    """
-    for image in related or []:
-        mime = f"{image.get('maintype', 'image')}/{image.get('subtype') or 'jpeg'}"
-        encoded = base64.b64encode(image["data"]).decode("ascii")
-        data_uri = f"data:{mime};base64,{encoded}"
-        html_body = html_body.replace(f"cid:{image['cid']}", data_uri)
-    return html_body
 
 
 def _brevo_attachment(attachment: dict) -> dict:
@@ -67,7 +45,6 @@ def _deliver_via_brevo(
     text_body: str,
     html_body: str | None = None,
     attachments: list[dict] | None = None,
-    related: list[dict] | None = None,
 ) -> bool:
     """Send via Brevo's transactional email API (POST over HTTPS, port 443).
 
@@ -87,7 +64,7 @@ def _deliver_via_brevo(
         "textContent": text_body,
     }
     if html_body:
-        payload["htmlContent"] = _embed_related_images(html_body, related)
+        payload["htmlContent"] = html_body
     if attachments:
         payload["attachment"] = [_brevo_attachment(a) for a in attachments]
 
@@ -130,16 +107,13 @@ def _deliver_email(
     text_body: str,
     html_body: str | None = None,
     attachments: list[dict] | None = None,
-    related: list[dict] | None = None,
 ) -> bool:
-    """Core sender supporting HTML bodies, CID images, and attachments.
+    """Core sender supporting HTML bodies and attachments via the Brevo API.
 
     `attachments` is a list of {"filename", "data", "maintype", "subtype"}.
-    `related`    is a list of {"cid", "data", "maintype", "subtype"} whose
-                 items are embedded into the HTML part (e.g. profile photo).
 
-    Uses the Brevo HTTPS API when BREVO_API_KEY is set (production/Render),
-    otherwise falls back to the standard-library SMTP path for local dev.
+    Requires BREVO_API_KEY to be configured; otherwise the send is skipped
+    with a logged warning (returns False) so failures stay visible.
 
     Always returns False (instead of raising) when email is unavailable or the
     send fails, logging the reason for the admin panel to show later.
@@ -151,81 +125,13 @@ def _deliver_email(
             text_body=text_body,
             html_body=html_body,
             attachments=attachments,
-            related=related,
         )
 
-    if not is_smtp_configured():
-        logger.warning("No email transport configured; email NOT sent to %s", to_email)
-        return False
-
-    host = os.getenv("SMTP_HOST", "").strip()
-    try:
-        port = int(os.getenv("SMTP_PORT", "587") or "587")
-    except ValueError:
-        logger.error("Invalid SMTP_PORT value; not emailing welcome card to %s", to_email)
-        return False
-    username = os.getenv("SMTP_USER", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "")
-    use_ssl = (os.getenv("SMTP_SSL", "false") or "false").lower() == "true"
-    use_starttls = (os.getenv("SMTP_STARTTLS", "true") or "true").lower() != "false"
-    no_auth = (os.getenv("SMTP_NO_AUTH", "false") or "false").lower() == "true"
-
-    if not host or not _from_address():
-        logger.warning(
-            "SMTP host/from not configured; email NOT sent to %s",
-            to_email,
-        )
-        return False
-
-    try:
-        message = EmailMessage()
-        message["Subject"] = subject
-        message["From"] = formataddr(_from_address())
-        message["To"] = to_email
-        message.set_content(text_body)
-
-        if html_body:
-            message.add_alternative(html_body, subtype="html")
-
-        for image in related or []:
-            subtype = image.get("subtype") or ""
-            message.get_payload()[-1].add_related(
-                image["data"],
-                maintype=image.get("maintype", "image"),
-                subtype=subtype or "jpeg",
-                cid=image["cid"],
-            )
-
-        for attachment in attachments or []:
-            message.add_attachment(
-                attachment["data"],
-                maintype=attachment.get("maintype", "application"),
-                subtype=attachment.get("subtype", "octet-stream"),
-                filename=attachment["filename"],
-            )
-
-        if use_ssl:
-            smtp = smtplib.SMTP_SSL(host, port, timeout=30)
-        else:
-            smtp = smtplib.SMTP(host, port, timeout=30)
-            if use_starttls:
-                smtp.starttls()
-
-        with smtp:
-            if not no_auth and username:
-                smtp.login(username, password)
-            smtp.send_message(message)
-
-        logger.info("Email sent via SMTP to %s: %s", to_email, subject)
-        return True
-    except Exception as exc:
-        logger.error(
-            "Failed to send email to %s (%s): %s",
-            to_email,
-            subject,
-            exc,
-        )
-        return False
+    logger.warning(
+        "Email not configured (BREVO_API_KEY missing); email NOT sent to %s",
+        to_email,
+    )
+    return False
 
 
 def send_volunteer_welcome_email(
@@ -318,30 +224,19 @@ def send_donation_documents_email(
     to_email: str,
     donor_name: str,
     receipt_html: str,
-    certificate_pdf: bytes | None = None,
     receipt_pdf: bytes | None = None,
 ) -> bool:
-    """Send the donation PDF certificate, PDF receipt, and an HTML receipt."""
+    """Send the donation receipt e-mail: HTML receipt + 80G receipt PDF."""
     text_body = (
         f"Dear {donor_name},\n\n"
         "Thank you for your generous donation to the Piplad Welfare "
-        "Foundation. Please find attached your Donation Certificate and "
-        "Donation Receipt (80G) in PDF format. Keep them safe for your "
-        "records and tax filing purposes.\n\n"
+        "Foundation. Please find attached your Donation Receipt (80G) in "
+        "PDF format. Keep it safe for your records and tax filing purposes.\n\n"
         "Thank you for making a difference.\n"
         "Piplad Welfare Foundation\nCreating Opportunities, Creating Lives"
     )
 
     attachments = []
-    if certificate_pdf:
-        attachments.append(
-            {
-                "filename": "Donation_Certificate.pdf",
-                "data": certificate_pdf,
-                "maintype": "application",
-                "subtype": "pdf",
-            }
-        )
     if receipt_pdf:
         attachments.append(
             {
@@ -354,7 +249,7 @@ def send_donation_documents_email(
 
     return _deliver_email(
         to_email=to_email,
-        subject="Your Donation Certificate & Receipt - Piplad Welfare Foundation",
+        subject="Your Donation Receipt - Piplad Welfare Foundation",
         text_body=text_body,
         html_body=receipt_html,
         attachments=attachments,

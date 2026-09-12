@@ -13,10 +13,7 @@ from ..models import Donation, Cause
 from ..schemas import RazorpayOrderCreate, RazorpayVerifyRequest, DonationResponse
 from ..donation_receipt import build_donation_receipt_html
 from ..email_service import send_donation_documents_email
-from ..certificate_pdf import (
-    build_donation_certificate_pdf,
-    build_donation_receipt_pdf,
-)
+from ..certificate_pdf import build_donation_receipt_pdf
 
 try:
     import razorpay
@@ -112,7 +109,7 @@ def _find_donation_by_order(db: Session, order_id: str):
 
 
 def _invoice_storage_dir(donation_id: int) -> Path:
-    """Local folder that holds a donation's PDF certificate + invoice.
+    """Local folder that holds a donation's receipt PDF.
 
     PDF documents are stored on disk (and served through the /media static
     mount); only their web paths live in the database so the DB stays light.
@@ -125,41 +122,31 @@ def _invoice_storage_dir(donation_id: int) -> Path:
 
 def _save_donation_documents(
     donation: Donation,
-    certificate_pdf: bytes | None,
     receipt_pdf: bytes | None,
 ) -> None:
-    """Persist the generated PDFs to disk and record their web paths.
+    """Persist the generated receipt PDF to disk and record its web path.
 
     Called on every (re)generation so the latest version is always stored.
-    The returned /media/... URLs are served by the backend static mount.
+    The returned /media/... URL is served by the backend static mount.
     """
     folder = _invoice_storage_dir(donation.id)
 
-    if certificate_pdf:
-        try:
-            (folder / "certificate.pdf").write_bytes(certificate_pdf)
-            donation.certificate_document_path = (
-                f"/media/invoices/donation_{donation.id}/certificate.pdf"
-            )
-        except Exception:
-            print("Failed to store donation certificate PDF")
-
     if receipt_pdf:
         try:
-            (folder / "invoice.pdf").write_bytes(receipt_pdf)
+            (folder / "receipt.pdf").write_bytes(receipt_pdf)
             donation.invoice_document_path = (
-                f"/media/invoices/donation_{donation.id}/invoice.pdf"
+                f"/media/invoices/donation_{donation.id}/receipt.pdf"
             )
         except Exception:
-            print("Failed to store donation invoice PDF")
+            print("Failed to store donation receipt PDF")
 
 
 def _email_donation_documents(
     donation: Donation,
     payment_id: str,
 ) -> bool:
-    """Generate the PDF certificate + receipt, store them on disk, and email
-    them to the donor.
+    """Generate the 80G receipt PDF, store it on disk, and email it to the
+    donor along with an HTML copy of the receipt.
     """
     receipt_html = build_donation_receipt_html(
         full_name=donation.donor_name,
@@ -171,15 +158,8 @@ def _email_donation_documents(
         paid_at=donation.created_at,
     )
 
-    certificate_pdf = None
     receipt_pdf = None
     try:
-        certificate_pdf = build_donation_certificate_pdf(
-            donor_name=donation.donor_name,
-            amount=donation.amount,
-            payment_id=payment_id,
-            paid_at=donation.created_at,
-        )
         receipt_pdf = build_donation_receipt_pdf(
             full_name=donation.donor_name,
             email=donation.donor_email,
@@ -190,15 +170,14 @@ def _email_donation_documents(
             paid_at=donation.created_at,
         )
     except Exception:
-        print("Failed to generate donation PDF documents")
+        print("Failed to generate donation receipt PDF")
 
-    _save_donation_documents(donation, certificate_pdf, receipt_pdf)
+    _save_donation_documents(donation, receipt_pdf)
 
     return send_donation_documents_email(
         to_email=donation.donor_email,
         donor_name=donation.donor_name,
         receipt_html=receipt_html,
-        certificate_pdf=certificate_pdf,
         receipt_pdf=receipt_pdf,
     )
 

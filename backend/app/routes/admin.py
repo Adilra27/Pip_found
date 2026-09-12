@@ -55,6 +55,7 @@ from ..email_service import (
     send_volunteer_rejection_email,
     send_volunteer_welcome_email,
 )
+from ..donation_receipt import build_donation_receipt_html
 from ..welcome_card import (
     build_volunteer_qr_png,
     load_profile_photo,
@@ -1690,3 +1691,40 @@ def resend_donation_documents(
     db.refresh(donation)
 
     return donation
+
+
+@router.get("/donations/{donation_id}/email-preview")
+def donation_email_preview(
+    donation_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Return the exact HTML receipt that is emailed to the donor.
+
+    Used by the admin panel to show what the donor receives in the mail
+    (in place of a separate "invoice" download).
+    """
+    donation = (
+        db.query(Donation)
+        .filter(Donation.id == donation_id)
+        .first()
+    )
+
+    if not donation:
+        raise HTTPException(404, "Donation record not found")
+
+    html_body = build_donation_receipt_html(
+        full_name=donation.donor_name,
+        email=donation.donor_email,
+        phone=donation.donor_phone or "",
+        amount=donation.amount,
+        order_id=donation.razorpay_order_id or "",
+        payment_id=donation.razorpay_payment_id or "",
+        paid_at=donation.created_at,
+    )
+
+    return {
+        "donation_id": donation.id,
+        "html": html_body,
+        "receipt_pdf_url": donation.invoice_document_path,
+    }

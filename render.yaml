@@ -22,15 +22,15 @@ services:
         value: 381893617789635
       - key: CLOUDINARY_API_SECRET
         value: kuGNl0fNJ7lZnpuWy14auTh3G_E
-      # Brevo HTTPS API (port 443) is used because Render free blocks
-      # outbound SMTP ports (25/465/587). Generate the key at
+      # Brevo is the only email transport (HTTPS API, port 443; Render free
+      # blocks outbound SMTP ports). Generate the key at
       # https://app.brevo.com/settings/keys/api and set it in the Render
       # dashboard so the real value is never committed to the repo.
       - key: BREVO_API_KEY
         sync: false
         value: CHANGE_ME
       - key: EMAIL_FROM
-        value: adil.ra2704@gmail.com
+        value: info@pipladfoundation.in
       - key: EMAIL_FROM_NAME
         value: Piplad Welfare Foundation
       - key: CONTACT_WEBSITE

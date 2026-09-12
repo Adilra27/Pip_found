@@ -24,7 +24,6 @@ import {
   Eye,
   EyeOff,
   Send,
-  FileText,
 } from 'lucide-react';
 
 import {
@@ -61,6 +60,7 @@ import {
   resendAdminVolunteerCard,
   resendAdminVolunteerRejection,
   fetchAdminDonations,
+  fetchAdminDonationEmailPreview,
   resendAdminDonationReceipt,
   fetchAdminImpact,
   updateAdminImpact,
@@ -1792,6 +1792,18 @@ function DonationManager() {
     }
   }
 
+  const [emailPreview, setEmailPreview] = useState(null);
+
+  async function openReceiptPreview(id) {
+    try {
+      const data = await fetchAdminDonationEmailPreview(id);
+      setEmailPreview(data);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   const panelStyle = {
     display: 'flex',
     justifyContent: 'space-between',
@@ -1902,8 +1914,8 @@ function DonationManager() {
                       style={badgeStyle('completed')}
                       title={
                         item.receipt_sent_at
-                          ? `Documents emailed on ${new Date(item.receipt_sent_at).toLocaleString()}`
-                          : 'Certificates not emailed yet'
+                          ? `Receipt emailed on ${new Date(item.receipt_sent_at).toLocaleString()}`
+                          : 'Receipt not emailed yet'
                       }
                     >
                       {item.receipt_sent_at ? (
@@ -1928,39 +1940,18 @@ function DonationManager() {
                   >
                     <Send size={15} />
                     {item.receipt_sent_at
-                      ? 'Resend certificate & receipt'
-                      : 'Send certificate & receipt'}
+                      ? 'Resend receipt'
+                      : 'Send receipt'}
                   </button>
 
-                  {item.certificate_document_path && (
-                    <a
-                      className="btn"
-                      href={resolveMediaUrl(
-                        item.certificate_document_path
-                      )}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ ...outlineButton, textDecoration: 'none' }}
-                    >
-                      <Award size={15} />
-                      View certificate
-                    </a>
-                  )}
-
-                  {item.invoice_document_path && (
-                    <a
-                      className="btn"
-                      href={resolveMediaUrl(
-                        item.invoice_document_path
-                      )}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ ...outlineButton, textDecoration: 'none' }}
-                    >
-                      <FileText size={15} />
-                      View invoice
-                    </a>
-                  )}
+                  <button
+                    className="btn"
+                    onClick={() => openReceiptPreview(item.id)}
+                    style={{ ...outlineButton }}
+                  >
+                    <Eye size={15} />
+                    View emailed receipt
+                  </button>
                 </div>
               )}
             </article>
@@ -1991,6 +1982,71 @@ function DonationManager() {
           >
             Next
           </button>
+        </div>
+      )}
+
+      {emailPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(15,23,42,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={() => setEmailPreview(null)}
+        >
+          <div
+            className="card"
+            style={{
+              width: '100%',
+              maxWidth: 760,
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              padding: 0,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+                padding: '.75rem 1rem',
+                borderBottom: '1px solid #e2e8f0',
+              }}
+            >
+              <strong style={{ color: '#0f172a' }}>
+                Receipt emailed to the donor
+              </strong>
+              <button
+                className="btn"
+                onClick={() => setEmailPreview(null)}
+                style={outlineButton}
+              >
+                <X size={15} />
+                Close
+              </button>
+            </div>
+            <iframe
+              title="Receipt email preview"
+              srcDoc={emailPreview.html}
+              sandbox=""
+              style={{
+                width: '100%',
+                flex: 1,
+                minHeight: '65vh',
+                border: 'none',
+                background: '#f1f5f9',
+              }}
+            />
+          </div>
         </div>
       )}
     </ManagerSection>

@@ -451,6 +451,10 @@ export async function resendAdminDonationReceipt(id) {
   });
 }
 
+export async function fetchAdminDonationEmailPreview(id) {
+  return adminFetch(`/admin/donations/${id}/email-preview`);
+}
+
 
 // ============================================================
 // CONTACT
