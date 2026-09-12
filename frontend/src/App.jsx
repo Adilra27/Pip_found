@@ -77,7 +77,7 @@ export default function App() {
             <Route path="/team" element={<Team />} />
             <Route path="/team/:teamName" element={<Team />} />
             <Route path="/certificates" element={<Certificates />} />
-            <Route path="/join" element={<JoinUs />} />
+            <Route path="/join" element={<JoinUs onOpenDonate={() => handleOpenDonate()} />} />
             <Route path="/impact" element={<Impact />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/partners/:partnerSlug" element={<Partner />} />

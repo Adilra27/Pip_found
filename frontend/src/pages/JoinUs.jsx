@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Heart, Users, Handshake, TrendingUp, CheckCircle2, ArrowRight, Loader2, MessageCircle, Award, Zap } from 'lucide-react';
 import '../styles/joinus.css';
 import { submitVolunteerApplication } from '../api';
 
-export default function JoinUs() {
+export default function JoinUs({ onOpenDonate }) {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -22,28 +23,24 @@ export default function JoinUs() {
       title: 'Volunteer Your Time',
       description: 'Lend your time, skills, and compassion on the ground. Whether you can teach, organize events, or help with digital outreach — your efforts matter.',
       color: '#d1fae5',
-      textColor: '#059669'
+      textColor: '#059669',
+      action: 'volunteer'
     },
     {
       icon: <TrendingUp size={36} />,
       title: 'Become a Donor',
       description: 'Support our ongoing programs through one-time or monthly donations. Your generosity fuels education, healthcare, empowerment, and hope.',
       color: '#fef3c7',
-      textColor: '#d97706'
+      textColor: '#d97706',
+      action: 'donate'
     },
     {
       icon: <Handshake size={36} />,
       title: 'Partner With Us',
       description: 'We welcome collaborations with schools, corporates, NGOs, and local bodies to scale our impact and reach more people in need.',
       color: '#e0f2fe',
-      textColor: '#0284c7'
-    },
-    {
-      icon: <Users size={36} />,
-      title: 'Fundraise for a Cause',
-      description: 'Run a birthday fundraiser, organize a charity event, or create your own campaign on a cause close to your heart.',
-      color: '#fce7f3',
-      textColor: '#be185d'
+      textColor: '#0284c7',
+      action: 'contact'
     }
   ];
 
@@ -56,13 +53,6 @@ export default function JoinUs() {
     'Culture & Tourism',
     'Sports & Yoga',
     'IT & Social Media'
-  ];
-
-  const volunteerImpact = [
-    { stat: '500+', label: 'Active Volunteers' },
-    { stat: '10,000+', label: 'Hours Donated' },
-    { stat: '25,000+', label: 'Lives Impacted' },
-    { stat: '100%', label: 'Gratification Rate' }
   ];
 
   const handleInputChange = (e) => {
@@ -138,24 +128,6 @@ export default function JoinUs() {
         </div>
       </section>
 
-      {/* ===== VOLUNTEER IMPACT STATS ===== */}
-      <section style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '3rem 0' }}>
-        <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', textAlign: 'center' }}>
-            {volunteerImpact.map((item, idx) => (
-              <div key={idx}>
-                <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#059669', marginBottom: '0.5rem' }}>
-                  {item.stat}
-                </div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#64748b' }}>
-                  {item.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ===== WAYS TO GET INVOLVED ===== */}
       <section className="section-padding" style={{ background: '#f8fafc' }}>
         <div className="container">
@@ -185,7 +157,59 @@ export default function JoinUs() {
                   {way.description}
                 </p>
                 <div style={{ marginTop: '1.5rem', color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Learn more <ArrowRight size={18} />
+                  {way.action === 'donate' ? (
+                    <button
+                      type="button"
+                      onClick={onOpenDonate}
+                      className="joinus-learnmore"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: '#059669',
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      Learn more <ArrowRight size={18} />
+                    </button>
+                  ) : way.action === 'volunteer' ? (
+                    <a
+                      href="#volunteer-form"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document
+                          .getElementById('volunteer-form')
+                          ?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      style={{
+                        textDecoration: 'none',
+                        color: '#059669',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      Learn more <ArrowRight size={18} />
+                    </a>
+                  ) : (
+                    <Link
+                      to="/contact"
+                      style={{
+                        textDecoration: 'none',
+                        color: '#059669',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      Learn more <ArrowRight size={18} />
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}
@@ -194,7 +218,11 @@ export default function JoinUs() {
       </section>
 
       {/* ===== BECOME A MEMBER / VOLUNTEER FORM ===== */}
-      <section className="section-padding" style={{ background: '#ffffff' }}>
+      <section
+        id="volunteer-form"
+        className="section-padding"
+        style={{ background: '#ffffff' }}
+      >
         <div className="container">
           <div style={{ maxWidth: '750px', margin: '0 auto' }}>
             <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
