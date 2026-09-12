@@ -198,6 +198,12 @@ export async function resendAdminVolunteerCard(id) {
   });
 }
 
+export async function resendAdminVolunteerRejection(id) {
+  return adminFetch(`/admin/volunteers/${id}/resend-rejection-email`, {
+    method: 'POST',
+  });
+}
+
 
 // ============================================================
 // ADMIN GALLERY
@@ -433,6 +439,16 @@ export async function fetchDonationsList() {
   }
 
   return res.json();
+}
+
+export async function fetchAdminDonations() {
+  return adminFetch('/admin/donations');
+}
+
+export async function resendAdminDonationReceipt(id) {
+  return adminFetch(`/admin/donations/${id}/resend-receipt`, {
+    method: 'POST',
+  });
 }
 
 

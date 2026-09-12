@@ -1,3 +1,4 @@
+import logging
 import os
 import secrets
 import uuid
@@ -45,13 +46,18 @@ from ..schemas import (
     UpcomingProjectResponse,
     VideoGalleryResponse,
     VolunteerApplicationResponse,
+    DonationResponse,
 )
 
-from ..email_service import send_volunteer_welcome_email
+from ..email_service import (
+    send_volunteer_rejection_email,
+    send_volunteer_welcome_email,
+)
 from ..welcome_card import (
     build_welcome_card_html,
     load_profile_photo,
 )
+from ..certificate_pdf import build_volunteer_certificate_pdf
 
 
 security = HTTPBasic()
@@ -1252,7 +1258,7 @@ def _send_volunteer_welcome_card(
     db: Session,
     volunteer: VolunteerApplication,
 ) -> None:
-    """Email the welcome card for an accepted volunteer.
+    """Email the welcome card + PDF certificate for an accepted volunteer.
 
     Sets volunteer.card_sent_at only when the email was delivered. Never
     raises; failures are logged so the admin can retry later.
@@ -1273,16 +1279,51 @@ def _send_volunteer_welcome_card(
         use_photo_cid=bool(image_bytes),
     )
 
+    try:
+        certificate_pdf = build_volunteer_certificate_pdf(
+            full_name=volunteer.full_name,
+            volunteer_id=volunteer_id,
+            interest_area=volunteer.interest_area,
+            accepted_at=datetime.utcnow(),
+        )
+    except Exception as exc:
+        logger = logging.getLogger(__name__)
+        logger.error("Failed to generate volunteer certificate PDF: %s", exc)
+        certificate_pdf = None
+
     sent = send_volunteer_welcome_email(
         to_email=volunteer.email,
         volunteer_name=volunteer.full_name,
         card_html=card_html,
+        certificate_pdf=certificate_pdf,
         profile_image_bytes=image_bytes,
         profile_image_mime=image_mime,
     )
 
     if sent:
         volunteer.card_sent_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(volunteer)
+
+
+def _send_volunteer_rejection_email(
+    db: Session,
+    volunteer: VolunteerApplication,
+) -> None:
+    """Email the applicant that their application was rejected.
+
+    Sets volunteer.rejection_email_sent_at only when the email was delivered.
+    Never raises; failures are logged so the admin can retry later.
+    """
+    sent = send_volunteer_rejection_email(
+        to_email=volunteer.email,
+        volunteer_name=volunteer.full_name,
+        interest_area=volunteer.interest_area,
+    )
+
+    if sent:
+        volunteer.rejection_email_sent_at = datetime.utcnow()
 
     db.commit()
     db.refresh(volunteer)
@@ -1342,6 +1383,11 @@ def update_volunteer_status(
         and not volunteer.card_sent_at
     ):
         _send_volunteer_welcome_card(db, volunteer)
+    elif (
+        status_value == "rejected"
+        and not volunteer.rejection_email_sent_at
+    ):
+        _send_volunteer_rejection_email(db, volunteer)
     else:
         db.commit()
         db.refresh(volunteer)
@@ -1381,6 +1427,38 @@ def resend_volunteer_welcome_card(
     return volunteer
 
 
+@router.post(
+    "/volunteers/{volunteer_id}/resend-rejection-email",
+    response_model=VolunteerApplicationResponse,
+)
+def resend_volunteer_rejection_email(
+    volunteer_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    volunteer = (
+        db.query(VolunteerApplication)
+        .filter(VolunteerApplication.id == volunteer_id)
+        .first()
+    )
+
+    if not volunteer:
+        raise HTTPException(
+            404,
+            "Volunteer application not found",
+        )
+
+    if volunteer.status != "rejected":
+        raise HTTPException(
+            400,
+            "Rejection emails can only be sent to rejected volunteers.",
+        )
+
+    _send_volunteer_rejection_email(db, volunteer)
+
+    return volunteer
+
+
 @router.delete(
     "/volunteers/{volunteer_id}",
 )
@@ -1413,3 +1491,57 @@ def delete_volunteer_application(
     return {
         "message": "Volunteer application deleted"
     }
+
+
+# ============================================================
+# DONATIONS ADMIN
+# ============================================================
+
+@router.get(
+    "/donations",
+    response_model=List[DonationResponse],
+)
+def get_admin_donations(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(Donation)
+        .order_by(Donation.created_at.desc(), Donation.id.desc())
+        .all()
+    )
+
+
+@router.post(
+    "/donations/{donation_id}/resend-receipt",
+    response_model=DonationResponse,
+)
+def resend_donation_documents(
+    donation_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    from .donation import _email_donation_documents
+
+    donation = (
+        db.query(Donation)
+        .filter(Donation.id == donation_id)
+        .first()
+    )
+
+    if not donation:
+        raise HTTPException(404, "Donation record not found")
+
+    if donation.status != "completed":
+        raise HTTPException(
+            400,
+            "Receipts can only be sent for completed donations.",
+        )
+
+    payment_id = donation.razorpay_payment_id or ""
+    _email_donation_documents(donation, payment_id)
+
+    db.commit()
+    db.refresh(donation)
+
+    return donation

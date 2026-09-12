@@ -10,7 +10,11 @@ from ..database import get_db
 from ..models import Donation, Cause
 from ..schemas import RazorpayOrderCreate, RazorpayVerifyRequest, DonationResponse
 from ..donation_receipt import build_donation_receipt_html
-from ..email_service import send_donation_receipt_email
+from ..email_service import send_donation_documents_email
+from ..certificate_pdf import (
+    build_donation_certificate_pdf,
+    build_donation_receipt_pdf,
+)
 
 try:
     import razorpay
@@ -105,6 +109,51 @@ def _find_donation_by_order(db: Session, order_id: str):
     return db.query(Donation).filter(Donation.razorpay_order_id == order_id).first()
 
 
+def _email_donation_documents(
+    donation: Donation,
+    payment_id: str,
+) -> bool:
+    """Generate the PDF certificate + receipt and email them to the donor."""
+    receipt_html = build_donation_receipt_html(
+        full_name=donation.donor_name,
+        email=donation.donor_email,
+        phone=donation.donor_phone or "",
+        amount=donation.amount,
+        order_id=donation.razorpay_order_id or "",
+        payment_id=payment_id,
+        paid_at=donation.created_at,
+    )
+
+    certificate_pdf = None
+    receipt_pdf = None
+    try:
+        certificate_pdf = build_donation_certificate_pdf(
+            donor_name=donation.donor_name,
+            amount=donation.amount,
+            payment_id=payment_id,
+            paid_at=donation.created_at,
+        )
+        receipt_pdf = build_donation_receipt_pdf(
+            full_name=donation.donor_name,
+            email=donation.donor_email,
+            phone=donation.donor_phone or "",
+            amount=donation.amount,
+            order_id=donation.razorpay_order_id or "",
+            payment_id=payment_id,
+            paid_at=donation.created_at,
+        )
+    except Exception:
+        print("Failed to generate donation PDF documents")
+
+    return send_donation_documents_email(
+        to_email=donation.donor_email,
+        donor_name=donation.donor_name,
+        receipt_html=receipt_html,
+        certificate_pdf=certificate_pdf,
+        receipt_pdf=receipt_pdf,
+    )
+
+
 def _finalize_donation(
     db: Session,
     donation: Donation,
@@ -112,7 +161,7 @@ def _finalize_donation(
     signature: str = "",
 ) -> Donation:
     """Idempotently mark a donation completed, credit its cause, and email the
-    80G receipt. Safe to call from /verify and /webhook.
+    80G receipt + certificate. Safe to call from /verify and /webhook.
     """
     was_pending = donation.status != "completed"
 
@@ -127,20 +176,7 @@ def _finalize_donation(
             cause.raised_amount = (cause.raised_amount or 0.0) + donation.amount
 
     if not donation.receipt_sent_at:
-        receipt_html = build_donation_receipt_html(
-            full_name=donation.donor_name,
-            email=donation.donor_email,
-            phone=donation.donor_phone or "",
-            amount=donation.amount,
-            order_id=donation.razorpay_order_id or "",
-            payment_id=payment_id,
-            paid_at=donation.created_at,
-        )
-        sent = send_donation_receipt_email(
-            to_email=donation.donor_email,
-            donor_name=donation.donor_name,
-            receipt_html=receipt_html,
-        )
+        sent = _email_donation_documents(donation, payment_id)
         if sent:
             donation.receipt_sent_at = datetime.utcnow()
 

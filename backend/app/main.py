@@ -109,6 +109,16 @@ with engine.begin() as connection:
                 )
             )
 
+        if "rejection_email_sent_at" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN rejection_email_sent_at TIMESTAMP WITHOUT TIME ZONE
+                    """
+                )
+            )
+
     if "donations" in existing_tables:
         columns = {
             column["name"]
