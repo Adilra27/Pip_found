@@ -61,14 +61,6 @@ class VolunteerApplicationResponse(VolunteerApplicationCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
-class DonationCreate(BaseModel):
-    donor_name: str
-    donor_email: str
-    donor_phone: Optional[str] = None
-    amount: float
-    cause_id: Optional[int] = None
-
-
 class RazorpayOrderCreate(BaseModel):
     amount: float
     currency: str = "INR"
@@ -96,7 +88,6 @@ class DonationResponse(BaseModel):
     razorpay_order_id: Optional[str] = None
     razorpay_payment_id: Optional[str] = None
     receipt_sent_at: Optional[datetime] = None
-    certificate_document_path: Optional[str] = None
     invoice_document_path: Optional[str] = None
     created_at: datetime
 

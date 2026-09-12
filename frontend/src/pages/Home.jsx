@@ -12,7 +12,6 @@ import {
   HeartPulse,
   Leaf,
   MapPin,
-  PlayCircle,
   ShieldCheck,
   Sprout,
   Trophy,

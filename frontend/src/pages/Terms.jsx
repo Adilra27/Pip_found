@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 export default function Terms() {
   return (

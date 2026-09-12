@@ -145,16 +145,6 @@ with engine.begin() as connection:
                 )
             )
 
-        if "certificate_document_path" not in columns:
-            connection.execute(
-                text(
-                    """
-                    ALTER TABLE donations
-                    ADD COLUMN certificate_document_path VARCHAR(500)
-                    """
-                )
-            )
-
         if "invoice_document_path" not in columns:
             connection.execute(
                 text(

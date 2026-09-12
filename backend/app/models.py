@@ -37,7 +37,6 @@ class Donation(Base):
     razorpay_signature = Column(String(512), nullable=True)
     status = Column(String(50), default="pending")
     receipt_sent_at = Column(DateTime, nullable=True)
-    certificate_document_path = Column(String(500), nullable=True)
     invoice_document_path = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

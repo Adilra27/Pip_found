@@ -102,7 +102,7 @@ export default function JoinUs({ onOpenDonate }) {
           profilePic: null
         });
       }, 3000);
-    } catch (err) {
+    } catch {
       setLoading(false);
       setError('Failed to submit. Please try again.');
     }

@@ -1753,7 +1753,7 @@ function DonationManager() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 

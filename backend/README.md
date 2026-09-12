@@ -69,16 +69,3 @@ create a Blueprint from this repository, or create a Static Site with:
 The blueprint also adds the SPA rewrite required by React Router. Set the
 backend `CORS_ORIGINS` variable to the exact Render frontend URL after the site
 is created. The example assumes `https://pip-found-frontend.onrender.com`.
-
-## Migrating legacy SQLite data (one-time, already run in prod)
-
-`backend/pwf_app.db` was the old SQLite database. To copy its rows into a fresh
-Postgres database locally, run:
-
-```bash
-DATABASE_URL="postgresql+psycopg://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require" python migrate_sqlite_to_postgres.py
-```
-
-This recreates the schema, truncates the target tables, copies all rows while
-preserving IDs, resets identity sequences, and verifies row counts. The SQLite
-files (`pwf_app.db`) are no longer used by the app and are gitignored.

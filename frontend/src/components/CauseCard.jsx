@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Target, Users } from 'lucide-react';
+import { Heart } from 'lucide-react';
 
 export default function CauseCard({ cause, onDonate }) {
   const percentage = Math.min(

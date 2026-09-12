@@ -189,7 +189,7 @@ def _finalize_donation(
     signature: str = "",
 ) -> Donation:
     """Idempotently mark a donation completed, credit its cause, and email the
-    80G receipt + certificate. Safe to call from /verify and /webhook.
+    80G receipt. Safe to call from /verify and /webhook.
     """
     was_pending = donation.status != "completed"
 

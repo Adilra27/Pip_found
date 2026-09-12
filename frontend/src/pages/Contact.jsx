@@ -37,7 +37,7 @@ export default function Contact() {
       setPhone('');
       setSubject('');
       setMessage('');
-    } catch (err) {
+    } catch {
       setLoading(false);
       setError('Failed to send your message. Please try again or call us directly.');
     }
