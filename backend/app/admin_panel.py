@@ -140,10 +140,12 @@ class CertificateTemplateAdmin(ModelView, model=CertificateTemplate):
 class IssuedCertificateAdmin(ModelView, model=IssuedCertificate):
     column_list = [
         IssuedCertificate.id,
+        IssuedCertificate.certificate_number,
         IssuedCertificate.recipient_name,
-        IssuedCertificate.type_label,
+        IssuedCertificate.certificate_type,
         IssuedCertificate.status,
-        IssuedCertificate.sent_at,
+        IssuedCertificate.issue_date,
+        IssuedCertificate.revoked_at,
         IssuedCertificate.created_at,
     ]
     icon = "fa-solid fa-certificate"

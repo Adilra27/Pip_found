@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import DocumentGenerator from '../components/admin/DocumentGenerator';
+
 import {
   CalendarDays,
   Image as ImageIcon,
@@ -13,6 +15,7 @@ import {
   Trash2,
   Upload,
   Video,
+  FileText,
   DollarSign,
   Users,
   Heart,
@@ -4083,6 +4086,11 @@ export default function Admin() {
       FileImage,
     ],
     [
+      'generated',
+      'Official Documents',
+      FileText,
+    ],
+    [
       'issue',
       'Issue Certificate',
       Send,
@@ -4415,6 +4423,10 @@ export default function Admin() {
                 loadDashboard
               }
             />
+          )}
+
+          {tab === 'generated' && (
+            <DocumentGenerator />
           )}
 
           {tab === 'footer' && (

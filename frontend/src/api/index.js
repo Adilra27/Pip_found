@@ -1137,3 +1137,101 @@ export async function reorderAdminFooterFocus(order) {
     body: JSON.stringify({ order }),
   });
 }
+
+
+// ============================================================
+// PUBLIC VERIFICATION (QR codes / certificate numbers)
+// ============================================================
+
+export async function verifyCertificate(identifier) {
+  const res = await fetch(`${API_BASE_URL}/verify/certificate/${encodeURIComponent(identifier)}`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error('Verification service unreachable');
+  return res.json();
+}
+
+export async function verifyVolunteer(identifier) {
+  const res = await fetch(`${API_BASE_URL}/verify/volunteer/${encodeURIComponent(identifier)}`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error('Verification service unreachable');
+  return res.json();
+}
+
+
+// ============================================================
+// ADMIN GENERATED DOCUMENTS (official templates)
+// ============================================================
+
+export async function fetchGeneratedOptions() {
+  return adminFetch('/admin/generated/options');
+}
+
+export async function generateAdminCertificate(payload) {
+  return adminFetch('/admin/generated/certificates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchGeneratedCertificates({
+  typeLabel,
+  search,
+  page = 1,
+  pageSize = 20,
+} = {}) {
+  const params = new URLSearchParams({ page, page_size: pageSize });
+  if (typeLabel) params.set('type_label', typeLabel);
+  if (search) params.set('search', search);
+  return adminFetch(`/admin/generated/certificates?${params.toString()}`);
+}
+
+export async function revokeAdminCertificate(id) {
+  return adminFetch(`/admin/generated/certificates/${id}/revoke`, {
+    method: 'POST',
+  });
+}
+
+export async function generateAdminVolunteerCard(applicationId, payload = {}) {
+  return adminFetch(`/admin/generated/volunteers/${applicationId}/card`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchGeneratedVolunteers({ status = 'accepted', search, onlyWithCards = false } = {}) {
+  const params = new URLSearchParams({ status: status || 'all' });
+  if (search) params.set('search', search);
+  if (onlyWithCards) params.set('only_with_cards', 'true');
+  return adminFetch(`/admin/generated/volunteers?${params.toString()}`);
+}
+
+export async function revokeAdminVolunteerCard(id) {
+  return adminFetch(`/admin/generated/volunteers/${id}/revoke`, {
+    method: 'POST',
+  });
+}
+
+function downloadBlob(blob, fallbackName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadAdminCertificate(id, format = 'jpg') {
+  const blob = await adminFetchBlob(`/admin/generated/certificates/${id}/download?format=${format}`);
+  downloadBlob(blob, `certificate-${format === 'pdf' ? 'pdf' : 'jpg'}`);
+}
+
+export async function downloadAdminVolunteerCard(id, format = 'jpg') {
+  const blob = await adminFetchBlob(`/admin/generated/volunteers/${id}/download?format=${format}`);
+  downloadBlob(blob, `volunteer-id-card-${format === 'pdf' ? 'pdf' : 'jpg'}`);
+}

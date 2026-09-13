@@ -102,6 +102,23 @@ class IssuedCertificate(Base):
     sent_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Dynamic certificate fields (official templates).
+    certificate_number = Column(String(100), unique=True, index=True, nullable=True)
+    certificate_type = Column(String(100), nullable=True, default="certificate")
+    first_name = Column(String(255), nullable=True)
+    last_name = Column(String(255), nullable=True)
+    program_name = Column(String(255), nullable=True)
+    starting_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    organisation_name = Column(String(255), nullable=True)
+    competition_date = Column(Date, nullable=True)
+    competition_location = Column(String(255), nullable=True)
+    issue_date = Column(Date, nullable=True)
+    generated_file_path = Column(String(500), nullable=True)
+    qr_verification_token = Column(String(100), unique=True, index=True, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     template = relationship("CertificateTemplate", back_populates="issued")
 
 
@@ -180,6 +197,15 @@ class VolunteerApplication(Base):
     card_sent_at = Column(DateTime, nullable=True)
     rejection_email_sent_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Official volunteer ID card fields.
+    location = Column(String(255), nullable=True)
+    issue_date = Column(Date, nullable=True)
+    valid_till = Column(Date, nullable=True)
+    card_file_path = Column(String(500), nullable=True)
+    card_qr_token = Column(String(100), unique=True, index=True, nullable=True)
+    card_revoked_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class TeamMember(Base):

@@ -18,6 +18,8 @@ import JoinUs from './pages/JoinUs';
 import Impact from './pages/Impact';
 import Admin from './pages/Admin';
 import Partner from './pages/Partner';
+import VerifyCertificate from './pages/VerifyCertificate';
+import VerifyVolunteer from './pages/VerifyVolunteer';
 
 
 import { fetchCauses } from './api';
@@ -81,6 +83,8 @@ export default function App() {
             <Route path="/impact" element={<Impact />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/partners/:partnerSlug" element={<Partner />} />
+            <Route path="/verify/certificate/:identifier" element={<VerifyCertificate />} />
+            <Route path="/verify/volunteer/:identifier" element={<VerifyVolunteer />} />
           </Routes>
         </main>
 

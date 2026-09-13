@@ -13,7 +13,6 @@ certificate renderer, but for arbitrary uploaded templates.
 
 import io
 import logging
-import mimetypes
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -107,12 +106,13 @@ def _draw_anchor(
     size = int(anchor.get("font_size", 24) or 24)
     color = _hex_color(anchor.get("color"))
     max_width = int(anchor.get("max_width", 800) or 800)
+    anchor_name = str(anchor.get("anchor") or "mm")
 
     font = _load_font(size)
     while size > 10 and draw.textlength(text, font=font) > max_width:
         size -= 1
         font = _load_font(size)
-    draw.text((x, y), text, font=font, fill=color, anchor="mm")
+    draw.text((x, y), text, font=font, fill=color, anchor=anchor_name)
 
 
 def load_background_image(image_url: str | None) -> Image.Image:
@@ -147,7 +147,37 @@ def normalize_layout(layout) -> dict:
         return {}
     if hasattr(layout, "model_dump"):
         layout = layout.model_dump()
-    return layout
+    return dict(layout)
+
+
+def _overlay_png(image: Image.Image, png_bytes, anchor) -> None:
+    """Paste a PNG (QR/photo) onto the image at the given anchor box."""
+    if not anchor or not png_bytes:
+        return
+    x = float(anchor.get("x", 0))
+    y = float(anchor.get("y", 0))
+    size = int(anchor.get("size", 150) or 100)
+    anchor_name = str(anchor.get("anchor") or "mm")
+
+    overlay = Image.open(io.BytesIO(png_bytes)).convert("RGB")
+    overlay = overlay.resize((size, size), Image.LANCZOS)
+
+    left, top = {"mm": (x - size / 2, y - size / 2)}.get(
+        anchor_name, (x - size / 2, y - size / 2)
+    )
+    image.paste(overlay, (int(round(left)), int(round(top))))
+
+
+def _overlay_qr(image: Image.Image, qr_data: str, anchor) -> None:
+    """Generate and paste a dynamic QR onto the image."""
+    from .qrcode_util import build_qr_png
+
+    if not qr_data:
+        return
+    png = build_qr_png(qr_data)
+    if png is None:
+        return
+    _overlay_png(image, png, anchor)
 
 
 def build_certificate_image(
@@ -157,34 +187,69 @@ def build_certificate_image(
     recipient_name: str = "",
     event_topic: str = "",
     event_date=None,
+    fields: dict | None = None,
+    qr_data: str | None = None,
+    qr_anchor=None,
+    overlay_pngs: list[tuple[bytes, dict]] | None = None,
 ) -> bytes:
-    """Render name / topic / date onto the template and return JPEG bytes."""
+    """Render dynamic fields + optional Href/codes QR onto a template image.
+
+    ``fields`` maps layout keys (name, program_name, dates, certificate
+    number, ...) to their display strings. Legacy ``recipient_name`` /
+    ``event_topic`` / ``event_date`` behave exactly as before and are drawn
+    through the ``name`` / ``topic`` / ``date`` anchors.
+
+    ``qr_data`` + ``qr_anchor`` (or ``layout["qr"]``) stamp a verification
+    QR into the document. ``overlay_pngs`` pastes arbitrary PNGs (e.g. the
+    volunteer photo) at their given anchor dicts.
+    """
     layout = normalize_layout(layout)
     image = load_background_image(image_url)
 
-    name_anchor = layout.get("name") or {}
-    date_anchor = layout.get("date")
-    topic_anchor = layout.get("topic")
-
-    _blank_region(image, name_anchor.get("box"))
-    if date_anchor:
-        _blank_region(image, date_anchor.get("box"))
-    if topic_anchor:
-        _blank_region(image, topic_anchor.get("box"))
+    # Blank every field box before drawing so pre-printed placeholders are
+    # cleared with the correct sampled background colour.
+    draw_probe = ImageDraw.Draw(image)
+    for key, anchor in layout.items():
+        if not isinstance(anchor, dict):
+            continue
+        box = anchor.get("box")
+        if box:
+            _blank_region(image, box)
 
     draw = ImageDraw.Draw(image)
 
-    name = _clean(recipient_name).upper()
-    if name_anchor:
+    fields = dict(fields or {})
+
+    name = _clean(recipient_name or fields.pop("name", "") or "").upper()
+    name_anchor = layout.get("name")
+    if name_anchor and name:
         _draw_anchor(draw, name_anchor, name)
 
-    topic = _clean(event_topic)
-    if topic_anchor:
+    topic = _clean(event_topic or fields.pop("topic", "") or "")
+    topic_anchor = layout.get("topic")
+    if topic_anchor and topic:
         _draw_anchor(draw, topic_anchor, topic)
 
-    if date_anchor:
+    if "date" in layout:
         date_text = _clean(event_date) or ""
-        _draw_anchor(draw, date_anchor, date_text)
+        date_anchor = layout.get("date")
+        if date_anchor and date_text:
+            _draw_anchor(draw, date_anchor, date_text)
+
+    for key, value in fields.items():
+        if value in (None, ""):
+            continue
+        anchor = layout.get(key)
+        if not isinstance(anchor, dict):
+            continue
+        _draw_anchor(draw, anchor, _clean(value))
+
+    qr_anchor = qr_anchor or layout.get("qr")
+    if qr_data:
+        _overlay_qr(image, qr_data, qr_anchor)
+
+    for png_bytes, anchor in overlay_pngs or []:
+        _overlay_png(image, png_bytes, anchor)
 
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG", quality=95)

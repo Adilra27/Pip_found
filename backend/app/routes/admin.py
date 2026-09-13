@@ -69,6 +69,7 @@ from ..email_service import (
     send_volunteer_rejection_email,
     send_volunteer_welcome_email,
 )
+from ..document_service import generate_qr_token, MEDIA_DIR
 from ..donation_receipt import build_donation_receipt_html
 from ..welcome_card import (
     build_volunteer_qr_png,
@@ -104,6 +105,17 @@ TEAM_DIR = MEDIA_DIR / "team"
 CERTIFICATE_DIR = MEDIA_DIR / "certificates"
 ABOUT_DIR = MEDIA_DIR / "about"
 TEMPLATE_DIR = MEDIA_DIR / "certificate_templates"
+
+
+def _read_media_file(media_path: str | None) -> bytes | None:
+    """Read a media-relative path (``/media/...``) into bytes, or None."""
+    if not media_path:
+        return None
+    clean = media_path.removeprefix("/media/").removeprefix("media/")
+    path = MEDIA_DIR / clean
+    if not path.is_file():
+        return None
+    return path.read_bytes()
 
 
 # ============================================================
@@ -1658,6 +1670,44 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
         volunteer_id = _issue_volunteer_id(volunteer)
         qr_png = build_volunteer_qr_png(volunteer_id)
 
+        # Official Volunteer ID card from the registered template.
+        official_card_jpg = None
+        try:
+                from ..document_service import build_volunteer_card, render_volunteer_card_jpeg
+                from ..qrcode_util import verify_url
+
+                if not volunteer.card_file_path:
+                    build_volunteer_card(
+                        db,
+                        volunteer,
+                        location=volunteer.location,
+                        status="accepted",
+                    )
+                else:
+                    # Persist a fresh render so the file always matches the record.
+                    volunteer.card_qr_token = volunteer.card_qr_token or generate_qr_token()
+                    from pathlib import Path as _Path
+
+                    card_path = _Path(volunteer.card_file_path)
+                    saved_path = _Path(__file__).resolve().parents[2] / "media" / (
+                        str(card_path).removeprefix("/media/").removeprefix("media/")
+                    )
+                    saved_path.parent.mkdir(parents=True, exist_ok=True)
+                    saved_path.write_bytes(render_volunteer_card_jpeg(volunteer))
+                    db.commit()
+                official_card_jpg = _read_media_file(volunteer.card_file_path)
+                volunteer_verify_url = verify_url(
+                    "volunteer", volunteer.card_qr_token or volunteer_id
+                )
+        except Exception as exc:
+            logger.error(
+                "Failed to generate official volunteer ID card for %s: %s",
+                volunteer_id,
+                exc,
+            )
+            official_card_jpg = None
+            volunteer_verify_url = None
+
         try:
             card_jpg = build_volunteer_card_jpg(
                 full_name=volunteer.full_name,
@@ -1685,6 +1735,8 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
             joined_date=datetime.utcnow(),
             card_jpg=card_jpg,
             certificate_image=None,
+            id_card_jpg=official_card_jpg,
+            verification_url=volunteer_verify_url,
         )
 
         if sent:

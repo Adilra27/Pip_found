@@ -57,6 +57,11 @@ class VolunteerApplicationResponse(VolunteerApplicationCreate):
     card_sent_at: Optional[datetime] = None
     card_emailed: Optional[bool] = None
     rejection_email_sent_at: Optional[datetime] = None
+    location: Optional[str] = None
+    issue_date: Optional[date] = None
+    valid_till: Optional[date] = None
+    card_file_path: Optional[str] = None
+    card_revoked_at: Optional[datetime] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -424,3 +429,118 @@ class FooterFocusItemResponse(FooterFocusItemBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================
+# CERTIFICATE / VOLUNTEER CARD GENERATION (official templates)
+# ============================================================
+
+class CertificateGenerateRequest(BaseModel):
+    certificate_type: str
+    first_name: str
+    last_name: Optional[str] = None
+    recipient_email: Optional[str] = None
+    program_name: Optional[str] = None
+    starting_date: Optional[date] = None
+    end_date: Optional[date] = None
+    organisation_name: Optional[str] = None
+    competition_date: Optional[date] = None
+    competition_location: Optional[str] = None
+    issue_date: Optional[date] = None
+    certificate_number: Optional[str] = None
+    status: Optional[str] = "issued"
+    qr_verification_token: Optional[str] = None
+
+
+class GeneratedCertificateResponse(BaseModel):
+    id: int
+    certificate_number: Optional[str] = None
+    certificate_type: Optional[str] = None
+    recipient_name: str
+    recipient_email: Optional[str] = None
+    program_name: Optional[str] = None
+    starting_date: Optional[date] = None
+    end_date: Optional[date] = None
+    organisation_name: Optional[str] = None
+    competition_date: Optional[date] = None
+    competition_location: Optional[str] = None
+    issue_date: Optional[date] = None
+    rendered_url: Optional[str] = None
+    generated_file_path: Optional[str] = None
+    verified_url: Optional[str] = None
+    status: str
+    sent_at: Optional[datetime] = None
+    created_at: datetime
+    revoked: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class IssuedCertificateListResponse(BaseModel):
+    items: List[GeneratedCertificateResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class VolunteerCardGenerateRequest(BaseModel):
+    issue_date: Optional[date] = None
+    valid_till: Optional[date] = None
+    location: Optional[str] = None
+    status: Optional[str] = "settings"
+    qr_verification_token: Optional[str] = None
+
+
+class GeneratedVolunteerCardResponse(BaseModel):
+    id: int
+    volunteer_id: Optional[str] = None
+    full_name: str
+    email: str
+    profile_pic_url: Optional[str] = None
+    status: str
+    location: Optional[str] = None
+    issue_date: Optional[date] = None
+    valid_till: Optional[date] = None
+    card_file_path: Optional[str] = None
+    verified_url: Optional[str] = None
+    card_revoked_at: Optional[datetime] = None
+    card_sent_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================
+# PUBLIC VERIFICATION
+# ============================================================
+
+class VerifiedCertificateResponse(BaseModel):
+    valid: bool
+    revoked: bool = False
+    expired: bool = False
+    reason: Optional[str] = None
+    certificate_number: Optional[str] = None
+    certificate_type: Optional[str] = None
+    recipient_name: str
+    program_name: Optional[str] = None
+    issue_date: Optional[date] = None
+    starting_date: Optional[date] = None
+    end_date: Optional[date] = None
+    organisation_name: Optional[str] = None
+    competition_date: Optional[date] = None
+    competition_location: Optional[str] = None
+    issued_by: str = "Piplad Welfare Foundation"
+
+
+class VerifiedVolunteerResponse(BaseModel):
+    valid: bool
+    revoked: bool = False
+    expired: bool = False
+    reason: Optional[str] = None
+    full_name: str
+    volunteer_id: Optional[str] = None
+    interest_area: Optional[str] = None
+    location: Optional[str] = None
+    issue_date: Optional[date] = None
+    valid_till: Optional[date] = None
+    issued_by: str = "Piplad Welfare Foundation"

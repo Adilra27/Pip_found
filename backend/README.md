@@ -49,6 +49,32 @@ runs on Render with **PostgreSQL** (no SQLite).
 | `BREVO_API_KEY` | No | Brevo HTTPS API key; the only email transport. Absent => email sending is skipped (logged) so failures stay visible |
 | `EMAIL_FROM` / `EMAIL_FROM_NAME` | No | Verified Brevo sender used for outbound email |
 | `CONTACT_WEBSITE`/`CONTACT_EMAIL`/`CONTACT_PHONE` | No | Contact footer for the volunteer welcome email (defaults to the foundation website/email; phone only when set) |
+| `PUBLIC_FRONTEND_URL` | No | Public frontend base URL embedded in certificate / volunteer-card QR codes. Defaults to `http://localhost:5173` for local dev |
+
+## Official Documents (certificates & Volunteer ID cards)
+
+The admin "Official Documents" tab (`/api/admin/generated/**`) generates
+documents from the 5 registered official templates:
+
+- 4 certificates: Appreciation, Internship, Completion, Participation.
+- 1 volunteer ID card rendered from `volunteer card.png`.
+
+Every document is stamped with a unique number, an issue/validity window and a
+QR code encoding `PUBLIC_FRONTEND_URL + /verify/<kind>/<token>`. The public
+`/api/verify/certificate/{id}` and `/api/verify/volunteer/{id}` endpoints
+validate documents (revocation and card expiry are reported). Accepted
+volunteers automatically get the official card generated, saved under
+`media/generated/volunteers/`, and emailed as `Volunteer_ID_Card.jpg`.
+
+Field positions are the single source of truth in `app/document_layouts.py`.
+Preview the tuned anchors with:
+
+```bash
+python scripts/calibrate_templates.py
+```
+
+Output (labelled bounding boxes) lands in `backend/previews/` plus a
+mean-luminance report so fields sitting on dark ornamentation are easy to spot.
 
 ## Seeding
 

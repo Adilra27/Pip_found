@@ -39,6 +39,11 @@ services:
       - key: CONTACT_EMAIL
         sync: false
         value: info@pipladfoundation.in
+      # Public frontend URL embedded in certificate / volunteer-card QR codes.
+      # Must be the deployed frontend domain so scans open the correct site.
+      - key: PUBLIC_FRONTEND_URL
+        sync: false
+        value: https://www.pipladfoundation.in
 
   - type: web
     name: pip-found-frontend

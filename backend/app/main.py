@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 from .admin_panel import setup_admin
 from .database import Base, engine
+from .document_service import ensure_generated_dirs
 from .routes import (
     about,
     admin,
@@ -20,9 +21,11 @@ from .routes import (
     certificates,
     contact,
     donation,
+    generation,
     impact,
     media,
     team,
+    verify,
     volunteers,
 )
 
@@ -152,6 +155,268 @@ with engine.begin() as connection:
                     """
                 )
             )
+
+        if "location" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN location VARCHAR(255)
+                    """
+                )
+            )
+
+        if "issue_date" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN issue_date DATE
+                    """
+                )
+            )
+
+        if "valid_till" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN valid_till DATE
+                    """
+                )
+            )
+
+        if "card_file_path" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN card_file_path VARCHAR(500)
+                    """
+                )
+            )
+
+        if "card_qr_token" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN card_qr_token VARCHAR(100)
+                    """
+                )
+            )
+
+        if "card_revoked_at" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN card_revoked_at TIMESTAMP WITHOUT TIME ZONE
+                    """
+                )
+            )
+
+        if "updated_at" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN updated_at TIMESTAMP WITHOUT TIME ZONE
+                    """
+                )
+            )
+
+    if "issued_certificates" in existing_tables:
+        columns = {
+            column["name"]
+            for column in inspector.get_columns("issued_certificates")
+        }
+
+        if "certificate_number" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN certificate_number VARCHAR(100)
+                    """
+                )
+            )
+
+        if "certificate_type" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN certificate_type VARCHAR(100)
+                    """
+                )
+            )
+
+        if "first_name" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN first_name VARCHAR(255)
+                    """
+                )
+            )
+
+        if "last_name" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN last_name VARCHAR(255)
+                    """
+                )
+            )
+
+        if "program_name" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN program_name VARCHAR(255)
+                    """
+                )
+            )
+
+        if "starting_date" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN starting_date DATE
+                    """
+                )
+            )
+
+        if "end_date" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN end_date DATE
+                    """
+                )
+            )
+
+        if "organisation_name" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN organisation_name VARCHAR(255)
+                    """
+                )
+            )
+
+        if "competition_date" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN competition_date DATE
+                    """
+                )
+            )
+
+        if "competition_location" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN competition_location VARCHAR(255)
+                    """
+                )
+            )
+
+        if "issue_date" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN issue_date DATE
+                    """
+                )
+            )
+
+        if "generated_file_path" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN generated_file_path VARCHAR(500)
+                    """
+                )
+            )
+
+        if "qr_verification_token" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN qr_verification_token VARCHAR(100)
+                    """
+                )
+            )
+
+        if "revoked_at" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN revoked_at TIMESTAMP WITHOUT TIME ZONE
+                    """
+                )
+            )
+
+        if "updated_at" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE issued_certificates
+                    ADD COLUMN updated_at TIMESTAMP WITHOUT TIME ZONE
+                    """
+                )
+            )
+
+    # Unique constraints for the new official-document columns. Adding these
+    # to existing tables needs explicit index creation (create_all does not
+    # touch existing tables), so we create them idempotently here.
+    created_indexes = {
+        row[0]
+        for row in connection.execute(
+            text("SELECT indexname FROM pg_indexes WHERE schemaname = 'public'")
+        ).fetchall()
+    }
+    _CREATE_INDEXES = {
+        "ix_issued_certificates_certificate_number": (
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "ix_issued_certificates_certificate_number "
+            "ON issued_certificates (certificate_number)"
+        ),
+        "ix_issued_certificates_qr_verification_token": (
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "ix_issued_certificates_qr_verification_token "
+            "ON issued_certificates (qr_verification_token)"
+        ),
+        "ix_volunteer_applications_card_qr_token": (
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "ix_volunteer_applications_card_qr_token "
+            "ON volunteer_applications (card_qr_token)"
+        ),
+        "ix_volunteer_applications_volunteer_id": (
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "ix_volunteer_applications_volunteer_id "
+            "ON volunteer_applications (volunteer_id)"
+        ),
+    }
+    if "issued_certificates" in existing_tables or "volunteer_applications" in existing_tables:
+        for name, ddl in _CREATE_INDEXES.items():
+            if name not in created_indexes:
+                connection.execute(text(ddl))
 
     if "donations" in existing_tables:
         columns = {
@@ -313,6 +578,16 @@ app.include_router(
     tags=["Impact"],
 )
 
+app.include_router(
+    generation.router,
+    tags=["Admin Generated Documents"],
+)
+
+app.include_router(
+    verify.router,
+    tags=["Verify"],
+)
+
 
 # ============================================================
 # ROOT ENDPOINT
@@ -387,6 +662,9 @@ MEDIA_DIR.mkdir(
     parents=True,
     exist_ok=True,
 )
+
+# Generated official certificates and volunteer ID cards.
+ensure_generated_dirs()
 
 
 # ============================================================

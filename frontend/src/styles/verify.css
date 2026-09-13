@@ -1,0 +1,104 @@
+.verify-page {
+  min-height: 70vh;
+  background: linear-gradient(180deg, #f7faf2 0%, #ffffff 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 56px 20px 72px;
+}
+
+.verify-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.verify-badge.valid { background: #dcfce7; color: #16a34a; }
+.verify-badge.revoked { background: #fee2e2; color: #dc2626; }
+.verify-badge.expired { background: #fef3c7; color: #d97706; }
+.verify-badge.unknown { background: #e2e8f0; color: #64748b; }
+.verify-badge.loading { background: #eef2ff; color: #6366f1; }
+
+.verify-card {
+  max-width: 620px;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e7ece2;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+}
+
+.verify-status {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.verify-status h1 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.verify-status p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.verify-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 20px;
+}
+
+.verify-details .full { grid-column: 1 / -1; }
+
+.verify-field {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.verify-field span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.verify-field b {
+  font-size: 0.95rem;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.verify-page .back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  color: #047857;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.verify-page .back-link:hover { text-decoration: underline; }
+
+@media (max-width: 520px) {
+  .verify-details { grid-template-columns: 1fr; }
+  .verify-card { padding: 24px 18px; }
+}

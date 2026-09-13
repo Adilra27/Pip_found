@@ -1,0 +1,58 @@
+﻿
+==============================media\certificate_templates\Certificate of Appriciation.png (1536x1024)==============================
+   0 isr;:,,:;;;irsXXXXAAA2222555555522222222222222222222255555555222AXXXXXXXXAAAA2222225522222222AA2222222AAAA22AAAAAAAAXXXXAA2255555555553333333333333333355522AAXXXssrri;;;;
+  18 ri;::;isrii;::,,,............,,,,....................,,,,,,,.......................,,,,,................................,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,:::::::::;GG
+  37 ,,,:;sAr,  .,.     ,:::::::,.                                                                                                                                           MM
+  56 .,:iXs,  ,:,    .rss,. . ..iAs,                                                                                                                                        .MM
+  75 .:iXr  ,;,     ;2Airr3i::2Xr;AAr  .2XXisrXA;A.  XA i2As                                                                           .            .                       .Mh
+  94 :;Xs  ,:      ,5X;X22Xr5XXA22:rAi ,&5H2MMMMAB: r##s5M;@i                                                            ;rsXXArX: ;: iXAsssAX  r  ArsXXX2A2,sXXXAsAsrX     .Mh
+ 113 ;s2, ,,       A2;iMX5srsri5r3i:A2 .2. ;Xsi  5Xr2ii2r2AX                                                              :,,:,... ..  ,,.,,,,  ,  ,,.,,:,,: .,.:;,:,,,     .Mh
+ 132 rAA ..        XX: sr:r2X2r:is,s52  rrri;:;rirs:,i;;i;sisrsrsrsrXs.                                                                                                     .hh
+ 151 s2r ,         .HA, .2,rM2 i.rhXM:  ;,,,:,.,;,,,..,,,:,,:::,..:,,:.                                                                                                      h3
+ 170 rA,            .AA3,r:s3A,sisMA,  .:;rrris;;ssrr;iiiiir:::irriis:;irr.                                                                                                  2A
+ 188 sA,              ;XA3hMMMh32X;                                                                                                                                          AA
+ 207 XA,                 ,:;;;:,                                                                                                                                             AA
+ 226 X2,                                    irr,        . :i rr;i         .            ;s;   i:                      s,       s,                           .                 AA
+ 245 X2.                                  .#5,;;isA;sAXAH:X2;9sX5.srs.sXr;#s:Xss  :XsX,9h:  iG#, XsXr;ArA,XXsisX:iss;M;;sX,M5:M;issi;2s5,                   .  .             22
+ 264 X2.                                  .B3:::#h2sHM,X#,2H:9.AGs9;irM59;B;3#A3  hG:Br#X  :HsMG.H2rSs#,GAG5,Sh2X#Ai:9shA#sM5.#XSsXSXB,@X                                    55
+ 283 XA.                                   .sXr,,si.ri .s;;r,s,;r.rs:,s;s,ri,ss:  .rri.s;  ii .s,Ghi,r#ri.r; :si.:si,r;rir;:r:s::ri,:s.s;                                    55
+ 302 XA.                                                                                         ;:  ,;                                                                      55
+ 321 XA.                                                                                                                                                                     52
+ 340 A5.         ..                                                    i3X2sX2;.X2;,3rX,;si2sXXAXhrr,iA3sr2AX                                            ...  .              33
+ 358 A5.      ...                                                      .;,:iis; is; rir,:r;si;,i;;;5 ,i;:rXii                                              .. .              33
+ 377 A5.                                                                                                                                                          ..         35
+ 396 A5.                                              2hXi5,hX2i2AAsG2;   hr,A sh ,h s5 hAX  :3  .hs,2XAsH2;   3s.2 iH..h,;h 35A.                      ..        ..          35
+ 415 A5.                                             :@3:Hs592XXh5:5M    ASGhshH9:h95#2X9s  .Ss rG#5rh5:AH    XSShs5HB;393HMr9A.                      ...                    33
+ 434 X2.      .                                      A2 ;3.3i3;5X3 M.,ii:h h2As:32;s;3:M5X  iSXih:2A5Xh M..ii:h.35sA,3ArrrAi33A.                                             33
+ 453 A5.      . ...                            ..               .    ,::,                     .      .    .::,                .   ...                            ..          33
+ 472 23,       ..                                                                                                                                                 ..         33
+ 491 23,                                          ..      ,   .:    .   ,.        ..           ,.  ,;,   .        ,.. ,    .                         ...           .  .      33
+ 510 hH,           .        ...                   ihh#MG,3MMHhMhhAMGMMHhG:2M333hh.55h33H#:5#35MH,MH35hhMXM.HGGss9,iH3hh33h5MhSMSMs                     .....          .     .SS
+ 528 MG,          ..       ..                        .        ..   .    . :.  ..       .                                .    ...                              .             .SG
+ 547 G#,         .                                    s2X553X M32AX5XAsM.2h5525MA2ss5:shsXsiXXsA2222AXXAr,2Ai:2srAXXXXXXsh sAHr                                ...          .#S
+ 566 G9,                                              rArisii r.i3rirsis ;;r;si;iXi:A,:,;risi:irrArrrrr;;.r;;,Xss3s5Asss:s.rsr.                                 ...         .#S
+ 585 G#,                                                          sAs2iss;sirA,X:s;A. ;Xr,A.A:XXr :,.:::.,:: ....                                                ..         .SG
+ 604 HS,        ...  .                                            S3MBHMMHMSG#3#HSG9X:5S9M9M9HS@M 522532hMh252H5Hr                                                .         .SG
+ 623 MS,      ......                                                                .:                        .  .                                                .         .SG
+ 642 MG,                                        2M2Ass2.XsXXAXhXXh5XrA5AXXXs.MsAA2:;2As5X535:;3.s2XAAs5AXAAXA2MArh.sh5MH35AX3AAXXXh;                              ..        .SS
+ 661 MG,                                        ,issXXi srssrisr:sssXsrrssii.irAXX;:iisAsssA,;5,iiiXXsArirriHMirXr rXri;rAr;As;ssr2i.                             ..        .SG
+ 680 23,                                                                                                                                                          .          33
+ 698 23,                                                                                                                                                          .          33
+ 717 53,     ,:,,,,;;..,,, ;:..,::,,,                                                                                                                                        33
+ 736 3M,     ;isXirssrrXsA,rXssrsXXXi,.,,,,,,,,,,,,,,,,,,,,,                                                              ,                                                  33
+ 755 3M,     ..     .,...                                                                                    sX :        ;h,                             sssr;ii;rrrsr       35
+ 774 3M,     ;XssrX;;rXXsX: ,,,,,,,,,,,,,,,,,,,,,,,,.                                                        2223:;hrrsXrG2X,:,                         .#B#MhM3GMhB#G       55
+ 793 3M,                                                                                                  ,::Xi2XAssrii;;:,,;:                           M3h3h222552h3       35
+ 812 3M,     AM55AAAXXAA225r .MM3335555553MSs                                                          ...,i;.                 .....                     hHA5X5rMX33h3       35
+ 831 3M,     hHr3XsssXA223hX .#5A23X2XXAA5G@2                                                                                                            2h225A555M3GM      .35
+ 850 3M,     5M22AXsssssXA2r .h3AAAsssssXAhSX                                                            rArXXssrsXAss;AA2sXAXsrX.                      .S9SMMA5hH5&HH      .52
+ 868 3H,     5H3X;sAXriXiX2r .35AXsiir;rX23Gs                                                         :;,,,,:,:;,,;,,,.;;;.,,::,i...                     hh322AAi2sH3X      .2A
+ 887 hH,     5Ghs  :. ,A;25r .35Asiii;;riA3Gs                  .,:;;iiirrriii;;;:,..                  rrAXXXs,sXXsrsrs;iirrsissXsssr                     ::::.,,,::,::      ;2s
+ 906 hH,     3SHX,.:,,i5r53s .hh35isrisrX3M#X             .,;irrrrii;;:::::::::;;;;;;;::,.                                                               :;::,,:,:::;;     ,Asi
+ 925 hH,     h9SHHMhhMMMMHHA .S#GGM333hhHG#@A         .:irrri;:,..                 ...,,,:::,,..                                                                          ;Asi:
+ 944 hH,     :i;;;;;;;;;;;;,  ii;;;;;;;;;;ii,    .,;irrr;:,.         ...,,,:::;;;;;iiiirrrrssssssssi;;:,.                                                              ,iXAsi;:
+ 963 MH,                                   .,;irsssri;:,,.  .,,;;irrrriiii;;;;;;;;;;iiiirrrsssXXAA225333hh35AXsri;::,...                                  ...,,,,:;irX255AXsrrr
+ 982 M9GHGGSSSSSSSSSSSSSSSSSSSSSSSSSSSSSHhhh3335522AAAAAA253hhhh335522AAAAAAAAAAAAAA2222222222225555333hhMMHHHHHHGGGGGGSSSSSSSSGGGGGGGGGGGSSSSSSS#######SSSSGGGGGSSSGHMh333333A
+1001  ;iiiiirrrssssssssrrrrrrrsssrrrrrrri;;;;;;;;;;;;;;;;;;;;;;;;::::::::::::::::::::::::::::::::::::::::;;;;;;;;;;;;;;iiiirrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrriiiiii;;;;;;;;;;;;: 
+1020                                                                                                                                                                           
+1022                                                                                                                                                                           

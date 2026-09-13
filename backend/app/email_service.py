@@ -143,12 +143,16 @@ def send_volunteer_welcome_email(
     joined_date,
     card_jpg: bytes,
     certificate_image: bytes | None = None,
+    id_card_jpg: bytes | None = None,
+    verification_url: str | None = None,
 ) -> bool:
     """Send the volunteer welcome e-mail: message body + card JPG + certificate.
 
     The e-mail body is the friendly welcome message (HTML + plain text); the
     graphical welcome card (QR + profile photo) and the official certificate
-    are attached as JPEG files so they display in every e-mail client.
+    are attached as JPEG files so they display in every e-mail client. When an
+    official Volunteer ID card JPEG is supplied it is attached as well and the
+    public verification link is included in the body.
     """
     from .welcome_card import build_welcome_message_html, build_welcome_message_text
 
@@ -165,6 +169,19 @@ def send_volunteer_welcome_email(
         joined_date=joined_date,
     )
 
+    if verification_url:
+        text_body += (
+            f"\n\nVerify your official Volunteer ID card online:\n{verification_url}\n"
+        )
+        verify_html = (
+            f'<p style="margin:4px 0 0;"><a href="{verification_url}" '
+            f'style="color:#047857;">Verify your Volunteer ID Card online</a></p>'
+        )
+        if html_body and "</body>" in html_body:
+            html_body = html_body.replace("</body>", f"{verify_html}</body>")
+        else:
+            html_body += verify_html
+
     attachments = [
         {
             "filename": "Volunteer_Card.jpg",
@@ -173,6 +190,15 @@ def send_volunteer_welcome_email(
             "subtype": "jpeg",
         }
     ]
+    if id_card_jpg:
+        attachments.append(
+            {
+                "filename": "Volunteer_ID_Card.jpg",
+                "data": id_card_jpg,
+                "maintype": "image",
+                "subtype": "jpeg",
+            }
+        )
     if certificate_image:
         attachments.append(
             {

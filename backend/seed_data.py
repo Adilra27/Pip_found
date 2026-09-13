@@ -7,6 +7,12 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal, engine, Base
+from app.document_layouts import (
+    CERTIFICATE_IMAGES,
+    CERTIFICATE_LABELS,
+    CERTIFICATE_TEMPLATE_SLUGS,
+    layout_for,
+)
 from app.models import (
     Cause,
     GalleryItem,
@@ -99,19 +105,10 @@ def _img_dimensions(url: str) -> tuple[int, int]:
 
 # Mapping of filename → (template_name, type_label, display_order).
 # Slugs are derived deterministically from the filename stem.
-_NEW_TEMPLATE_META = [
-    ("01_volunteer_id_card_front.png",  "Volunteer ID Card",           "Volunteer ID Card",          10),
-    ("02_volunteer_id_card_back.png",   "Volunteer ID Card (Back)",    "Volunteer ID Card",          11),
-    ("03_certificate_participation.png","Certificate of Participation","Certificate of Participation", 12),
-    ("04_certificate_volunteer.png",    "Certificate of Volunteering", "Certificate of Volunteering", 13),
-    ("05_certificate_program_completion.png",
-                                        "Certificate of Program Completion","Certificate of Program Completion", 14),
-    ("06_certificate_training_workshop.png",
-                                        "Certificate of Training & Workshop",
-                                                                        "Certificate of Training & Workshop", 15),
-    ("07_certificate_internship.png",   "Certificate of Internship",   "Certificate of Internship",  16),
-    ("08_certificate_appreciation.png", "Certificate of Appreciation", "Certificate of Appreciation", 17),
-]
+# NOTE: this old second-batch mapping pointed at the legacy 01_–08_ template
+# PNGs that were removed from the repo. Official documents now seed from
+# ``app.document_layouts`` (see _seed_official_certificate_templates).
+_NEW_TEMPLATE_META = []
 
 
 def _seed_certificate_templates(db) -> None:
@@ -192,22 +189,21 @@ def _seed_certificate_templates(db) -> None:
             db.add(CertificateTemplate(**tpl))
             added += 1
 
-    # Second batch: the 8 PNGs from media/certificate_templates/.
-    for filename, name, type_label, order in _NEW_TEMPLATE_META:
-        stem = Path(filename).stem
-        slug = slugify(stem) if "slugify" in dir() else stem
+    # Second batch: official Piplad templates (registered backgrounds with the
+    # calibrated multi-field layout from app/document_layouts).
+    for document_type, image in CERTIFICATE_IMAGES.items():
+        slug = CERTIFICATE_TEMPLATE_SLUGS[document_type]
         if slug in existing_slugs:
             continue
-        url = _media_url(f"certificate_templates/{filename}")
-        w, h = _img_dimensions(url)
+        url = _media_url(image)
         db.add(
             CertificateTemplate(
-                name=name,
+                name=CERTIFICATE_LABELS[document_type],
                 slug=slug,
-                type_label=type_label,
+                type_label=document_type,
                 image_url=url,
-                display_order=order,
-                layout=_auto_layout(w, h),
+                display_order=20,
+                layout=layout_for(document_type),
             )
         )
         added += 1

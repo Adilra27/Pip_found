@@ -1,0 +1,67 @@
+"""PDF export for rendered certificate/card JPEG images.
+
+Converts a rendered JPEG into a single A4 PDF page (landscape for
+certificates, portrait for cards) using ReportLab, so documents can be
+emailed, archived or downloaded alongside the JPEG version.
+"""
+
+import io
+import logging
+
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas as pdf_canvas
+
+logger = logging.getLogger(__name__)
+
+MARGIN = 4
+
+
+def jpeg_to_pdf_bytes(
+    jpeg_bytes: bytes,
+    *,
+    landscape_page: bool = True,
+    title: str = "Piplad Welfare Foundation",
+) -> bytes:
+    """Return A4 PDF bytes containing the single JPEG scaled to fit."""
+    buffer = io.BytesIO()
+    page = landscape(A4) if landscape_page else A4
+    c = pdf_canvas.Canvas(buffer, pagesize=page)
+    c.setTitle(title)
+    try:
+        image = ImageReader(io.BytesIO(jpeg_bytes))
+        iw, ih = image.getSize()
+    except Exception as exc:  # noqa: BLE001 - surface as a clean PDF failure
+        logger.error("Could not read JPEG for PDF export: %s", exc)
+        raise ValueError("JPEG could not be embedded in the PDF") from exc
+
+    pw, ph = page
+    draw_w = pw - 2 * MARGIN
+    draw_h = ph - 2 * MARGIN
+    scale = min(draw_w / iw, draw_h / ih)
+    final_w = iw * scale
+    final_h = ih * scale
+    x = (pw - final_w) / 2
+    y = (ph - final_h) / 2
+    c.drawImage(image, x, y, final_w, final_h)
+    c.showPage()
+    c.save()
+    return buffer.getvalue()
+
+
+def document_pdf_bytes(
+    jpeg_bytes: bytes,
+    *,
+    orientation: str = "landscape",
+    title: str = "Piplad Welfare Foundation",
+) -> bytes:
+    """Convenience wrapper choosing page orientation by document geometry.
+
+    ``orientation`` is ``landscape`` (certificates) or ``portrait`` (cards).
+    """
+    landscape_page = orientation != "portrait"
+    return jpeg_to_pdf_bytes(
+        jpeg_bytes,
+        landscape_page=landscape_page,
+        title=title,
+    )

@@ -1459,3 +1459,12 @@ a {
     min-width: 0;
   }
 }
+
+.spin {
+  animation: verify-spin 0.9s linear infinite;
+}
+
+@keyframes verify-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
