@@ -7,6 +7,7 @@ import {
   LogOut,
   MessageSquare,
   RefreshCw,
+  Save,
   ShieldCheck,
   Trash,
   Trash2,
@@ -6117,6 +6118,522 @@ function CertificateTemplateManager({ refreshAll }) {
 }
 
 
+const LAYOUT_FIELDS = [
+  { key: 'name', label: 'Name', color: '#7c3aed' },
+  { key: 'topic', label: 'Topic', color: '#0284c7' },
+  { key: 'date', label: 'Date', color: '#ea580c' },
+];
+
+function CertificateLayoutEditor({ template, onClose, onSaved }) {
+  const [layout, setLayout] = useState(() => {
+    const source =
+      template.layout && typeof template.layout === 'object'
+        ? template.layout
+        : {};
+
+    return {
+      name: source.name || null,
+      topic: source.topic || null,
+      date: source.date || null,
+    };
+  });
+
+  const [imgSize, setImgSize] =
+    useState(null);
+
+  const [active, setActive] =
+    useState('name');
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [saved, setSaved] =
+    useState(false);
+
+  const [error, setError] =
+    useState('');
+
+  useEffect(() => {
+    if (!imgSize) return;
+
+    const W = imgSize.width;
+    const H = imgSize.height;
+    const base = Math.min(W, H);
+
+    setLayout((current) => {
+      const next = { ...current };
+
+      if (!next.name) {
+        next.name = {
+          x: Math.round(W / 2),
+          y: Math.round(H * 0.44),
+          font_size: Math.max(12, Math.round(base * 0.11)),
+          max_width: Math.round(W * 0.82),
+          color: '#1f2937',
+          box: null,
+        };
+      }
+
+      if (!next.topic) {
+        next.topic = {
+          x: Math.round(W / 2),
+          y: Math.round(H * 0.53),
+          font_size: Math.max(10, Math.round(base * 0.07)),
+          max_width: Math.round(W * 0.78),
+          color: '#334155',
+          box: null,
+        };
+      }
+
+      if (!next.date) {
+        next.date = {
+          x: Math.round(W / 2),
+          y: Math.round(H * 0.62),
+          font_size: Math.max(9, Math.round(base * 0.055)),
+          max_width: Math.round(W * 0.5),
+          color: '#475569',
+          box: null,
+        };
+      }
+
+      return next;
+    });
+  }, [imgSize]);
+
+  const activeAnchor = layout[active] || {};
+
+  function setAnchor(patch) {
+    setLayout((current) => ({
+      ...current,
+      [active]: { ...(current[active] || {}), ...patch },
+    }));
+  }
+
+  function placeAt(evt) {
+    if (!imgSize) return;
+
+    const rect = evt.currentTarget.getBoundingClientRect();
+
+    const x = Math.round(
+      ((evt.clientX - rect.left) / rect.width) * imgSize.width
+    );
+
+    const y = Math.round(
+      ((evt.clientY - rect.top) / rect.height) * imgSize.height
+    );
+
+    setAnchor({ x, y });
+  }
+
+  function defaultBlankBox() {
+    const width = activeAnchor.max_width || 200;
+    const height = (activeAnchor.font_size || 20) * 1.6;
+    const x = activeAnchor.x || 0;
+    const y = activeAnchor.y || 0;
+
+    return [
+      Math.round(x - width / 2),
+      Math.round(y - height / 2),
+      Math.round(x + width / 2),
+      Math.round(y + height / 2),
+    ];
+  }
+
+  async function saveLayout() {
+    setSaving(true);
+    setError('');
+    setSaved(false);
+
+    try {
+      await updateAdminCertificateTemplate(template.id, {
+        name: template.name,
+        typeLabel: template.type_label,
+        layout,
+        displayOrder: template.display_order,
+        isActive: template.is_active !== false,
+      });
+
+      setSaved(true);
+
+      if (onSaved) onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!template.image_url) {
+    return (
+      <div className="card" style={{ padding: '1.25rem', margin: '1.5rem 0' }}>
+        <h2 style={{ marginTop: 0 }}>Adjust Name / Date Position</h2>
+
+        <p style={{ color: '#64748b', margin: '0 0 1rem' }}>
+          This template has no background image, so the fields cannot be
+          positioned.
+        </p>
+
+        <button
+          type="button"
+          className="btn"
+          onClick={onClose}
+          style={outlineButton}
+        >
+          <X size={16} />
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ padding: '1.25rem', margin: '1.5rem 0' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        <h2 style={{ marginTop: 0, marginBottom: 0 }}>
+          Adjust Name / Date Position
+        </h2>
+
+        <button
+          type="button"
+          className="btn"
+          onClick={onClose}
+          style={outlineButton}
+        >
+          <X size={16} />
+          Close
+        </button>
+      </div>
+
+      <p style={{ color: '#64748b', margin: '.5rem 0 1rem' }}>
+        Pick a field, then click the exact spot on the background image where
+        its text should sit — markers mark the text centre. Tune size and width
+        below, then save.
+      </p>
+
+      <ErrorMessage message={error} />
+
+      <div
+        style={{
+          display: 'flex',
+          gap: '.5rem',
+          flexWrap: 'wrap',
+          marginBottom: '1rem',
+        }}
+      >
+        {LAYOUT_FIELDS.map((field) => (
+          <button
+            key={field.key}
+            type="button"
+            className="btn"
+            onClick={() => setActive(field.key)}
+            style={{
+              ...outlineButton,
+              ...(active === field.key
+                ? {
+                    borderColor: field.color,
+                    color: field.color,
+                    fontWeight: 600,
+                  }
+                : {}),
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: field.color,
+                marginRight: 6,
+              }}
+            />
+            {field.label}
+          </button>
+        ))}
+      </div>
+
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: 720,
+          marginBottom: '1rem',
+        }}
+      >
+        <img
+          src={resolveMediaUrl(template.image_url)}
+          alt={`${template.name} background`}
+          onClick={placeAt}
+          draggable={false}
+          onLoad={(e) =>
+            setImgSize({
+              width: e.currentTarget.naturalWidth,
+              height: e.currentTarget.naturalHeight,
+            })
+          }
+          style={{
+            width: '100%',
+            display: 'block',
+            borderRadius: 10,
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 10px 25px rgba(0,0,0,.08)',
+            cursor: 'crosshair',
+            userSelect: 'none',
+          }}
+        />
+
+        {imgSize && (
+          <div
+            style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+          >
+            {LAYOUT_FIELDS.map((field) => {
+              const anchor = layout[field.key];
+
+              if (!anchor) return null;
+
+              const isActive = active === field.key;
+              const px = ((anchor.x || 0) / imgSize.width) * 100;
+              const py = ((anchor.y || 0) / imgSize.height) * 100;
+              const pw = ((anchor.max_width || 200) / imgSize.width) * 100;
+              const ph =
+                (((anchor.font_size || 20) * 1.5) / imgSize.height) * 100;
+
+              return (
+                <span key={field.key}>
+                  {isActive && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        left: `${px}%`,
+                        top: 0,
+                        bottom: 0,
+                        width: 1,
+                        background: field.color,
+                        opacity: 0.7,
+                      }}
+                    />
+                  )}
+
+                  {isActive && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: `${py}%`,
+                        left: 0,
+                        right: 0,
+                        height: 1,
+                        background: field.color,
+                        opacity: 0.7,
+                      }}
+                    />
+                  )}
+
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: `${px}%`,
+                      top: `${py}%`,
+                      transform: 'translate(-50%, -50%)',
+                      width: `${pw}%`,
+                      height: `${ph}%`,
+                      border: `1.5px dashed ${field.color}`,
+                      borderRadius: 4,
+                      boxSizing: 'border-box',
+                      opacity: isActive ? 0.95 : 0.4,
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: `${px}%`,
+                      top: `${py}%`,
+                      transform: 'translate(-50%, -50%)',
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: field.color,
+                      border: '2px solid #fff',
+                      boxShadow: '0 1px 4px rgba(0,0,0,.5)',
+                    }}
+                  />
+
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: `${px}%`,
+                      top: `${py}%`,
+                      transform: 'translate(-50%, calc(-50% + 12px))',
+                      padding: '1px 7px',
+                      borderRadius: 999,
+                      background: field.color,
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {field.label}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: '.75rem',
+          maxWidth: 720,
+          marginBottom: '1rem',
+        }}
+      >
+        {[
+          { key: 'x', label: 'X (centre)', type: 'number' },
+          { key: 'y', label: 'Y (centre)', type: 'number' },
+          { key: 'font_size', label: 'Font size', type: 'number' },
+          { key: 'max_width', label: 'Max width', type: 'number' },
+        ].map((item) => (
+          <label key={item.key} style={{ fontSize: '.8rem', color: '#475569' }}>
+            {item.label}
+
+            <input
+              type={item.type}
+              value={activeAnchor[item.key] ?? ''}
+              onChange={(e) =>
+                setAnchor({
+                  [item.key]: Number(e.target.value),
+                })
+              }
+              style={inputStyle}
+            />
+          </label>
+        ))}
+
+        <label style={{ fontSize: '.8rem', color: '#475569' }}>
+          Color
+
+          <input
+            type="color"
+            value={
+              /^#[0-9a-fA-F]{6}$/.test(activeAnchor.color || '')
+                ? activeAnchor.color
+                : '#1f2937'
+            }
+            onChange={(e) =>
+              setAnchor({ color: e.target.value })
+            }
+            style={{ ...inputStyle, padding: '0.25rem', height: 42 }}
+          />
+        </label>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: '1rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          marginBottom: '1rem',
+          maxWidth: 720,
+        }}
+      >
+        <label
+          style={{
+            fontSize: '.85rem',
+            color: '#475569',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '.45rem',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={Boolean(activeAnchor.box)}
+            onChange={(e) =>
+              setAnchor({
+                box: e.target.checked ? defaultBlankBox() : null,
+              })
+            }
+          />
+          Blank the printed area first (removes placeholder text)
+        </label>
+      </div>
+
+      {activeAnchor.box && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(90px, 1fr))',
+            gap: '.5rem',
+            maxWidth: 720,
+            marginBottom: '1rem',
+          }}
+        >
+          {['Left', 'Top', 'Right', 'Bottom'].map((label, index) => (
+            <label
+              key={label}
+              style={{ fontSize: '.8rem', color: '#475569' }}
+            >
+              {label}
+
+              <input
+                type="number"
+                value={activeAnchor.box[index]}
+                onChange={(e) => {
+                  const box = [...activeAnchor.box];
+
+                  box[index] = Number(e.target.value);
+
+                  setAnchor({ box });
+                }}
+                style={inputStyle}
+              />
+            </label>
+          ))}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: 'flex',
+          gap: '.75rem',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        <button
+          type="button"
+          className="btn"
+          onClick={saveLayout}
+          disabled={saving}
+          style={primaryButton}
+        >
+          <Save size={16} />
+          {saving ? 'Saving...' : 'Save Layout'}
+        </button>
+
+        {saved && (
+          <span style={{ color: '#166534', fontSize: '.85rem' }}>
+            Layout saved — re-run Render Preview to verify.
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 // ============================================================
 // CERTIFICATE ISSUER
 // ============================================================
@@ -6156,6 +6673,9 @@ function CertificateIssuer({ refreshAll }) {
 
   const [error, setError] =
     useState('');
+
+  const [layoutTemplate, setLayoutTemplate] =
+    useState(null);
 
   function validRecipients() {
     return form.recipients.map((row) => ({
@@ -6464,27 +6984,54 @@ function CertificateIssuer({ refreshAll }) {
         onSubmit={send}
         style={formGridStyle}
       >
-        <select
-          value={form.templateId}
-          onChange={(e) =>
-            setForm({ ...form, templateId: Number(e.target.value) || '' })
-          }
-          style={inputStyle}
-          required
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto',
+            gap: '.75rem',
+            alignItems: 'start',
+          }}
         >
-          <option value="">
-            Select a template...
-          </option>
-
-          {templates.map((template) => (
-            <option
-              key={template.id}
-              value={template.id}
-            >
-              {template.name}
+          <select
+            value={form.templateId}
+            onChange={(e) =>
+              setForm({ ...form, templateId: Number(e.target.value) || '' })
+            }
+            style={inputStyle}
+            required
+          >
+            <option value="">
+              Select a template...
             </option>
-          ))}
-        </select>
+
+            {templates.map((template) => (
+              <option
+                key={template.id}
+                value={template.id}
+              >
+                {template.name}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            className="btn"
+            onClick={() =>
+              setLayoutTemplate(
+                templates.find((t) => t.id === form.templateId) || null
+              )
+            }
+            disabled={!form.templateId}
+            style={{
+              ...outlineButton,
+              ...(layoutTemplate ? primaryButton : {}),
+            }}
+          >
+            <Edit3 size={16} />
+            {layoutTemplate ? 'Editing Layout' : 'Adjust Name / Date Position'}
+          </button>
+        </div>
 
         <textarea
           rows={3}
@@ -6616,6 +7163,15 @@ function CertificateIssuer({ refreshAll }) {
           </button>
         </div>
       </form>
+
+      {layoutTemplate && (
+        <CertificateLayoutEditor
+          key={layoutTemplate.id}
+          template={layoutTemplate}
+          onClose={() => setLayoutTemplate(null)}
+          onSaved={() => load()}
+        />
+      )}
 
       {batchResults && (
         <div
