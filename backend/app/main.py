@@ -1,10 +1,14 @@
+import logging
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
+
+logger = logging.getLogger(__name__)
 
 from .admin_panel import setup_admin
 from .database import Base, engine
@@ -214,6 +218,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ============================================================
+# GLOBAL EXCEPTION HANDLER
+# ============================================================
+
+# Starlette's ServerErrorMiddleware (the default 500 responder) lives
+# OUTSIDE the CORSMiddleware, so its response carries no
+# Access-Control-Allow-Origin header. A browser then reports such an
+# unhandled error as "Failed to fetch" / "No 'Access-Control-Allow-Origin'
+# header" and the real failure stays invisible. Registering a catch-all
+# handler here runs it inside the CORS chain, so the client receives the
+# actual error message and the traceback is logged server-side.
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"{type(exc).__name__}: {exc}"},
+    )
 
 
 # ============================================================
