@@ -225,18 +225,26 @@ app.add_middleware(
 # ============================================================
 
 # Starlette's ServerErrorMiddleware (the default 500 responder) lives
-# OUTSIDE the CORSMiddleware, so its response carries no
+# OUTSIDE the CORSMiddleware, so even a registered catch-all handler here
+# produces a response sent via the raw ASGI channel that carries no
 # Access-Control-Allow-Origin header. A browser then reports such an
 # unhandled error as "Failed to fetch" / "No 'Access-Control-Allow-Origin'
-# header" and the real failure stays invisible. Registering a catch-all
-# handler here runs it inside the CORS chain, so the client receives the
-# actual error message and the traceback is logged server-side.
+# header" and the real failure stays invisible. We therefore reproduce the
+# CORSMiddleware header logic for the allowed origins manually so the client
+# can actually read the error message. The traceback is logged server-side.
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled exception: %s", exc)
+    headers = {}
+    origin = request.headers.get("origin")
+    if origin and origin in CORS_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Vary"] = "Origin"
+        headers["Access-Control-Allow-Credentials"] = "true"
     return JSONResponse(
         status_code=500,
         content={"detail": f"{type(exc).__name__}: {exc}"},
+        headers=headers,
     )
 
 

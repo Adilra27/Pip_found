@@ -511,6 +511,23 @@ def _parse_date_value(value: Optional[str], field_name: str):
         )
 
 
+def _parse_template_id(value):
+    """Coerce a raw JSON ``template_id`` to an int.
+
+    The admin frontend sends ``templateId`` as a string (it comes from an
+    HTML select value), so comparing it directly against the integer
+    ``CertificateTemplate.id`` column makes PostgreSQL fail with
+    "operator does not exist: integer = character varying".
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            400,
+            "template_id must be a valid integer",
+        )
+
+
 def _json_value(raw, field_name: str, default=None):
     """Parse a JSON string form field; returns `default` when empty."""
     if raw is None or str(raw).strip() == "":
@@ -2499,7 +2516,7 @@ def render_certificate_preview(
     _: str = Depends(get_current_admin),
 ):
     """Render a certificate and return a base64 data-URL preview + filename."""
-    template_id = body.get("template_id")
+    template_id = _parse_template_id(body.get("template_id"))
 
     template = (
         db.query(CertificateTemplate)
@@ -2529,7 +2546,7 @@ def send_certificate(
     _: str = Depends(get_current_admin),
 ):
     """Render a certificate, e-mail it to the recipient and log the issue."""
-    template_id = body.get("template_id")
+    template_id = _parse_template_id(body.get("template_id"))
     recipient_name = str(body.get("recipient_name") or "").strip()
     recipient_email = str(body.get("recipient_email") or "").strip()
     event_topic = str(body.get("event_topic") or "").strip()
@@ -2764,9 +2781,11 @@ def send_certificates_batch(
     if not isinstance(recipients, list) or not recipients:
         raise HTTPException(400, "At least one recipient is required")
 
+    template_id = _parse_template_id(body.get("template_id"))
+
     template = (
         db.query(CertificateTemplate)
-        .filter(CertificateTemplate.id == body.get("template_id"))
+        .filter(CertificateTemplate.id == template_id)
         .first()
     )
     if not template:

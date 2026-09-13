@@ -6467,7 +6467,7 @@ function CertificateIssuer({ refreshAll }) {
         <select
           value={form.templateId}
           onChange={(e) =>
-            setForm({ ...form, templateId: e.target.value })
+            setForm({ ...form, templateId: Number(e.target.value) || '' })
           }
           style={inputStyle}
           required
