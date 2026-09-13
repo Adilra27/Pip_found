@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import {
   CalendarDays,
@@ -91,6 +91,7 @@ import {
   resendAdminDonationReceipt,
   fetchAdminImpact,
   updateAdminImpact,
+  fetchAdminCertificateBatchJob,
 } from '../api';
 
 
@@ -6136,6 +6137,8 @@ function CertificateIssuer({ refreshAll }) {
 
   const [pasted, setPasted] = useState('');
 
+  const batchPollRef = useRef(null);
+
   const [batchResults, setBatchResults] =
     useState(null);
 
@@ -6267,6 +6270,56 @@ function CertificateIssuer({ refreshAll }) {
     load();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (batchPollRef.current) {
+        clearInterval(batchPollRef.current);
+        batchPollRef.current = null;
+      }
+    };
+  }, []);
+
+  function pollBatchJob(jobId, total) {
+    const timeoutMs = 10 * 60 * 1000;
+    const startedAt = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const timer = setInterval(async () => {
+        if (Date.now() - startedAt > timeoutMs) {
+          clearInterval(timer);
+          batchPollRef.current = null;
+          reject(new Error('Batch send timed out. Check the issued certificates list and retry.'));
+          return;
+        }
+
+        try {
+          const data = await fetchAdminCertificateBatchJob(jobId);
+
+          setBatchResults({
+            ...data,
+            total: data.total ?? total,
+          });
+
+          if (data.status === 'done') {
+            clearInterval(timer);
+            batchPollRef.current = null;
+            resolve(data);
+          } else if (data.status === 'error') {
+            clearInterval(timer);
+            batchPollRef.current = null;
+            reject(new Error(data.detail || 'Batch send failed'));
+          }
+        } catch (err) {
+          clearInterval(timer);
+          batchPollRef.current = null;
+          reject(err);
+        }
+      }, 1500);
+
+      batchPollRef.current = timer;
+    });
+  }
+
   async function renderPreview(e) {
     if (e) {
       e.preventDefault();
@@ -6321,12 +6374,24 @@ function CertificateIssuer({ refreshAll }) {
     setSending(true);
 
     try {
-      const data = await sendAdminCertificatesBatch({
+      const started = await sendAdminCertificatesBatch({
         templateId: form.templateId,
         recipients: rows.map(({ uid: _uid, ...rest }) => rest),
         eventTopic: form.eventTopic,
         eventDate: form.eventDate,
       });
+
+      setBatchResults({
+        job_id: started.job_id,
+        status: 'running',
+        sent: 0,
+        failed: 0,
+        processed: 0,
+        total: started.total,
+        results: [],
+      });
+
+      const data = await pollBatchJob(started.job_id, started.total);
 
       setBatchResults(data);
 
@@ -6544,7 +6609,9 @@ function CertificateIssuer({ refreshAll }) {
           >
             <Send size={17} />
             {sending
-              ? 'Sending...'
+              ? batchResults?.status === 'running'
+                ? 'Sending...'
+                : 'Starting...'
               : `Send ${validCount} Certificate${validCount === 1 ? '' : 's'} by Email`}
           </button>
         </div>
@@ -6565,7 +6632,9 @@ function CertificateIssuer({ refreshAll }) {
           }}
         >
           <h2 style={{ marginTop: 0 }}>
-            Sent {(batchResults.sent || 0)} of {(batchResults.total || 0)} certificates
+            {batchResults.status === 'running'
+              ? `Sending... ${batchResults.processed || 0} of ${batchResults.total || 0} processed`
+              : `Sent ${batchResults.sent || 0} of ${batchResults.total || 0} certificates`}
           </h2>
 
           {(batchResults.failed || 0) > 0 && (

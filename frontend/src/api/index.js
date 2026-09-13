@@ -1078,6 +1078,10 @@ export async function sendAdminCertificatesBatch({
   });
 }
 
+export async function fetchAdminCertificateBatchJob(jobId) {
+  return adminFetch(`/admin/certificates/send-batch/${jobId}`);
+}
+
 export async function fetchAdminIssuedCertificates() {
   return adminFetch('/admin/certificates/issued');
 }

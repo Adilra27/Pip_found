@@ -2639,13 +2639,124 @@ def _issue_single_certificate(
     return result
 
 
+# In-memory job store for the asynchronous certificate batch send.
+#
+# Only ever mutated from the single uvicorn worker this service runs on
+# (see render.yaml), so a plain dict is safe here.
+_BATCH_JOBS: dict[str, dict] = {}
+
+
+def _run_certificate_batch_job(
+    job_id: str,
+    template_id,
+    recipients: list,
+    event_topic: str,
+    event_date,
+):
+    """Render + e-mail certificates in the background, one recipient at a time.
+
+    Runs after the request has already responded (202), so long batches no
+    longer hold up a single request and cannot trip Render's request limits.
+    Progress and the final results are recorded in ``_BATCH_JOBS``.
+    """
+    job = _BATCH_JOBS[job_id]
+    db = SessionLocal()
+    try:
+        template = (
+            db.query(CertificateTemplate)
+            .filter(CertificateTemplate.id == template_id)
+            .first()
+        )
+        if not template:
+            job["status"] = "error"
+            job["detail"] = "Certificate template not found"
+            return
+        if not template.image_url:
+            job["status"] = "error"
+            job["detail"] = "This template has no background image yet."
+            return
+
+        results = []
+
+        for row in recipients:
+            if not isinstance(row, dict):
+                results.append(
+                    {
+                        "recipient_name": "",
+                        "recipient_email": "",
+                        "status": "invalid",
+                        "error": "Recipient entry is malformed",
+                    }
+                )
+                job["processed"] = len(results)
+                continue
+
+            recipient_name = str(row.get("recipient_name") or "").strip()
+            recipient_email = str(row.get("recipient_email") or "").strip()
+
+            if not recipient_name or not recipient_email:
+                results.append(
+                    {
+                        "recipient_name": recipient_name,
+                        "recipient_email": recipient_email,
+                        "status": "invalid",
+                        "error": "Recipient name and e-mail are required",
+                    }
+                )
+                job["processed"] = len(results)
+                continue
+
+            try:
+                result = _issue_single_certificate(
+                    db,
+                    template,
+                    recipient_name=recipient_name,
+                    recipient_email=recipient_email,
+                    event_topic=event_topic,
+                    event_date=event_date,
+                )
+            except Exception as exc:  # noqa: BLE001 - one bad recipient, not the whole batch
+                db.rollback()
+                results.append(
+                    {
+                        "recipient_name": recipient_name,
+                        "recipient_email": recipient_email,
+                        "status": "error",
+                        "error": str(exc),
+                    }
+                )
+                job["processed"] = len(results)
+                continue
+
+            results.append(result)
+            job["processed"] = len(results)
+            job["sent"] = sum(1 for r in results if r["status"] == "sent")
+            job["failed"] = sum(1 for r in results if r["status"] != "sent")
+
+        job["status"] = "done"
+        job["sent"] = sum(1 for r in results if r["status"] == "sent")
+        job["failed"] = sum(1 for r in results if r["status"] != "sent")
+        job["results"] = results
+    except Exception as exc:  # noqa: BLE001 - surface the real error to the poller
+        logger.exception("Certificate batch job %s failed: %s", job_id, exc)
+        job["status"] = "error"
+        job["detail"] = f"{type(exc).__name__}: {exc}"
+    finally:
+        db.close()
+
+
 @router.post("/certificates/send-batch")
 def send_certificates_batch(
     body: dict,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
-    """Render + e-mail a certificate for many recipients in one call."""
+    """Start rendering + e-mailing certificates for many recipients.
+
+    Returns immediately with a ``job_id``; poll the corresponding GET
+    endpoint for progress and the per-recipient results.
+    """
     recipients = body.get("recipients") or []
     event_topic = str(body.get("event_topic") or "").strip()
     event_date = _parse_date_value(body.get("event_date"), "event_date")
@@ -2663,63 +2774,44 @@ def send_certificates_batch(
     if not template.image_url:
         raise HTTPException(400, "This template has no background image yet.")
 
-    results = []
+    job_id = uuid.uuid4().hex
+    _BATCH_JOBS[job_id] = {
+        "job_id": job_id,
+        "status": "running",
+        "detail": None,
+        "sent": 0,
+        "failed": 0,
+        "processed": 0,
+        "total": len(recipients),
+        "results": None,
+    }
 
-    for row in recipients:
-        if not isinstance(row, dict):
-            results.append(
-                {
-                    "recipient_name": "",
-                    "recipient_email": "",
-                    "status": "invalid",
-                    "error": "Recipient entry is malformed",
-                }
-            )
-            continue
-
-        recipient_name = str(row.get("recipient_name") or "").strip()
-        recipient_email = str(row.get("recipient_email") or "").strip()
-
-        if not recipient_name or not recipient_email:
-            results.append(
-                {
-                    "recipient_name": recipient_name,
-                    "recipient_email": recipient_email,
-                    "status": "invalid",
-                    "error": "Recipient name and e-mail are required",
-                }
-            )
-            continue
-
-        try:
-            result = _issue_single_certificate(
-                db,
-                template,
-                recipient_name=recipient_name,
-                recipient_email=recipient_email,
-                event_topic=event_topic,
-                event_date=event_date,
-            )
-        except Exception as exc:  # noqa: BLE001 - one bad recipient, not the whole batch
-            db.rollback()
-            results.append(
-                {
-                    "recipient_name": recipient_name,
-                    "recipient_email": recipient_email,
-                    "status": "error",
-                    "error": str(exc),
-                }
-            )
-            continue
-
-        results.append(result)
+    background_tasks.add_task(
+        _run_certificate_batch_job,
+        job_id,
+        template.id,
+        recipients,
+        event_topic,
+        event_date,
+    )
 
     return {
-        "sent": sum(1 for r in results if r["status"] == "sent"),
-        "failed": sum(1 for r in results if r["status"] != "sent"),
-        "total": len(results),
-        "results": results,
+        "job_id": job_id,
+        "status": "running",
+        "total": len(recipients),
     }
+
+
+@router.get("/certificates/send-batch/{job_id}")
+def get_certificate_batch_job(
+    job_id: str,
+    _: str = Depends(get_current_admin),
+):
+    """Return the progress and results of an async batch send job."""
+    job = _BATCH_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, "Certificate batch job not found")
+    return job
 
 
 @router.get(
