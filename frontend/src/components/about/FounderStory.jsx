@@ -2,9 +2,17 @@
 
 import React from "react";
 import { founderStoryData } from "../../data/aboutdata";
+import { resolveMediaUrl } from "../../api";
 
-const FounderStory = () => {
-  const data = founderStoryData;
+const FounderStory = ({ data = null }) => {
+  const fallback = founderStoryData;
+  const profile = data || fallback;
+
+  const image = data?.image_url ? resolveMediaUrl(data.image_url) : fallback.image;
+
+  const milestones = Array.isArray(profile.milestones)
+    ? profile.milestones
+    : fallback.milestones;
 
   return (
     <section
@@ -22,17 +30,17 @@ const FounderStory = () => {
             <div className="about-founder-image-frame">
 
               <img
-                src={data.image}
-                alt={data.imageAlt}
+                src={image}
+                alt={profile.image_alt || profile.imageAlt || fallback.imageAlt}
               />
 
             </div>
 
             <div className="about-founder-badge">
 
-              <strong>{data.name}</strong>
+              <strong>{profile.name || fallback.name}</strong>
 
-              <span>{data.role}</span>
+              <span>{profile.role || fallback.role}</span>
 
             </div>
 
@@ -42,27 +50,27 @@ const FounderStory = () => {
           <div className="about-founder-content">
 
             <span className="about-eyebrow">
-              {data.eyebrow}
+              {profile.eyebrow || fallback.eyebrow}
             </span>
 
-            <h2>{data.title}</h2>
+            <h2>{profile.title || fallback.title}</h2>
 
             <p className="about-lead">
-              {data.introduction}
+              {profile.introduction || fallback.introduction}
             </p>
 
-            <p>{data.story}</p>
+            <p>{profile.story || fallback.story}</p>
 
             <div className="about-founder-vision">
 
               <span>Our Vision</span>
 
-              <p>{data.vision}</p>
+              <p>{profile.vision || fallback.vision}</p>
 
             </div>
 
             <blockquote>
-              "{data.quote}"
+              "{profile.quote || fallback.quote}"
             </blockquote>
 
           </div>
@@ -72,10 +80,10 @@ const FounderStory = () => {
 
         <div className="about-founder-milestones">
 
-          {data.milestones.map((item, index) => (
+          {milestones.map((item, index) => (
             <article
               className="about-founder-milestone"
-              key={index}
+              key={item.id ?? index}
             >
 
               <span>{item.year}</span>

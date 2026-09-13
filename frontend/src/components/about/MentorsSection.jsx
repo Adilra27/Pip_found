@@ -2,13 +2,32 @@
 
 import React, { useState } from "react";
 import { mentorsData } from "../../data/aboutdata";
+import { resolveMediaUrl } from "../../api";
 
-const MentorsSection = () => {
-  const data = mentorsData;
+const MentorsSection = ({ data = null }) => {
+  const fallback = mentorsData;
+
+  const mentors = Array.isArray(data)
+    ? data
+    : fallback.mentors;
 
   const [activeMentor, setActiveMentor] = useState(0);
 
-  const mentor = data.mentors[activeMentor];
+  const safeIndex = Math.min(
+    activeMentor,
+    Math.max(0, mentors.length - 1)
+  );
+
+  const mentor = mentors[safeIndex];
+
+  const mentorImage = data
+    ? mentor.image_url
+      ? resolveMediaUrl(mentor.image_url)
+      : fallback.mentors[safeIndex]?.image || '/piplad-logo.jpg'
+    : fallback.mentors[safeIndex]?.image || '/piplad-logo.jpg';
+
+  const fallbackMentor =
+    fallback.mentors[safeIndex] || {};
 
   return (
     <section
@@ -22,28 +41,28 @@ const MentorsSection = () => {
         <div className="about-section-heading about-centered">
 
           <span className="about-eyebrow">
-            {data.eyebrow}
+            {fallback.eyebrow}
           </span>
 
-          <h2>{data.title}</h2>
+          <h2>{fallback.title}</h2>
 
-          <p>{data.description}</p>
+          <p>{fallback.description}</p>
 
         </div>
 
 
         <div className="about-mentor-selector">
 
-          {data.mentors.map((item, index) => (
+          {mentors.map((item, index) => (
             <button
               type="button"
               className={`about-mentor-tab ${
-                activeMentor === index
+                safeIndex === index
                   ? "active"
                   : ""
               }`}
               onClick={() => setActiveMentor(index)}
-              key={index}
+              key={item.id ?? index}
             >
               {item.name}
             </button>
@@ -52,37 +71,39 @@ const MentorsSection = () => {
         </div>
 
 
-        <div className="about-mentor-card">
+        {mentor && (
+          <div className="about-mentor-card">
 
-          <div className="about-mentor-image">
+            <div className="about-mentor-image">
 
-            <img
-              src={mentor.image}
-              alt={mentor.name}
-            />
+              <img
+                src={mentorImage}
+                alt={mentor.name}
+              />
+
+            </div>
+
+
+            <div className="about-mentor-content">
+
+              <span className="about-card-label">
+                Mentor
+              </span>
+
+              <h3>{mentor.name}</h3>
+
+              <h4>{mentor.role || fallbackMentor.role}</h4>
+
+              <p>{mentor.description || fallbackMentor.description}</p>
+
+              <blockquote>
+                "{mentor.quote || fallbackMentor.quote}"
+              </blockquote>
+
+            </div>
 
           </div>
-
-
-          <div className="about-mentor-content">
-
-            <span className="about-card-label">
-              Mentor
-            </span>
-
-            <h3>{mentor.name}</h3>
-
-            <h4>{mentor.role}</h4>
-
-            <p>{mentor.description}</p>
-
-            <blockquote>
-              "{mentor.quote}"
-            </blockquote>
-
-          </div>
-
-        </div>
+        )}
 
       </div>
 

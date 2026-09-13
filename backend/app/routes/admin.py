@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import secrets
@@ -31,9 +32,15 @@ from ..database import SessionLocal, get_db
 from ..models import (
     Cause,
     Certificate,
+    CertificateTemplate,
     ContactInquiry,
     Donation,
+    FooterFocusItem,
+    FounderMilestone,
+    FounderProfile,
     GalleryItem,
+    IssuedCertificate,
+    Mentor,
     TeamMember,
     UpcomingProject,
     VideoGallery,
@@ -42,16 +49,23 @@ from ..models import (
 
 from ..schemas import (
     CertificateResponse,
+    CertificateTemplateResponse,
+    DonationListResponse,
+    DonationResponse,
+    FooterFocusItemResponse,
+    FounderProfileResponse,
     GalleryItemResponse,
+    IssuedCertificateResponse,
+    MentorResponse,
     TeamMemberResponse,
     UpcomingProjectResponse,
     VideoGalleryResponse,
     VolunteerApplicationResponse,
-    DonationResponse,
-    DonationListResponse,
 )
 
 from ..email_service import (
+    send_certificate_email,
+    send_team_card_email,
     send_volunteer_rejection_email,
     send_volunteer_welcome_email,
 )
@@ -61,7 +75,8 @@ from ..welcome_card import (
     load_profile_photo,
 )
 from ..volunteer_card import build_volunteer_card_jpg
-from ..volunteer_certificate import build_volunteer_certificate_image
+from ..certificate_render import build_certificate_image, normalize_layout
+from ..team_card import build_team_card_jpg
 
 
 logger = logging.getLogger(__name__)
@@ -87,6 +102,8 @@ VIDEO_DIR = MEDIA_DIR / "videos"
 PROJECT_DIR = MEDIA_DIR / "projects"
 TEAM_DIR = MEDIA_DIR / "team"
 CERTIFICATE_DIR = MEDIA_DIR / "certificates"
+ABOUT_DIR = MEDIA_DIR / "about"
+TEMPLATE_DIR = MEDIA_DIR / "certificate_templates"
 
 
 # ============================================================
@@ -413,6 +430,98 @@ def _public_url(
     filename: str,
 ) -> str:
     return f"/media/{folder}/{filename}"
+
+
+# ============================================================
+# SHARED FILE HELPERS
+# ============================================================
+
+def _save_local_image(
+    file: UploadFile,
+    folder: str,
+) -> str:
+    """Store one image locally under backend/media/<folder> (size-checked)."""
+    file.file.seek(0)
+    filename = _safe_name(file.filename, ".jpg")
+    destination_dir = MEDIA_DIR / folder
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    destination = destination_dir / filename
+
+    total = 0
+
+    try:
+        with destination.open("wb") as output:
+            while True:
+                chunk = file.file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_IMAGE_SIZE:
+                    raise HTTPException(
+                        413,
+                        "File is too large. "
+                        f"Maximum allowed size is {MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
+                    )
+                output.write(chunk)
+    except HTTPException:
+        destination.unlink(missing_ok=True)
+        raise
+    except Exception as exc:
+        destination.unlink(missing_ok=True)
+        raise HTTPException(500, f"Could not save uploaded file: {exc}") from exc
+
+    return _public_url(folder, filename)
+
+
+def _upload_image(
+    file: UploadFile,
+    folder: str,
+) -> str:
+    """Validate and store an image, preferring Cloudinary with local fallback."""
+    _validate_upload(
+        file,
+        ALLOWED_IMAGE_EXTENSIONS,
+        ALLOWED_IMAGE_TYPES,
+        MAX_IMAGE_SIZE,
+    )
+
+    try:
+        return _upload_to_cloudinary(
+            file,
+            folder,
+            MAX_IMAGE_SIZE,
+            "image",
+        )
+    except HTTPException as exc:
+        if exc.status_code == 503:
+            # Cloudinary not configured on the backend: persist locally.
+            return _save_local_image(file, folder)
+        raise
+
+
+def _parse_date_value(value: Optional[str], field_name: str):
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(
+            400,
+            f"{field_name} must be a valid date in YYYY-MM-DD format",
+        )
+
+
+def _json_value(raw, field_name: str, default=None):
+    """Parse a JSON string form field; returns `default` when empty."""
+    if raw is None or str(raw).strip() == "":
+        return default
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            400,
+            f"{field_name} must be valid JSON",
+        )
 
 
 # ============================================================
@@ -972,54 +1081,178 @@ def create_team_member(
     role: Optional[str] = Form(None),
     team: str = Form("General"),
     bio: Optional[str] = Form(None),
+    member_id: Optional[str] = Form(None),
+    joined_date: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     _: str = Depends(get_current_admin),
 ):
     name = name.strip()
-    team = team.strip() or "General"
+    team = (team or "").strip() or "General"
+    role = (role or "").strip()
+    member_id = (member_id or "").strip()
+    email = (email or "").strip()
 
     if not name:
         raise HTTPException(
             status_code=400,
             detail="Team member name is required",
         )
+    if not role:
+        raise HTTPException(
+            status_code=400,
+            detail="Team member role is required",
+        )
+    if not member_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Team member ID is required",
+        )
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail="Team member email is required",
+        )
+
+    existing = (
+        db.query(TeamMember)
+        .filter(TeamMember.member_id == member_id)
+        .first()
+    )
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Team member ID '{member_id}' is already in use",
+        )
 
     photo_url = None
 
-    # Photo is optional.
+    # Photo is required on creation.
     if file and file.filename:
-        _validate_upload(
-            file,
-            ALLOWED_IMAGE_EXTENSIONS,
-            ALLOWED_IMAGE_TYPES,
-            MAX_IMAGE_SIZE,
-        )
-
-        photo_url = _upload_to_cloudinary(
-            file,
-            "team",
-            MAX_IMAGE_SIZE,
-            "image",
+        photo_url = _upload_image(file, "team")
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="A profile photo is required for team members",
         )
 
     member = TeamMember(
         name=name,
-        role=(
-            (role or "").strip()
-            or None
-        ),
+        role=role,
         team=team,
         photo_url=photo_url,
         bio=(
             (bio or "").strip()
             or None
         ),
+        member_id=member_id,
+        joined_date=_parse_date_value(joined_date, "joined_date"),
+        email=email,
     )
 
     db.add(member)
     db.commit()
     db.refresh(member)
+
+    return member
+
+
+@router.put(
+    "/team/{member_id}",
+    response_model=TeamMemberResponse,
+)
+def update_team_member(
+    member_id: int,
+    name: str = Form(...),
+    role: Optional[str] = Form(None),
+    team: str = Form("General"),
+    bio: Optional[str] = Form(None),
+    member_id_value: Optional[str] = Form(None),
+    joined_date: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    remove_image: bool = Form(False),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    member = (
+        db.query(TeamMember)
+        .filter(TeamMember.id == member_id)
+        .first()
+    )
+
+    if not member:
+        raise HTTPException(
+            status_code=404,
+            detail="Team member not found",
+        )
+
+    name = name.strip()
+    role = (role or "").strip()
+    member_id = (member_id_value or "").strip()
+    email = (email or "").strip()
+
+    if not name:
+        raise HTTPException(
+            status_code=400,
+            detail="Team member name is required",
+        )
+    if not role:
+        raise HTTPException(
+            status_code=400,
+            detail="Team member role is required",
+        )
+    if not member_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Team member ID is required",
+        )
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail="Team member email is required",
+        )
+
+    duplicate = (
+        db.query(TeamMember)
+        .filter(
+            TeamMember.member_id == member_id,
+            TeamMember.id != member.id,
+        )
+        .first()
+    )
+    if duplicate:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Team member ID '{member_id}' is already in use",
+        )
+
+    old_photo = member.photo_url
+
+    member.name = name
+    member.role = role
+    member.team = (team or "").strip() or "General"
+    member.bio = (bio or "").strip() or None
+    member.member_id = member_id
+    member.joined_date = _parse_date_value(joined_date, "joined_date")
+    member.email = email
+
+    if file and file.filename:
+        member.photo_url = _upload_image(file, "team")
+    elif remove_image:
+        raise HTTPException(
+            status_code=400,
+            detail="Replacing or removing the photo requires uploading a new one. "
+            "A profile photo is required for team members.",
+        )
+
+    db.commit()
+    db.refresh(member)
+
+    if old_photo and old_photo != member.photo_url:
+        _delete_local_file(old_photo)
+        _delete_cloudinary_file(old_photo, "image")
 
     return member
 
@@ -1056,6 +1289,113 @@ def delete_team_member(
 
     return {
         "message": "Team member deleted"
+    }
+
+
+# ============================================================
+# TEAM MEMBER ID CARD
+# ============================================================
+
+def _ensure_member_id(member: TeamMember) -> str:
+    if member.member_id:
+        return member.member_id
+    return f"PWF-TM-{member.id:04d}"
+
+
+def _render_team_card_bytes(member: TeamMember) -> bytes:
+    member.member_id = _ensure_member_id(member)
+    photo_bytes, _ = load_profile_photo(member.photo_url or "")
+    qr_png = build_volunteer_qr_png(member.member_id)
+    try:
+        return build_team_card_jpg(
+            full_name=member.name,
+            member_id=member.member_id,
+            role=member.role or "",
+            team=member.team or "General",
+            joined_date=member.joined_date,
+            photo_bytes=photo_bytes,
+            qr_png=qr_png,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Could not render team member card: {exc}") from exc
+
+
+@router.get(
+    "/team/{member_id}/card",
+)
+def get_team_member_card_bytes(
+    member_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Return the rendered team member ID card as a downloadable JPEG."""
+    member = (
+        db.query(TeamMember)
+        .filter(TeamMember.id == member_id)
+        .first()
+    )
+
+    if not member:
+        raise HTTPException(404, "Team member not found")
+
+    data = _render_team_card_bytes(member)
+    db.commit()
+
+    from fastapi.responses import Response
+
+    slug = member.member_id or f"team-{member.id}"
+    return Response(
+        content=data,
+        media_type="image/jpeg",
+        headers={
+            "Content-Disposition": f'attachment; filename="{slug}-id-card.jpg"'
+        },
+    )
+
+
+@router.post(
+    "/team/{member_id}/card/send",
+)
+def email_team_member_card(
+    member_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    member = (
+        db.query(TeamMember)
+        .filter(TeamMember.id == member_id)
+        .first()
+    )
+
+    if not member:
+        raise HTTPException(404, "Team member not found")
+
+    if not member.email:
+        raise HTTPException(
+            400,
+            "This team member has no e-mail address on file. Please add one first.",
+        )
+
+    member.member_id = _ensure_member_id(member)
+    data = _render_team_card_bytes(member)
+    db.commit()
+
+    sent = send_team_card_email(
+        to_email=member.email,
+        recipient_name=member.name,
+        member_id=member.member_id,
+        image_bytes=data,
+    )
+
+    if not sent:
+        raise HTTPException(
+            502,
+            "Card was rendered but the e-mail could not be sent. "
+            "Check that BREVO_API_KEY is configured.",
+        )
+
+    return {
+        "message": f"Team member ID card emailed to {member.email}",
     }
 
 
@@ -1320,18 +1660,6 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
             )
             card_jpg = None
 
-        try:
-            certificate_image = build_volunteer_certificate_image(
-                full_name=volunteer.full_name,
-            )
-        except Exception as exc:
-            logger.error(
-                "Failed to generate volunteer certificate image for volunteer %s: %s",
-                volunteer_id,
-                exc,
-            )
-            certificate_image = None
-
         sent = send_volunteer_welcome_email(
             to_email=volunteer.email,
             volunteer_name=volunteer.full_name,
@@ -1339,7 +1667,7 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
             volunteer_id=volunteer_id,
             joined_date=datetime.utcnow(),
             card_jpg=card_jpg,
-            certificate_image=certificate_image,
+            certificate_image=None,
         )
 
         if sent:
@@ -1728,3 +2056,797 @@ def donation_email_preview(
         "html": html_body,
         "receipt_pdf_url": donation.invoice_document_path,
     }
+
+
+# ============================================================
+# ABOUT - FOUNDER & MENTORS
+# ============================================================
+
+def _founder_or_default(db: Session) -> FounderProfile:
+    founder = db.query(FounderProfile).order_by(FounderProfile.id.asc()).first()
+    if not founder:
+        founder = FounderProfile(
+            name="Pushkar Kumar",
+            role="Founder",
+            eyebrow="Our Founder's Vision",
+            title="From Corporate Success to Rural Transformation",
+            image_alt="Founder of Piplad Welfare Foundation",
+        )
+        db.add(founder)
+        db.commit()
+        db.refresh(founder)
+    return founder
+
+
+@router.get(
+    "/about/founder",
+    response_model=FounderProfileResponse,
+)
+def get_admin_founder(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return _founder_or_default(db)
+
+
+@router.put(
+    "/about/founder",
+    response_model=FounderProfileResponse,
+)
+def update_admin_founder(
+    name: Optional[str] = Form(None),
+    role: Optional[str] = Form(None),
+    eyebrow: Optional[str] = Form(None),
+    title: Optional[str] = Form(None),
+    image_alt: Optional[str] = Form(None),
+    introduction: Optional[str] = Form(None),
+    story: Optional[str] = Form(None),
+    vision: Optional[str] = Form(None),
+    quote: Optional[str] = Form(None),
+    milestones: Optional[str] = Form(None),
+    remove_image: bool = Form(False),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    founder = _founder_or_default(db)
+    old_image = founder.image_url
+
+    if name is not None:
+        founder.name = name.strip() or "Pushkar Kumar"
+    if role is not None:
+        founder.role = role.strip() or None
+    if eyebrow is not None:
+        founder.eyebrow = eyebrow.strip() or None
+    if title is not None:
+        founder.title = title.strip() or None
+    if image_alt is not None:
+        founder.image_alt = image_alt.strip() or None
+    if introduction is not None:
+        founder.introduction = introduction.strip() or None
+    if story is not None:
+        founder.story = story.strip() or None
+    if vision is not None:
+        founder.vision = vision.strip() or None
+    if quote is not None:
+        founder.quote = quote.strip() or None
+
+    if file and file.filename:
+        founder.image_url = _upload_image(file, "about")
+    elif remove_image:
+        founder.image_url = None
+
+    if milestones is not None:
+        parsed = _json_value(milestones, "milestones", []) or []
+        for milestone in founder.milestones:
+            db.delete(milestone)
+        db.flush()
+        for index, item in enumerate(parsed):
+            db.add(
+                FounderMilestone(
+                    founder_id=founder.id,
+                    year=str(item.get("year") or f"{index + 1:02d}"),
+                    title=str(item.get("title") or "").strip(),
+                    description=str(item.get("description") or "").strip() or None,
+                    display_order=int(item.get("display_order", index)),
+                )
+            )
+
+    db.commit()
+    db.refresh(founder)
+
+    if old_image and old_image != founder.image_url:
+        _delete_local_file(old_image)
+        _delete_cloudinary_file(old_image, "image")
+
+    return founder
+
+
+@router.get(
+    "/about/mentors",
+    response_model=List[MentorResponse],
+)
+def get_admin_mentors(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(Mentor)
+        .order_by(Mentor.display_order.asc(), Mentor.id.asc())
+        .all()
+    )
+
+
+@router.post(
+    "/about/mentors",
+    response_model=MentorResponse,
+)
+def create_admin_mentor(
+    name: str = Form(...),
+    role: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    quote: Optional[str] = Form(None),
+    display_order: int = Form(0),
+    is_published: bool = Form(True),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    name = name.strip()
+    if not name:
+        raise HTTPException(400, "Mentor name is required")
+
+    image_url = None
+    if file and file.filename:
+        image_url = _upload_image(file, "about")
+
+    mentor = Mentor(
+        name=name,
+        role=(role or "").strip() or None,
+        image_url=image_url,
+        description=(description or "").strip() or None,
+        quote=(quote or "").strip() or None,
+        display_order=display_order,
+        is_published=is_published,
+    )
+    db.add(mentor)
+    db.commit()
+    db.refresh(mentor)
+    return mentor
+
+
+@router.put(
+    "/about/mentors/{mentor_id}",
+    response_model=MentorResponse,
+)
+def update_admin_mentor(
+    mentor_id: int,
+    name: Optional[str] = Form(None),
+    role: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    quote: Optional[str] = Form(None),
+    display_order: int = Form(0),
+    is_published: bool = Form(True),
+    remove_image: bool = Form(False),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    mentor = (
+        db.query(Mentor)
+        .filter(Mentor.id == mentor_id)
+        .first()
+    )
+    if not mentor:
+        raise HTTPException(404, "Mentor not found")
+
+    old_image = mentor.image_url
+
+    if name is not None:
+        mentor.name = name.strip() or mentor.name
+    if role is not None:
+        mentor.role = role.strip() or None
+    if description is not None:
+        mentor.description = description.strip() or None
+    if quote is not None:
+        mentor.quote = quote.strip() or None
+    mentor.display_order = display_order
+    mentor.is_published = is_published
+
+    if file and file.filename:
+        mentor.image_url = _upload_image(file, "about")
+    elif remove_image:
+        mentor.image_url = None
+
+    db.commit()
+    db.refresh(mentor)
+
+    if old_image and old_image != mentor.image_url:
+        _delete_local_file(old_image)
+        _delete_cloudinary_file(old_image, "image")
+
+    return mentor
+
+
+@router.delete("/about/mentors/{mentor_id}")
+def delete_admin_mentor(
+    mentor_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    mentor = (
+        db.query(Mentor)
+        .filter(Mentor.id == mentor_id)
+        .first()
+    )
+    if not mentor:
+        raise HTTPException(404, "Mentor not found")
+
+    old_image = mentor.image_url
+    db.delete(mentor)
+    db.commit()
+
+    _delete_local_file(old_image)
+    _delete_cloudinary_file(old_image, "image")
+
+    return {"message": "Mentor deleted"}
+
+
+# ============================================================
+# CERTIFICATE TEMPLATES ADMIN
+# ============================================================
+
+def _slugify(value: str) -> str:
+    result = "".join(
+        c if c.isalnum() else "-"
+        for c in (value or "").lower()
+    )
+    result = "-".join(part for part in result.split("-") if part)
+    return result or "template"
+
+
+@router.get(
+    "/certificate-templates",
+    response_model=List[CertificateTemplateResponse],
+)
+def get_certificate_templates(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(CertificateTemplate)
+        .order_by(
+            CertificateTemplate.display_order.asc(),
+            CertificateTemplate.id.asc(),
+        )
+        .all()
+    )
+
+
+@router.post(
+    "/certificate-templates",
+    response_model=CertificateTemplateResponse,
+)
+def create_certificate_template(
+    name: str = Form(...),
+    slug: Optional[str] = Form(None),
+    type_label: Optional[str] = Form(None),
+    layout: Optional[str] = Form(None),
+    display_order: int = Form(0),
+    is_active: bool = Form(True),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    name = name.strip()
+    if not name:
+        raise HTTPException(400, "Template name is required")
+
+    template_slug = _slugify(slug or name)
+    if db.query(CertificateTemplate).filter(CertificateTemplate.slug == template_slug).first():
+        raise HTTPException(
+            400,
+            f"A template with the slug '{template_slug}' already exists.",
+        )
+
+    image_url = None
+    if file and file.filename:
+        image_url = _upload_image(file, "certificate_templates")
+
+    template = CertificateTemplate(
+        name=name,
+        slug=template_slug,
+        type_label=(type_label or "").strip() or name,
+        image_url=image_url,
+        layout=_json_value(layout, "layout", {}),
+        is_active=is_active,
+        display_order=display_order,
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+@router.put(
+    "/certificate-templates/{template_id}",
+    response_model=CertificateTemplateResponse,
+)
+def update_certificate_template(
+    template_id: int,
+    name: Optional[str] = Form(None),
+    type_label: Optional[str] = Form(None),
+    layout: Optional[str] = Form(None),
+    display_order: int = Form(0),
+    is_active: bool = Form(True),
+    remove_image: bool = Form(False),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    template = (
+        db.query(CertificateTemplate)
+        .filter(CertificateTemplate.id == template_id)
+        .first()
+    )
+    if not template:
+        raise HTTPException(404, "Certificate template not found")
+
+    old_image = template.image_url
+
+    if name is not None:
+        template.name = name.strip() or template.name
+    if type_label is not None:
+        template.type_label = type_label.strip() or template.name
+    if layout is not None:
+        template.layout = _json_value(layout, "layout", {})
+    template.display_order = display_order
+    template.is_active = is_active
+
+    if file and file.filename:
+        template.image_url = _upload_image(file, "certificate_templates")
+    elif remove_image:
+        template.image_url = None
+
+    db.commit()
+    db.refresh(template)
+
+    if old_image and old_image != template.image_url:
+        _delete_local_file(old_image)
+        _delete_cloudinary_file(old_image, "image")
+
+    return template
+
+
+@router.delete("/certificate-templates/{template_id}")
+def delete_certificate_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    template = (
+        db.query(CertificateTemplate)
+        .filter(CertificateTemplate.id == template_id)
+        .first()
+    )
+    if not template:
+        raise HTTPException(404, "Certificate template not found")
+
+    old_image = template.image_url
+    db.delete(template)
+    db.commit()
+
+    _delete_local_file(old_image)
+    _delete_cloudinary_file(old_image, "image")
+
+    return {"message": "Certificate template deleted"}
+
+
+# ============================================================
+# CERTIFICATE ISSUING
+# ============================================================
+
+def _format_event_date(value) -> str:
+    if not value:
+        return ""
+    if isinstance(value, date):
+        return value.strftime("%d %B %Y")
+    try:
+        return date.fromisoformat(str(value)).strftime("%d %B %Y")
+    except ValueError:
+        return str(value)
+
+
+def _sluggish(value: str, fallback: str) -> str:
+    text = "".join(c if c.isalnum() else "-" for c in (value or "").lower())
+    cleaned = "-".join(p for p in text.split("-") if p)
+    return cleaned or fallback
+
+
+def _render_certificate_response(
+    template: CertificateTemplate,
+    recipient_name: str,
+    event_topic: str,
+    event_date,
+) -> dict:
+    """Render a template to bytes and return a small JSON describing it."""
+    image_bytes = build_certificate_image(
+        image_url=template.image_url or "",
+        layout=template.layout or {},
+        recipient_name=recipient_name,
+        event_topic=event_topic,
+        event_date=_format_event_date(event_date),
+    )
+
+    import base64
+
+    return {
+        "template_id": template.id,
+        "template_name": template.name,
+        "type_label": template.type_label or template.name,
+        "recipient_name": recipient_name,
+        "event_topic": event_topic or "",
+        "event_date": _format_event_date(event_date),
+        "image": "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("ascii"),
+        "filename": f"{_sluggish(recipient_name, 'certificate')}-{template.slug}.jpg",
+    }
+
+
+@router.post("/certificates/render")
+def render_certificate_preview(
+    body: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Render a certificate and return a base64 data-URL preview + filename."""
+    template_id = body.get("template_id")
+
+    template = (
+        db.query(CertificateTemplate)
+        .filter(CertificateTemplate.id == template_id)
+        .first()
+    )
+    if not template:
+        raise HTTPException(404, "Certificate template not found")
+    if not template.image_url:
+        raise HTTPException(400, "This template has no background image yet.")
+
+    return _render_certificate_response(
+        template=template,
+        recipient_name=str(body.get("recipient_name") or "").strip(),
+        event_topic=str(body.get("event_topic") or "").strip(),
+        event_date=body.get("event_date"),
+    )
+
+
+@router.post(
+    "/certificates/send",
+    response_model=IssuedCertificateResponse,
+)
+def send_certificate(
+    body: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Render a certificate, e-mail it to the recipient and log the issue."""
+    template_id = body.get("template_id")
+    recipient_name = str(body.get("recipient_name") or "").strip()
+    recipient_email = str(body.get("recipient_email") or "").strip()
+    event_topic = str(body.get("event_topic") or "").strip()
+    event_date = _parse_date_value(body.get("event_date"), "event_date")
+
+    if not recipient_name:
+        raise HTTPException(400, "Recipient name is required")
+    if not recipient_email:
+        raise HTTPException(400, "Recipient e-mail is required")
+
+    template = (
+        db.query(CertificateTemplate)
+        .filter(CertificateTemplate.id == template_id)
+        .first()
+    )
+    if not template:
+        raise HTTPException(404, "Certificate template not found")
+    if not template.image_url:
+        raise HTTPException(400, "This template has no background image yet.")
+
+    result = _issue_single_certificate(
+        db,
+        template,
+        recipient_name=recipient_name,
+        recipient_email=recipient_email,
+        event_topic=event_topic,
+        event_date=event_date,
+    )
+
+    if result["status"] != "sent":
+        raise HTTPException(
+            502,
+            result["error"]
+            or "Certificate was rendered but the e-mail could not be sent. "
+            "Check that BREVO_API_KEY is configured. The issue was logged.",
+        )
+
+    return (
+        db.query(IssuedCertificate)
+        .filter(IssuedCertificate.id == result["issued_id"])
+        .first()
+    )
+
+
+def _issue_single_certificate(
+    db: Session,
+    template,
+    *,
+    recipient_name: str,
+    recipient_email: str,
+    event_topic: str,
+    event_date,
+) -> dict:
+    """Render + e-mail a single certificate and log the issue.
+
+    Never raises on e-mail failure: the rendered certificate is still logged
+    (status ``rendered``) and the reason is returned in ``error`` so batch
+    sends can keep going.
+    """
+    image_bytes = build_certificate_image(
+        image_url=template.image_url,
+        layout=template.layout or {},
+        recipient_name=recipient_name,
+        event_topic=event_topic,
+        event_date=_format_event_date(event_date),
+    )
+
+    type_label = template.type_label or template.name
+    filename = f"{_sluggish(recipient_name, 'certificate')}-{template.slug}.jpg"
+
+    sent = send_certificate_email(
+        to_email=recipient_email,
+        recipient_name=recipient_name,
+        type_label=type_label,
+        event_topic=event_topic,
+        event_date=_format_event_date(event_date),
+        image_bytes=image_bytes,
+        filename=filename,
+    )
+
+    issued = IssuedCertificate(
+        template_id=template.id,
+        recipient_name=recipient_name,
+        recipient_email=recipient_email,
+        event_topic=event_topic or None,
+        event_date=event_date,
+        type_label=type_label,
+        status="sent" if sent else "rendered",
+        sent_at=datetime.utcnow() if sent else None,
+    )
+    db.add(issued)
+    db.commit()
+    db.refresh(issued)
+
+    result = {
+        "recipient_name": recipient_name,
+        "recipient_email": recipient_email,
+        "status": "sent" if sent else "rendered",
+        "issued_id": issued.id,
+    }
+    if not sent:
+        result["error"] = (
+            "Certificate was rendered but the e-mail could not be sent. "
+            "Check that BREVO_API_KEY is configured. The issue was logged."
+        )
+
+    return result
+
+
+@router.post("/certificates/send-batch")
+def send_certificates_batch(
+    body: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Render + e-mail a certificate for many recipients in one call."""
+    recipients = body.get("recipients") or []
+    event_topic = str(body.get("event_topic") or "").strip()
+    event_date = _parse_date_value(body.get("event_date"), "event_date")
+
+    if not isinstance(recipients, list) or not recipients:
+        raise HTTPException(400, "At least one recipient is required")
+
+    template = (
+        db.query(CertificateTemplate)
+        .filter(CertificateTemplate.id == body.get("template_id"))
+        .first()
+    )
+    if not template:
+        raise HTTPException(404, "Certificate template not found")
+    if not template.image_url:
+        raise HTTPException(400, "This template has no background image yet.")
+
+    results = []
+
+    for row in recipients:
+        if not isinstance(row, dict):
+            results.append(
+                {
+                    "recipient_name": "",
+                    "recipient_email": "",
+                    "status": "invalid",
+                    "error": "Recipient entry is malformed",
+                }
+            )
+            continue
+
+        recipient_name = str(row.get("recipient_name") or "").strip()
+        recipient_email = str(row.get("recipient_email") or "").strip()
+
+        if not recipient_name or not recipient_email:
+            results.append(
+                {
+                    "recipient_name": recipient_name,
+                    "recipient_email": recipient_email,
+                    "status": "invalid",
+                    "error": "Recipient name and e-mail are required",
+                }
+            )
+            continue
+
+        try:
+            result = _issue_single_certificate(
+                db,
+                template,
+                recipient_name=recipient_name,
+                recipient_email=recipient_email,
+                event_topic=event_topic,
+                event_date=event_date,
+            )
+        except Exception as exc:  # noqa: BLE001 - one bad recipient, not the whole batch
+            db.rollback()
+            results.append(
+                {
+                    "recipient_name": recipient_name,
+                    "recipient_email": recipient_email,
+                    "status": "error",
+                    "error": str(exc),
+                }
+            )
+            continue
+
+        results.append(result)
+
+    return {
+        "sent": sum(1 for r in results if r["status"] == "sent"),
+        "failed": sum(1 for r in results if r["status"] != "sent"),
+        "total": len(results),
+        "results": results,
+    }
+
+
+@router.get(
+    "/certificates/issued",
+    response_model=List[IssuedCertificateResponse],
+)
+def get_issued_certificates(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(IssuedCertificate)
+        .order_by(IssuedCertificate.created_at.desc(), IssuedCertificate.id.desc())
+        .all()
+    )
+
+
+# ============================================================
+# FOOTER FOCUS
+# ============================================================
+
+@router.get(
+    "/footer-focus",
+    response_model=List[FooterFocusItemResponse],
+)
+def get_footer_focus_items(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(FooterFocusItem)
+        .order_by(FooterFocusItem.display_order.asc(), FooterFocusItem.id.asc())
+        .all()
+    )
+
+
+@router.post(
+    "/footer-focus",
+    response_model=FooterFocusItemResponse,
+)
+def create_footer_focus_item(
+    text: str = Form(...),
+    display_order: int = Form(0),
+    is_published: bool = Form(True),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    text = text.strip()
+    if not text:
+        raise HTTPException(400, "Focus item text is required")
+
+    item = FooterFocusItem(
+        text=text,
+        display_order=display_order,
+        is_published=is_published,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put(
+    "/footer-focus/{item_id}",
+    response_model=FooterFocusItemResponse,
+)
+def update_footer_focus_item(
+    item_id: int,
+    text: str = Form(...),
+    display_order: int = Form(0),
+    is_published: bool = Form(True),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    item = (
+        db.query(FooterFocusItem)
+        .filter(FooterFocusItem.id == item_id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(404, "Footer focus item not found")
+
+    text = text.strip()
+    if not text:
+        raise HTTPException(400, "Focus item text is required")
+
+    item.text = text
+    item.display_order = display_order
+    item.is_published = is_published
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.post("/footer-focus/reorder")
+def reorder_footer_focus(
+    body: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    order = body.get("order") or []
+    for position, item_id in enumerate(order):
+        item = (
+            db.query(FooterFocusItem)
+            .filter(FooterFocusItem.id == int(item_id))
+            .first()
+        )
+        if item:
+            item.display_order = position
+    db.commit()
+    return {"message": "Footer focus reordered"}
+
+
+@router.delete("/footer-focus/{item_id}")
+def delete_footer_focus_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    item = (
+        db.query(FooterFocusItem)
+        .filter(FooterFocusItem.id == item_id)
+        .first()
+    )
+    if not item:
+        raise HTTPException(404, "Footer focus item not found")
+
+    db.delete(item)
+    db.commit()
+    return {"message": "Footer focus item deleted"}

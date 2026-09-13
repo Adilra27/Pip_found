@@ -6,11 +6,17 @@ from .models import (
     Blog,
     Cause,
     Certificate,
+    CertificateTemplate,
     ContactInquiry,
     Donation,
+    FooterFocusItem,
+    FounderMilestone,
+    FounderProfile,
     GalleryItem,
     ImpactMetric,
+    IssuedCertificate,
     Media,
+    Mentor,
     TeamMember,
     UpcomingProject,
     VideoGallery,
@@ -111,6 +117,43 @@ class ImpactMetricAdmin(ModelView, model=ImpactMetric):
     icon = "fa-solid fa-chart-simple"
 
 
+class MentorAdmin(ModelView, model=Mentor):
+    column_list = [Mentor.id, Mentor.name, Mentor.role, Mentor.is_published, Mentor.display_order]
+    icon = "fa-solid fa-people-group"
+
+
+class FounderProfileAdmin(ModelView, model=FounderProfile):
+    column_list = [FounderProfile.id, FounderProfile.name, FounderProfile.role]
+    icon = "fa-solid fa-user-tie"
+
+
+class FounderMilestoneAdmin(ModelView, model=FounderMilestone):
+    column_list = [FounderMilestone.id, FounderMilestone.title, FounderMilestone.year, FounderMilestone.display_order]
+    icon = "fa-solid fa-list"
+
+
+class CertificateTemplateAdmin(ModelView, model=CertificateTemplate):
+    column_list = [CertificateTemplate.id, CertificateTemplate.name, CertificateTemplate.slug, CertificateTemplate.is_active]
+    icon = "fa-solid fa-file-image"
+
+
+class IssuedCertificateAdmin(ModelView, model=IssuedCertificate):
+    column_list = [
+        IssuedCertificate.id,
+        IssuedCertificate.recipient_name,
+        IssuedCertificate.type_label,
+        IssuedCertificate.status,
+        IssuedCertificate.sent_at,
+        IssuedCertificate.created_at,
+    ]
+    icon = "fa-solid fa-certificate"
+
+
+class FooterFocusItemAdmin(ModelView, model=FooterFocusItem):
+    column_list = [FooterFocusItem.id, FooterFocusItem.text, FooterFocusItem.display_order, FooterFocusItem.is_published]
+    icon = "fa-solid fa-arrow-down-wide-short"
+
+
 def setup_admin(app):
     admin = Admin(app, engine, title="PWF Admin Dashboard")
     admin.add_view(CauseAdmin)
@@ -121,6 +164,12 @@ def setup_admin(app):
     admin.add_view(VideoGalleryAdmin)
     admin.add_view(UpcomingProjectAdmin)
     admin.add_view(CertificateAdmin)
+    admin.add_view(CertificateTemplateAdmin)
+    admin.add_view(IssuedCertificateAdmin)
+    admin.add_view(MentorAdmin)
+    admin.add_view(FounderProfileAdmin)
+    admin.add_view(FounderMilestoneAdmin)
+    admin.add_view(FooterFocusItemAdmin)
     admin.add_view(MediaAdmin)
     admin.add_view(ImpactMetricAdmin)
     admin.add_view(ContactInquiryAdmin)

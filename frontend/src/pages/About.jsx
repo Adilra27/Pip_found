@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { fetchTeam } from '../api';
+import { fetchTeam, fetchFounder, fetchMentors } from '../api';
 
 import AboutHero from '../components/about/AboutHero';
 import WhoWeAre from '../components/about/WhoWeAre';
@@ -21,6 +21,9 @@ export default function About({ onOpenDonate }) {
   const [team, setTeam] = useState([]);
   const [teamLoading, setTeamLoading] = useState(true);
   const [teamError, setTeamError] = useState(null);
+
+  const [aboutData, setAboutData] = useState(null);
+  const [aboutLoading, setAboutLoading] = useState(true);
 
   /*
    * Load team information
@@ -53,6 +56,47 @@ export default function About({ onOpenDonate }) {
     };
 
     loadTeam();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /*
+   * Load founder profile and mentors for the About page.
+   *
+   * The components still use their bundled static content as a fallback,
+   * so a failure here never produces a blank page.
+   */
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAboutData = async () => {
+      try {
+        setAboutLoading(true);
+
+        const [founderData, mentorsData] = await Promise.all([
+          fetchFounder(),
+          fetchMentors(),
+        ]);
+
+        if (isMounted) {
+          setAboutData({ founder: founderData, mentors: mentorsData });
+        }
+      } catch (error) {
+        console.error('Failed to fetch about data:', error);
+
+        if (isMounted) {
+          setAboutData(null);
+        }
+      } finally {
+        if (isMounted) {
+          setAboutLoading(false);
+        }
+      }
+    };
+
+    loadAboutData();
 
     return () => {
       isMounted = false;
@@ -140,14 +184,19 @@ export default function About({ onOpenDonate }) {
       {/* =========================================
           8. FOUNDER'S STORY
       ========================================== */}
-      <FounderStory />
+      <FounderStory
+        data={aboutData?.founder || null}
+        loading={aboutLoading}
+      />
 
       {/* =========================================
           9. MENTORS / TEAM
       ========================================== */}
       <MentorsSection
+        data={aboutData?.mentors || null}
+        loading={aboutLoading}
         team={team}
-        loading={teamLoading}
+        loadingTeam={teamLoading}
         error={teamError}
       />
 

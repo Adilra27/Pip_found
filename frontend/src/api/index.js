@@ -492,6 +492,9 @@ export async function createAdminTeamMember({
   team,
   bio,
   file,
+  memberId,
+  joinedDate,
+  email,
 }) {
   const form = new FormData();
 
@@ -510,6 +513,18 @@ export async function createAdminTeamMember({
     form.append('bio', bio);
   }
 
+  if (memberId) {
+    form.append('member_id', memberId);
+  }
+
+  if (joinedDate) {
+    form.append('joined_date', joinedDate);
+  }
+
+  if (email) {
+    form.append('email', email);
+  }
+
   // Photo is optional.
   if (file) {
     form.append('file', file);
@@ -521,10 +536,119 @@ export async function createAdminTeamMember({
   });
 }
 
+export async function updateAdminTeamMember(
+  id,
+  {
+    name,
+    role,
+    team,
+    bio,
+    file,
+    memberId,
+    joinedDate,
+    email,
+    removeImage,
+  }
+) {
+  const form = new FormData();
+
+  form.append('name', name);
+
+  if (role) {
+    form.append('role', role);
+  }
+
+  form.append(
+    'team',
+    team || 'General'
+  );
+
+  if (bio) {
+    form.append('bio', bio);
+  }
+
+  if (memberId) {
+    form.append('member_id', memberId);
+  }
+
+  if (joinedDate) {
+    form.append('joined_date', joinedDate);
+  }
+
+  if (email) {
+    form.append('email', email);
+  }
+
+  form.append('remove_image', String(Boolean(removeImage)));
+
+  // Photo is optional.
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch(`/admin/team/${id}`, {
+    method: 'PUT',
+    body: form,
+  });
+}
 
 export async function deleteAdminTeamMember(id) {
   return adminFetch(`/admin/team/${id}`, {
     method: 'DELETE',
+  });
+}
+
+async function adminFetchBlob(path) {
+  const credentials = getAdminCredentials();
+
+  if (!credentials) {
+    const error = new Error('ADMIN_AUTH_REQUIRED');
+    error.code = 'ADMIN_AUTH_REQUIRED';
+    throw error;
+  }
+
+  const headers = new Headers();
+  headers.set(
+    'Authorization',
+    `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
+  );
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    cache: 'no-store',
+    headers,
+  });
+
+  if (response.status === 401) {
+    clearAdminCredentials();
+
+    const error = new Error('ADMIN_AUTH_REQUIRED');
+    error.code = 'ADMIN_AUTH_REQUIRED';
+    throw error;
+  }
+
+  if (!response.ok) {
+    let message = `Request failed (${response.status})`;
+
+    try {
+      const data = await response.json();
+      message = data.detail || message;
+    } catch {
+      // Keep the generic message.
+    }
+
+    throw new Error(message);
+  }
+
+  return response.blob();
+}
+
+export async function fetchAdminTeamCard(id) {
+  return adminFetchBlob(`/admin/team/${id}/card`);
+}
+
+export async function sendAdminTeamCard(id) {
+  return adminFetch(`/admin/team/${id}/card/send`, {
+    method: 'POST',
   });
 }
 
@@ -655,5 +779,357 @@ export async function updateAdminImpact(metrics) {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ metrics }),
+  });
+}
+
+
+// ============================================================
+// PUBLIC ABOUT (FOUNDER & MENTORS)
+// ============================================================
+
+async function publicGet(path) {
+  const res = await fetch(`${API_BASE_URL}${path}`);
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch ${path}`);
+  }
+
+  return res.json();
+}
+
+export async function fetchFounder() {
+  return publicGet('/about/founder');
+}
+
+export async function fetchMentors() {
+  return publicGet('/about/mentors');
+}
+
+export async function fetchFooterFocus() {
+  return publicGet('/about/footer-focus');
+}
+
+
+// ============================================================
+// ADMIN ABOUT (FOUNDER & MENTORS)
+// ============================================================
+
+export async function fetchAdminFounder() {
+  return adminFetch('/admin/about/founder');
+}
+
+export async function updateAdminFounder({
+  name,
+  role,
+  eyebrow,
+  title,
+  imageAlt,
+  introduction,
+  story,
+  vision,
+  quote,
+  milestones,
+  removeImage,
+  file,
+}) {
+  const form = new FormData();
+
+  if (name) form.append('name', name);
+  if (role) form.append('role', role);
+  if (eyebrow) form.append('eyebrow', eyebrow);
+  if (title) form.append('title', title);
+  if (imageAlt) form.append('image_alt', imageAlt);
+  if (introduction) form.append('introduction', introduction);
+  if (story) form.append('story', story);
+  if (vision) form.append('vision', vision);
+  if (quote) form.append('quote', quote);
+
+  if (milestones) {
+    form.append('milestones', JSON.stringify(milestones));
+  }
+
+  form.append('remove_image', String(Boolean(removeImage)));
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch('/admin/about/founder', {
+    method: 'PUT',
+    body: form,
+  });
+}
+
+export async function fetchAdminMentors() {
+  return adminFetch('/admin/about/mentors');
+}
+
+export async function createAdminMentor({
+  name,
+  role,
+  description,
+  quote,
+  displayOrder,
+  isPublished,
+  file,
+}) {
+  const form = new FormData();
+
+  form.append('name', name);
+
+  if (role) form.append('role', role);
+  if (description) form.append('description', description);
+  if (quote) form.append('quote', quote);
+
+  form.append('display_order', String(displayOrder || 0));
+  form.append('is_published', String(Boolean(isPublished)));
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch('/admin/about/mentors', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function updateAdminMentor(
+  id,
+  {
+    name,
+    role,
+    description,
+    quote,
+    displayOrder,
+    isPublished,
+    removeImage,
+    file,
+  }
+) {
+  const form = new FormData();
+
+  if (name) form.append('name', name);
+  if (role) form.append('role', role);
+  if (description) form.append('description', description);
+  if (quote) form.append('quote', quote);
+
+  form.append('display_order', String(displayOrder || 0));
+  form.append('is_published', String(Boolean(isPublished)));
+  form.append('remove_image', String(Boolean(removeImage)));
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch(`/admin/about/mentors/${id}`, {
+    method: 'PUT',
+    body: form,
+  });
+}
+
+export async function deleteAdminMentor(id) {
+  return adminFetch(`/admin/about/mentors/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+
+// ============================================================
+// ADMIN CERTIFICATE TEMPLATES
+// ============================================================
+
+export async function fetchAdminCertificateTemplates() {
+  return adminFetch('/admin/certificate-templates');
+}
+
+export async function createAdminCertificateTemplate({
+  name,
+  slug,
+  typeLabel,
+  layout,
+  displayOrder,
+  isActive,
+  file,
+}) {
+  const form = new FormData();
+
+  form.append('name', name);
+
+  if (slug) form.append('slug', slug);
+  if (typeLabel) form.append('type_label', typeLabel);
+
+  form.append('display_order', String(displayOrder || 0));
+  form.append('is_active', String(Boolean(isActive)));
+
+  if (layout) {
+    form.append('layout', JSON.stringify(layout));
+  }
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch('/admin/certificate-templates', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function updateAdminCertificateTemplate(
+  id,
+  {
+    name,
+    typeLabel,
+    layout,
+    displayOrder,
+    isActive,
+    removeImage,
+    file,
+  }
+) {
+  const form = new FormData();
+
+  if (name) form.append('name', name);
+  if (typeLabel) form.append('type_label', typeLabel);
+
+  form.append('display_order', String(displayOrder || 0));
+  form.append('is_active', String(Boolean(isActive)));
+  form.append('remove_image', String(Boolean(removeImage)));
+
+  if (layout) {
+    form.append('layout', JSON.stringify(layout));
+  }
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch(`/admin/certificate-templates/${id}`, {
+    method: 'PUT',
+    body: form,
+  });
+}
+
+export async function deleteAdminCertificateTemplate(id) {
+  return adminFetch(`/admin/certificate-templates/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+
+// ============================================================
+// ADMIN CERTIFICATE ISSUING
+// ============================================================
+
+export async function renderAdminCertificate({
+  templateId,
+  recipientName,
+  eventTopic,
+  eventDate,
+}) {
+  return adminFetch('/admin/certificates/render', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      template_id: templateId,
+      recipient_name: recipientName,
+      event_topic: eventTopic,
+      event_date: eventDate,
+    }),
+  });
+}
+
+export async function sendAdminCertificate({
+  templateId,
+  recipientName,
+  recipientEmail,
+  eventTopic,
+  eventDate,
+}) {
+  return adminFetch('/admin/certificates/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      template_id: templateId,
+      recipient_name: recipientName,
+      recipient_email: recipientEmail,
+      event_topic: eventTopic,
+      event_date: eventDate,
+    }),
+  });
+}
+
+export async function sendAdminCertificatesBatch({
+  templateId,
+  recipients,
+  eventTopic,
+  eventDate,
+}) {
+  return adminFetch('/admin/certificates/send-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      template_id: templateId,
+      recipients,
+      event_topic: eventTopic,
+      event_date: eventDate,
+    }),
+  });
+}
+
+export async function fetchAdminIssuedCertificates() {
+  return adminFetch('/admin/certificates/issued');
+}
+
+
+// ============================================================
+// ADMIN FOOTER FOCUS
+// ============================================================
+
+export async function fetchAdminFooterFocus() {
+  return adminFetch('/admin/footer-focus');
+}
+
+export async function createAdminFooterFocus({ text, displayOrder, isPublished }) {
+  const form = new FormData();
+
+  form.append('text', text);
+  form.append('display_order', String(displayOrder || 0));
+  form.append('is_published', String(Boolean(isPublished)));
+
+  return adminFetch('/admin/footer-focus', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function updateAdminFooterFocus(
+  id,
+  { text, displayOrder, isPublished }
+) {
+  const form = new FormData();
+
+  form.append('text', text);
+  form.append('display_order', String(displayOrder || 0));
+  form.append('is_published', String(Boolean(isPublished)));
+
+  return adminFetch(`/admin/footer-focus/${id}`, {
+    method: 'PUT',
+    body: form,
+  });
+}
+
+export async function deleteAdminFooterFocus(id) {
+  return adminFetch(`/admin/footer-focus/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function reorderAdminFooterFocus(order) {
+  return adminFetch('/admin/footer-focus/reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order }),
   });
 }

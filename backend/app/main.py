@@ -67,6 +67,36 @@ with engine.begin() as connection:
                 )
             )
 
+        if "member_id" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE team_members
+                    ADD COLUMN member_id VARCHAR(100)
+                    """
+                )
+            )
+
+        if "joined_date" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE team_members
+                    ADD COLUMN joined_date DATE
+                    """
+                )
+            )
+
+        if "email" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE team_members
+                    ADD COLUMN email VARCHAR(255)
+                    """
+                )
+            )
+
     if "video_gallery" in existing_tables:
         columns = {
             column["name"]
@@ -310,6 +340,18 @@ MEDIA_DIR.mkdir(
 
 # Certificate uploads.
 (MEDIA_DIR / "certificates").mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+# About page founder / mentor photos.
+(MEDIA_DIR / "about").mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+# Certificate template backgrounds.
+(MEDIA_DIR / "certificate_templates").mkdir(
     parents=True,
     exist_ok=True,
 )

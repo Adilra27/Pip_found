@@ -1,9 +1,120 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from .database import Base
+
+
+class FounderProfile(Base):
+    """Single editable founder profile shown on the About page."""
+
+    __tablename__ = "founder_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, default="Pushkar Kumar")
+    role = Column(String(255), nullable=True, default="Founder")
+    eyebrow = Column(String(255), nullable=True)
+    title = Column(String(255), nullable=True)
+    image_url = Column(String(500), nullable=True)
+    image_alt = Column(String(255), nullable=True)
+    introduction = Column(Text, nullable=True)
+    story = Column(Text, nullable=True)
+    vision = Column(Text, nullable=True)
+    quote = Column(Text, nullable=True)
+
+    milestones = relationship(
+        "FounderMilestone",
+        back_populates="founder",
+        cascade="all, delete-orphan",
+        order_by="FounderMilestone.display_order",
+    )
+
+
+class FounderMilestone(Base):
+    """Milestone card shown under the founder story."""
+
+    __tablename__ = "founder_milestones"
+
+    id = Column(Integer, primary_key=True, index=True)
+    founder_id = Column(Integer, ForeignKey("founder_profiles.id"), nullable=False)
+    year = Column(String(20), nullable=False, default="01")
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    display_order = Column(Integer, nullable=False, default=0)
+
+    founder = relationship("FounderProfile", back_populates="milestones")
+
+
+class Mentor(Base):
+    """Editable mentor shown in the toggleable mentors section of About."""
+
+    __tablename__ = "founder_mentors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    role = Column(String(255), nullable=True)
+    image_url = Column(String(500), nullable=True)
+    description = Column(Text, nullable=True)
+    quote = Column(Text, nullable=True)
+    display_order = Column(Integer, nullable=False, default=0)
+    is_published = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class CertificateTemplate(Base):
+    """A certificate/template type whose layout the admin can configure.
+
+    ``layout`` is a JSON object. The public rendering code reads the ``name`` /
+    ``date`` / ``topic`` keys; each section supports ``x``, ``y``,
+    ``font_size``, ``max_width``, ``color`` and an optional ``box`` blank box.
+    """
+
+    __tablename__ = "certificate_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    slug = Column(String(100), unique=True, nullable=False, index=True)
+    type_label = Column(String(100), nullable=True)
+    image_url = Column(String(500), nullable=True)
+    layout = Column(JSON, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    display_order = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    issued = relationship("IssuedCertificate", back_populates="template")
+
+
+class IssuedCertificate(Base):
+    """Log entry for a certificate generated on demand by the admin."""
+
+    __tablename__ = "issued_certificates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey("certificate_templates.id"), nullable=True)
+    recipient_name = Column(String(255), nullable=False)
+    recipient_email = Column(String(255), nullable=True)
+    event_topic = Column(String(500), nullable=True)
+    event_date = Column(Date, nullable=True)
+    type_label = Column(String(100), nullable=True)
+    rendered_url = Column(String(500), nullable=True)
+    status = Column(String(50), nullable=False, default="rendered")
+    sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    template = relationship("CertificateTemplate", back_populates="issued")
+
+
+class FooterFocusItem(Base):
+    """Editable bullet items under "Our Core Focus" in the website footer."""
+
+    __tablename__ = "footer_focus_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    text = Column(String(500), nullable=False)
+    display_order = Column(Integer, nullable=False, default=0)
+    is_published = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class Cause(Base):
@@ -112,6 +223,24 @@ class TeamMember(Base):
 
     bio = Column(
         Text,
+        nullable=True,
+    )
+
+    # Stable public identifier used on the member ID card.
+    member_id = Column(
+        String(100),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+
+    joined_date = Column(
+        Date,
+        nullable=True,
+    )
+
+    email = Column(
+        String(255),
         nullable=True,
     )
 

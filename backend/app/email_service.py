@@ -254,3 +254,85 @@ def send_donation_documents_email(
         html_body=receipt_html,
         attachments=attachments,
     )
+
+
+def send_certificate_email(
+    *,
+    to_email: str,
+    recipient_name: str,
+    type_label: str,
+    event_topic: str,
+    event_date: str,
+    image_bytes: bytes,
+    filename: str,
+) -> bool:
+    """Email a rendered certificate/card image to a recipient."""
+    clean_type = (type_label or "Certificate").strip() or "Certificate"
+    body_lines = [
+        f"Dear {recipient_name},",
+        "",
+        f"We are pleased to share your {clean_type} from the Piplad "
+        "Welfare Foundation.",
+        "",
+    ]
+    if event_topic:
+        body_lines.append(f"Event / Topic: {event_topic}")
+    if event_date:
+        body_lines.append(f"Date: {event_date}")
+    body_lines += [
+        "",
+        "The certificate is attached to this e-mail. Please keep it safe "
+        "and feel free to share it on your social profiles.",
+        "",
+        "With regards,",
+        "Piplad Welfare Foundation",
+        "Creating Opportunities, Creating Lives",
+    ]
+
+    return _deliver_email(
+        to_email=to_email,
+        subject=f"Your {clean_type} - Piplad Welfare Foundation",
+        text_body="\n".join(body_lines),
+        attachments=[
+            {
+                "filename": filename,
+                "data": image_bytes,
+                "maintype": "image",
+                "subtype": "jpeg",
+            }
+        ],
+    )
+
+
+def send_team_card_email(
+    *,
+    to_email: str,
+    recipient_name: str,
+    member_id: str,
+    image_bytes: bytes,
+) -> bool:
+    """Email a rendered team member ID card to the member."""
+    text_body = (
+        f"Dear {recipient_name},\n\n"
+        "Welcome to the Piplad Welfare Foundation family! Please find your "
+        "Team Member ID Card attached to this e-mail.\n"
+        f"Member ID: {member_id}\n\n"
+        "Keep your ID card handy for team events, meetings and official "
+        "communication.\n\n"
+        "With regards,\n"
+        "Piplad Welfare Foundation\nCreating Opportunities, Creating Lives"
+    )
+
+    return _deliver_email(
+        to_email=to_email,
+        subject="Your Team Member ID Card - Piplad Welfare Foundation",
+        text_body=text_body,
+        attachments=[
+            {
+                "filename": "Team_Member_ID_Card.jpg",
+                "data": image_bytes,
+                "maintype": "image",
+                "subtype": "jpeg",
+            }
+        ],
+    )

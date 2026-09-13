@@ -8,6 +8,7 @@ import {
   MessageSquare,
   RefreshCw,
   ShieldCheck,
+  Trash,
   Trash2,
   Upload,
   Video,
@@ -24,27 +25,41 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
+  FileImage,
   LayoutDashboard,
   Send,
+  Target,
   UserCheck,
 } from 'lucide-react';
 
 import {
   clearAdminCredentials,
   createAdminCertificate,
+  createAdminCertificateTemplate,
+  createAdminFooterFocus,
+  createAdminMentor,
   createAdminProject,
   createAdminTeamMember,
   deleteAdminCertificate,
+  deleteAdminCertificateTemplate,
+  deleteAdminFooterFocus,
   deleteAdminGalleryImage,
+  deleteAdminMentor,
   deleteAdminProject,
   deleteAdminTeamMember,
   deleteAdminVideo,
   deleteContactInquiry,
   fetchAdminCertificates,
+  fetchAdminCertificateTemplates,
+  fetchAdminFounder,
+  fetchAdminFooterFocus,
   fetchAdminGallery,
+  fetchAdminIssuedCertificates,
+  fetchAdminMentors,
   fetchAdminProjects,
   fetchAdminStats,
   fetchAdminTeam,
+  fetchAdminTeamCard,
   fetchAdminVideos,
   fetchAdminVolunteers,
   fetchAdminGalleryCategories,
@@ -52,10 +67,19 @@ import {
   fetchContactInquiries,
   fetchDonationsList,
   getAdminCredentials,
+  renderAdminCertificate,
+  reorderAdminFooterFocus,
   resolveMediaUrl,
+  sendAdminCertificatesBatch,
+  sendAdminTeamCard,
   setAdminCredentials,
   updateAdminCertificate,
+  updateAdminCertificateTemplate,
+  updateAdminFounder,
+  updateAdminFooterFocus,
+  updateAdminMentor,
   updateAdminProject,
+  updateAdminTeamMember,
   updateAdminVolunteerStatus,
   uploadAdminGalleryImage,
   uploadAdminVideo,
@@ -67,7 +91,6 @@ import {
   resendAdminDonationReceipt,
   fetchAdminImpact,
   updateAdminImpact,
-  API_ORIGIN,
 } from '../api';
 
 
@@ -2594,8 +2617,14 @@ function TeamManager({
       team:
         'Education & Skill Development',
       bio: '',
+      memberId: '',
+      joinedDate: '',
+      email: '',
       file: null,
     });
+
+  const [editingId, setEditingId] =
+    useState(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -2645,8 +2674,13 @@ function TeamManager({
       team:
         'Education & Skill Development',
       bio: '',
+      memberId: '',
+      joinedDate: '',
+      email: '',
       file: null,
     });
+
+    setEditingId(null);
   }
 
   async function submit(e) {
@@ -2661,6 +2695,27 @@ function TeamManager({
       return;
     }
 
+    if (!form.role.trim()) {
+      setError(
+        'Please enter the team member role.'
+      );
+      return;
+    }
+
+    if (!form.memberId.trim()) {
+      setError(
+        'Please enter the team member ID.'
+      );
+      return;
+    }
+
+    if (!form.email.trim()) {
+      setError(
+        'Please enter the team member email.'
+      );
+      return;
+    }
+
     if (!form.team.trim()) {
       setError(
         'Please select a team.'
@@ -2668,12 +2723,29 @@ function TeamManager({
       return;
     }
 
+    if (!editingId && !form.file) {
+      setError(
+        'A profile photo is required for new team members.'
+      );
+      return;
+    }
+
     setSaving(true);
 
     try {
-      await createAdminTeamMember(
-        form
-      );
+      if (editingId) {
+        await updateAdminTeamMember(
+          editingId,
+          {
+            ...form,
+            removeImage: false,
+          }
+        );
+      } else {
+        await createAdminTeamMember(
+          form
+        );
+      }
 
       resetForm();
 
@@ -2684,6 +2756,60 @@ function TeamManager({
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function startEdit(item) {
+    setEditingId(item.id);
+
+    setForm({
+      name: item.name || '',
+      role: item.role || '',
+      team: item.team || 'General',
+      bio: item.bio || '',
+      memberId: item.member_id || '',
+      joinedDate: item.joined_date || '',
+      email: item.email || '',
+      file: null,
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  async function downloadCard(id, name) {
+    try {
+      const blob = await fetchAdminTeamCard(id);
+
+      const url = URL.createObjectURL(blob);
+
+      const anchor = document.createElement('a');
+
+      anchor.href = url;
+
+      anchor.download = `${name || 'team-member'}-id-card.jpg`;
+
+      document.body.appendChild(anchor);
+
+      anchor.click();
+
+      document.body.removeChild(anchor);
+
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function emailCard(id) {
+    try {
+      await sendAdminTeamCard(id);
+
+      alert('Team member ID card emailed successfully.');
+    } catch (e) {
+      setError(e.message);
     }
   }
 
@@ -2747,10 +2873,12 @@ function TeamManager({
           lineHeight: 1.6,
         }}
       >
-        Add and remove people who
+        Add, edit and remove people who
         should appear on the public
-        Our Team page. A profile photo
-        is optional.
+        Our Team page. Name, Member ID,
+        role, email and a profile photo
+        are all required for each
+        member.
       </div>
 
       <form
@@ -2779,6 +2907,7 @@ function TeamManager({
               role: e.target.value,
             })
           }
+          required
           style={inputStyle}
         />
 
@@ -2818,6 +2947,45 @@ function TeamManager({
         />
 
         <input
+          placeholder="Member ID (e.g. PWF-TM-0001, required)"
+          value={form.memberId}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              memberId: e.target.value,
+            })
+          }
+          required
+          style={inputStyle}
+        />
+
+        <input
+          type="date"
+          value={form.joinedDate}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              joinedDate: e.target.value,
+            })
+          }
+          style={inputStyle}
+        />
+
+        <input
+          type="email"
+          placeholder="Email (used to send the ID card, required)"
+          value={form.email}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              email: e.target.value,
+            })
+          }
+          required
+          style={inputStyle}
+        />
+
+        <input
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
           onChange={(e) =>
@@ -2840,8 +3008,12 @@ function TeamManager({
           <Users size={17} />
 
           {saving
-            ? 'Adding Member...'
-            : 'Add Team Member'}
+            ? editingId
+              ? 'Saving Member...'
+              : 'Adding Member...'
+            : editingId
+              ? 'Update Team Member'
+              : 'Add Team Member'}
         </button>
       </form>
 
@@ -3023,25 +3195,130 @@ function TeamManager({
                             </p>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              remove(
-                                member.id
-                              )
-                            }
-                            className="btn"
+                          <div
                             style={{
-                              ...dangerButton,
                               marginTop:
-                                '.5rem',
+                                '.6rem',
+                              display:
+                                'flex',
+                              flexDirection:
+                                'column',
+                              gap: '.35rem',
+                              fontSize:
+                                '.8rem',
+                              color:
+                                '#475569',
                             }}
                           >
-                            <Trash2
-                              size={15}
-                            />
-                            Remove Member
-                          </button>
+                            {member.member_id && (
+                              <span>
+                                <strong>ID:</strong>{' '}
+                                {member.member_id}
+                              </span>
+                            )}
+
+                            {member.joined_date && (
+                              <span>
+                                <strong>Joined:</strong>{' '}
+                                {member.joined_date}
+                              </span>
+                            )}
+
+                            {member.email && (
+                              <span
+                                style={{
+                                  wordBreak:
+                                    'break-all',
+                                }}
+                              >
+                                <strong>Email:</strong>{' '}
+                                {member.email}
+                              </span>
+                            )}
+                          </div>
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '.5rem',
+                              marginTop:
+                                '.75rem',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                startEdit(
+                                  member
+                                )
+                              }
+                              className="btn"
+                              style={{
+                                ...outlineButton,
+                              }}
+                            >
+                              <Edit3
+                                size={15}
+                              />
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                downloadCard(
+                                  member.id,
+                                  member.name
+                                )
+                              }
+                              className="btn"
+                              style={{
+                                ...outlineButton,
+                              }}
+                            >
+                              <Eye
+                                size={15}
+                              />
+                              ID Card
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                emailCard(
+                                  member.id
+                                )
+                              }
+                              className="btn"
+                              style={{
+                                ...outlineButton,
+                              }}
+                            >
+                              <Mail
+                                size={15}
+                              />
+                              Email Card
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                remove(
+                                  member.id
+                                )
+                              }
+                              className="btn"
+                              style={{
+                                ...dangerButton,
+                              }}
+                            >
+                              <Trash2
+                                size={15}
+                              />
+                              Remove
+                            </button>
+                          </div>
                         </div>
                       </article>
                     )
@@ -3789,9 +4066,29 @@ export default function Admin() {
       UserCheck,
     ],
     [
+      'founder',
+      'Founder & Mentors',
+      UserCheck,
+    ],
+    [
       'certificates',
       'Certificates',
       Award,
+    ],
+    [
+      'templates',
+      'Certificate Templates',
+      FileImage,
+    ],
+    [
+      'issue',
+      'Issue Certificate',
+      Send,
+    ],
+    [
+      'footer',
+      'Footer Focus',
+      Target,
     ],
     [
       'impact',
@@ -4086,12 +4383,40 @@ export default function Admin() {
             />
           )}
 
+          {tab === 'founder' && (
+            <FounderMentorsManager
+              refreshAll={
+                loadDashboard
+              }
+            />
+          )}
+
           {tab === 'certificates' && (
             <CertificateManager
               refreshAll={
                 loadDashboard
               }
             />
+          )}
+
+          {tab === 'templates' && (
+            <CertificateTemplateManager
+              refreshAll={
+                loadDashboard
+              }
+            />
+          )}
+
+          {tab === 'issue' && (
+            <CertificateIssuer
+              refreshAll={
+                loadDashboard
+              }
+            />
+          )}
+
+          {tab === 'footer' && (
+            <FooterFocusManager />
           )}
 
           {tab === 'impact' && (
@@ -4694,6 +5019,1994 @@ function Pagination({
         Next
       </button>
     </nav>
+  );
+}
+
+
+// ============================================================
+// FOUNDER & MENTORS MANAGER
+// ============================================================
+
+function FounderMentorsManager({ refreshAll }) {
+  const [founder, setFounder] =
+    useState(null);
+
+  const [founderForm, setFounderForm] =
+    useState({
+      name: '',
+      role: '',
+      eyebrow: '',
+      title: '',
+      imageAlt: '',
+      introduction: '',
+      story: '',
+      vision: '',
+      quote: '',
+      milestones: [],
+      file: null,
+      removeImage: false,
+    });
+
+  const [mentors, setMentors] =
+    useState([]);
+
+  const [mentorForm, setMentorForm] =
+    useState({
+      name: '',
+      role: '',
+      description: '',
+      quote: '',
+      displayOrder: 0,
+      isPublished: true,
+      file: null,
+      removeImage: false,
+    });
+
+  const [editingMentorId, setEditingMentorId] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [error, setError] =
+    useState('');
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      const [founderData, mentorData] =
+        await Promise.all([
+          fetchAdminFounder(),
+          fetchAdminMentors(),
+        ]);
+
+      setFounder(founderData);
+      setFounderForm({
+        name: founderData.name || '',
+        role: founderData.role || '',
+        eyebrow: founderData.eyebrow || '',
+        title: founderData.title || '',
+        imageAlt: founderData.imageAlt || '',
+        introduction: founderData.introduction || '',
+        story: founderData.story || '',
+        vision: founderData.vision || '',
+        quote: founderData.quote || '',
+        milestones: (founderData.milestones || []).map((m) => ({
+          year: m.year || '',
+          title: m.title || '',
+          description: m.description || '',
+        })),
+        file: null,
+        removeImage: false,
+      });
+
+      setMentors(Array.isArray(mentorData) ? mentorData : []);
+
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function updateFounderField(field, value) {
+    setFounderForm({
+      ...founderForm,
+      [field]: value,
+    });
+  }
+
+  function updateMilestone(index, field, value) {
+    const next = founderForm.milestones.map((m, i) =>
+      i === index ? { ...m, [field]: value } : m
+    );
+
+    updateFounderField('milestones', next);
+  }
+
+  function addMilestone() {
+    const next = [
+      ...founderForm.milestones,
+      { year: '', title: '', description: '' },
+    ];
+
+    updateFounderField('milestones', next);
+  }
+
+  function removeMilestone(index) {
+    const next = founderForm.milestones.filter(
+      (_, i) => i !== index
+    );
+
+    updateFounderField('milestones', next);
+  }
+
+  async function saveFounder(e) {
+    e.preventDefault();
+
+    setError('');
+    setSaving(true);
+
+    try {
+      await updateAdminFounder(founderForm);
+
+      await load();
+
+      refreshAll();
+
+      alert('Founder profile saved.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function resetMentorForm() {
+    setEditingMentorId(null);
+
+    setMentorForm({
+      name: '',
+      role: '',
+      description: '',
+      quote: '',
+      displayOrder: 0,
+      isPublished: true,
+      file: null,
+      removeImage: false,
+    });
+  }
+
+  function startEditMentor(item) {
+    setEditingMentorId(item.id);
+
+    setMentorForm({
+      name: item.name || '',
+      role: item.role || '',
+      description: item.description || '',
+      quote: item.quote || '',
+      displayOrder: item.display_order || 0,
+      isPublished: item.is_published !== false,
+      file: null,
+      removeImage: false,
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  async function saveMentor(e) {
+    e.preventDefault();
+
+    setError('');
+
+    if (!mentorForm.name.trim()) {
+      setError('Please enter the mentor name.');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      if (editingMentorId) {
+        await updateAdminMentor(
+          editingMentorId,
+          mentorForm
+        );
+      } else {
+        await createAdminMentor(mentorForm);
+      }
+
+      resetMentorForm();
+
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeMentor(id) {
+    if (!window.confirm('Remove this mentor?')) {
+      return;
+    }
+
+    try {
+      await deleteAdminMentor(id);
+
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  if (loading) {
+    return (
+      <ManagerSection
+        title="Founder & Mentors"
+        icon={<UserCheck size={22} />}
+      >
+        <p>Loading founder profile and mentors...</p>
+      </ManagerSection>
+    );
+  }
+
+  return (
+    <ManagerSection
+      title="Founder & Mentors"
+      icon={<UserCheck size={22} />}
+    >
+      <ErrorMessage message={error} />
+
+      <div
+        className="card"
+        style={{
+          padding: '1.5rem',
+          marginBottom: '2rem',
+        }}
+      >
+        <h2>Founder Profile</h2>
+
+        <p
+          style={{
+            color: '#64748b',
+            marginBottom: '1.25rem',
+          }}
+        >
+          These fields drive the “Founder" section of the public About page.
+        </p>
+
+        <form
+          onSubmit={saveFounder}
+          style={formGridStyle}
+        >
+          <input
+            placeholder="Founder name"
+            value={founderForm.name}
+            onChange={(e) =>
+              updateFounderField('name', e.target.value)
+            }
+            style={inputStyle}
+            required
+          />
+
+          <input
+            placeholder="Role (e.g. Founder)"
+            value={founderForm.role}
+            onChange={(e) =>
+              updateFounderField('role', e.target.value)
+            }
+            style={inputStyle}
+          />
+
+          <input
+            placeholder="Eyebrow (e.g. Our Founder's Vision)"
+            value={founderForm.eyebrow}
+            onChange={(e) =>
+              updateFounderField('eyebrow', e.target.value)
+            }
+            style={inputStyle}
+          />
+
+          <input
+            placeholder="Title"
+            value={founderForm.title}
+            onChange={(e) =>
+              updateFounderField('title', e.target.value)
+            }
+            style={inputStyle}
+          />
+
+          <input
+            placeholder="Image alt text"
+            value={founderForm.imageAlt}
+            onChange={(e) =>
+              updateFounderField('imageAlt', e.target.value)
+            }
+            style={inputStyle}
+          />
+
+          <textarea
+            placeholder="Introduction"
+            value={founderForm.introduction}
+            onChange={(e) =>
+              updateFounderField('introduction', e.target.value)
+            }
+            style={textareaStyle}
+          />
+
+          <textarea
+            placeholder="Story"
+            value={founderForm.story}
+            onChange={(e) =>
+              updateFounderField('story', e.target.value)
+            }
+            style={textareaStyle}
+          />
+
+          <textarea
+            placeholder="Vision"
+            value={founderForm.vision}
+            onChange={(e) =>
+              updateFounderField('vision', e.target.value)
+            }
+            style={textareaStyle}
+          />
+
+          <textarea
+            placeholder="Quote"
+            value={founderForm.quote}
+            onChange={(e) =>
+              updateFounderField('quote', e.target.value)
+            }
+            style={textareaStyle}
+          />
+
+          <div style={{ marginTop: '.5rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '.75rem',
+              }}
+            >
+              <strong>Milestones</strong>
+
+              <button
+                type="button"
+                className="btn"
+                onClick={addMilestone}
+                style={outlineButton}
+              >
+                + Add Milestone
+              </button>
+            </div>
+
+            {founderForm.milestones.length === 0 ? (
+              <p style={{ color: '#64748b' }}>
+                No milestones yet.
+              </p>
+            ) : (
+              founderForm.milestones.map((item, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns:
+                      '80px 1fr 1fr auto',
+                    gap: '.5rem',
+                    marginBottom: '.5rem',
+                    alignItems: 'start',
+                  }}
+                >
+                  <input
+                    placeholder="Year"
+                    value={item.year}
+                    onChange={(e) =>
+                      updateMilestone(index, 'year', e.target.value)
+                    }
+                    style={inputStyle}
+                  />
+
+                  <input
+                    placeholder="Title"
+                    value={item.title}
+                    onChange={(e) =>
+                      updateMilestone(index, 'title', e.target.value)
+                    }
+                    style={inputStyle}
+                  />
+
+                  <input
+                    placeholder="Description"
+                    value={item.description}
+                    onChange={(e) =>
+                      updateMilestone(index, 'description', e.target.value)
+                    }
+                    style={inputStyle}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => removeMilestone(index)}
+                    className="btn"
+                    style={dangerButton}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={(e) =>
+              setFounderForm({
+                ...founderForm,
+                file: e.target.files?.[0] || null,
+                removeImage: false,
+              })
+            }
+            style={inputStyle}
+          />
+
+          {founder?.image_url && (
+            <label
+              style={{
+                display: 'flex',
+                gap: '.5rem',
+                alignItems: 'center',
+                fontSize: '.9rem',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={founderForm.removeImage}
+                onChange={(e) =>
+                  setFounderForm({
+                    ...founderForm,
+                    removeImage: e.target.checked,
+                  })
+                }
+              />
+              Remove current photo
+            </label>
+          )}
+
+          <button
+            className="btn"
+            type="submit"
+            disabled={saving}
+            style={primaryButton}
+          >
+            <Check size={17} />
+            {saving ? 'Saving Profile...' : 'Save Founder Profile'}
+          </button>
+        </form>
+      </div>
+
+      <div
+        className="card"
+        style={{
+          padding: '1.5rem',
+        }}
+      >
+        <h2>Mentors</h2>
+
+        <p
+          style={{
+            color: '#64748b',
+            marginBottom: '1.25rem',
+          }}
+        >
+          Mentors appear below the founder on the public About page.
+        </p>
+
+        <form
+          onSubmit={saveMentor}
+          style={formGridStyle}
+        >
+          <input
+            placeholder="Mentor name"
+            value={mentorForm.name}
+            onChange={(e) =>
+              setMentorForm({ ...mentorForm, name: e.target.value })
+            }
+            style={inputStyle}
+            required
+          />
+
+          <input
+            placeholder="Role"
+            value={mentorForm.role}
+            onChange={(e) =>
+              setMentorForm({ ...mentorForm, role: e.target.value })
+            }
+            style={inputStyle}
+          />
+
+          <textarea
+            placeholder="Description"
+            value={mentorForm.description}
+            onChange={(e) =>
+              setMentorForm({ ...mentorForm, description: e.target.value })
+            }
+            style={textareaStyle}
+          />
+
+          <textarea
+            placeholder="Quote"
+            value={mentorForm.quote}
+            onChange={(e) =>
+              setMentorForm({ ...mentorForm, quote: e.target.value })
+            }
+            style={textareaStyle}
+          />
+
+          <div style={{ display: 'grid', gap: '.9rem' }}>
+            <input
+              type="number"
+              placeholder="Display order"
+              value={mentorForm.displayOrder}
+              onChange={(e) =>
+                setMentorForm({
+                  ...mentorForm,
+                  displayOrder: Number(e.target.value),
+                })
+              }
+              style={inputStyle}
+            />
+
+            <label
+              style={{
+                display: 'flex',
+                gap: '.5rem',
+                alignItems: 'center',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={mentorForm.isPublished}
+                onChange={(e) =>
+                  setMentorForm({ ...mentorForm, isPublished: e.target.checked })
+                }
+              />
+              Published
+            </label>
+          </div>
+
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={(e) =>
+              setMentorForm({
+                ...mentorForm,
+                file: e.target.files?.[0] || null,
+                removeImage: false,
+              })
+            }
+            style={inputStyle}
+          />
+
+          {editingMentorId && (
+            <label
+              style={{
+                display: 'flex',
+                gap: '.5rem',
+                alignItems: 'center',
+                fontSize: '.9rem',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={mentorForm.removeImage}
+                onChange={(e) =>
+                  setMentorForm({ ...mentorForm, removeImage: e.target.checked })
+                }
+              />
+              Remove current photo
+            </label>
+          )}
+
+          <div style={{ display: 'flex', gap: '.75rem' }}>
+            <button
+              className="btn"
+              type="submit"
+              disabled={saving}
+              style={primaryButton}
+            >
+              {editingMentorId ? <Edit3 size={17} /> : <Users size={17} />}
+              {saving
+                ? 'Saving...'
+                : editingMentorId
+                  ? 'Update Mentor'
+                  : 'Add Mentor'}
+            </button>
+
+            {editingMentorId && (
+              <button
+                type="button"
+                className="btn"
+                onClick={resetMentorForm}
+                style={outlineButton}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+
+        {mentors.length === 0 ? (
+          <div
+            style={{
+              padding: '2rem',
+              textAlign: 'center',
+              border: '1px dashed #cbd5e1',
+              borderRadius: 12,
+              color: '#64748b',
+            }}
+          >
+            No mentors yet.
+          </div>
+        ) : (
+          <div style={managerGrid}>
+            {mentors.map((mentor) => (
+              <article
+                key={mentor.id}
+                className="card"
+                style={{ overflow: 'hidden' }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: 150,
+                    background: 'linear-gradient(135deg, #f0fdf4, #ecfccb)',
+                  }}
+                >
+                  <img
+                    src={
+                      mentor.image_url
+                        ? resolveMediaUrl(mentor.image_url)
+                        : '/piplad-logo.jpg'
+                    }
+                    alt={mentor.name}
+                    style={{
+                      width: 110,
+                      height: 110,
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '4px solid #fff',
+                      boxShadow: '0 8px 20px rgba(0,0,0,.12)',
+                    }}
+                  />
+                </div>
+
+                <div style={{ padding: '1rem' }}>
+                  <h3 style={{ margin: '0 0 .25rem' }}>{mentor.name}</h3>
+
+                  {mentor.role && (
+                    <p
+                      style={{
+                        margin: '0 0 .5rem',
+                        color: '#059669',
+                        fontWeight: 600,
+                        fontSize: '.85rem',
+                      }}
+                    >
+                      {mentor.role}
+                    </p>
+                  )}
+
+                  {mentor.is_published === false && (
+                    <span className="badge">Hidden</span>
+                  )}
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '.5rem',
+                      marginTop: '.75rem',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => startEditMentor(mentor)}
+                      className="btn"
+                      style={outlineButton}
+                    >
+                      <Edit3 size={15} />
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => removeMentor(mentor.id)}
+                      className="btn"
+                      style={dangerButton}
+                    >
+                      <Trash2 size={15} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
+// CERTIFICATE TEMPLATE MANAGER
+// ============================================================
+
+function uid() {
+  return (crypto.randomUUID?.() ||
+    `uid-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+}
+
+function CertificateTemplateManager({ refreshAll }) {
+  const [items, setItems] = useState([]);
+
+  const [form, setForm] = useState({
+    name: '',
+    slug: '',
+    typeLabel: '',
+    displayOrder: 0,
+    isActive: true,
+    layout: null,
+    file: null,
+    removeImage: false,
+  });
+
+  const [editingId, setEditingId] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+
+  const [saving, setSaving] = useState(false);
+
+  const [error, setError] = useState('');
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      const data = await fetchAdminCertificateTemplates();
+
+      setItems(Array.isArray(data) ? data : []);
+
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function reset() {
+    setEditingId(null);
+
+    setForm({
+      name: '',
+      slug: '',
+      typeLabel: '',
+      displayOrder: 0,
+      isActive: true,
+      layout: null,
+      file: null,
+      removeImage: false,
+    });
+  }
+
+  function startEdit(item) {
+    setEditingId(item.id);
+
+    setForm({
+      name: item.name || '',
+      slug: item.slug || '',
+      typeLabel: item.type_label || '',
+      displayOrder: item.display_order || 0,
+      isActive: item.is_active !== false,
+      layout: null,
+      file: null,
+      removeImage: false,
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+
+    setError('');
+
+    if (!form.name.trim()) {
+      setError('Please enter a template name.');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      if (editingId) {
+        await updateAdminCertificateTemplate(editingId, form);
+      } else {
+        await createAdminCertificateTemplate(form);
+      }
+
+      reset();
+
+      await load();
+
+      refreshAll();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id) {
+    if (!window.confirm('Delete this certificate template?')) {
+      return;
+    }
+
+    try {
+      await deleteAdminCertificateTemplate(id);
+
+      await load();
+
+      refreshAll();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  return (
+    <ManagerSection
+      title="Certificate Templates"
+      icon={<FileImage size={22} />}
+    >
+      <ErrorMessage message={error} />
+
+      <div
+        style={{
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          borderRadius: 12,
+          background: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          color: '#166534',
+          lineHeight: 1.6,
+        }}
+      >
+        Templates are the background images used when issuing certificates.
+        The rendered name, date and topic text positions are bundled with each
+        template and preserved as-is when a template is edited.
+      </div>
+
+      <form
+        onSubmit={submit}
+        style={formGridStyle}
+      >
+        <input
+          placeholder="Template name (e.g. Volunteer Certificate)"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          style={inputStyle}
+          required
+        />
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+          <input
+            placeholder="Slug (optional, auto-generated)"
+            value={form.slug}
+            onChange={(e) => setForm({ ...form, slug: e.target.value })}
+            style={inputStyle}
+          />
+
+          <input
+            placeholder="Type label shown on the certificate"
+            value={form.typeLabel}
+            onChange={(e) => setForm({ ...form, typeLabel: e.target.value })}
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
+          <input
+            type="number"
+            placeholder="Display order"
+            value={form.displayOrder}
+            onChange={(e) =>
+              setForm({ ...form, displayOrder: Number(e.target.value) })
+            }
+            style={inputStyle}
+          />
+
+          <label
+            style={{
+              display: 'flex',
+              gap: '.5rem',
+              alignItems: 'center',
+              padding: '0 0.25rem',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+            />
+            Active
+          </label>
+        </div>
+
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={(e) =>
+            setForm({
+              ...form,
+              file: e.target.files?.[0] || null,
+              removeImage: false,
+            })
+          }
+          style={inputStyle}
+        />
+
+        {editingId && form.file === null && form.removeImage === false && (
+          <label
+            style={{
+              display: 'flex',
+              gap: '.5rem',
+              alignItems: 'center',
+              fontSize: '.9rem',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={form.removeImage}
+              onChange={(e) => setForm({ ...form, removeImage: e.target.checked })}
+            />
+            Remove current background
+          </label>
+        )}
+
+        <button
+          className="btn"
+          type="submit"
+          disabled={saving}
+          style={primaryButton}
+        >
+          {saving
+            ? 'Saving Template...'
+            : editingId
+              ? 'Update Template'
+              : 'Create Template'}
+        </button>
+
+        {editingId && (
+          <button
+            type="button"
+            className="btn"
+            onClick={reset}
+            style={outlineButton}
+          >
+            Cancel
+          </button>
+        )}
+      </form>
+
+      {loading ? (
+        <p>Loading templates...</p>
+      ) : items.length === 0 ? (
+        <div
+          style={{
+            padding: '2rem',
+            textAlign: 'center',
+            border: '1px dashed #cbd5e1',
+            borderRadius: 12,
+            color: '#64748b',
+          }}
+        >
+          No certificate templates yet.
+        </div>
+      ) : (
+        <div style={managerGrid}>
+          {items.map((item) => (
+            <article
+              key={item.id}
+              className="card"
+              style={{ overflow: 'hidden' }}
+            >
+              <div
+                style={{
+                  height: 130,
+                  background: item.image_url
+                    ? `url(${resolveMediaUrl(item.image_url)}) center/cover`
+                    : 'linear-gradient(135deg, #eef2ff, #ecfccb)',
+                }}
+              />
+
+              <div style={{ padding: '1rem' }}>
+                <h3 style={{ margin: '0 0 .25rem' }}>{item.name}</h3>
+
+                {item.type_label && (
+                  <p
+                    style={{
+                      margin: '0 0 .5rem',
+                      color: '#059669',
+                      fontWeight: 600,
+                      fontSize: '.85rem',
+                    }}
+                  >
+                    {item.type_label}
+                  </p>
+                )}
+
+                <p style={{ margin: '0 0 .5rem', color: '#64748b', fontSize: '.8rem' }}>
+                  slug: {item.slug}
+                </p>
+
+                {item.is_active === false && (
+                  <span className="badge">Inactive</span>
+                )}
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '.5rem',
+                    marginTop: '.75rem',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => startEdit(item)}
+                    className="btn"
+                    style={outlineButton}
+                  >
+                    <Edit3 size={15} />
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => remove(item.id)}
+                    className="btn"
+                    style={dangerButton}
+                  >
+                    <Trash2 size={15} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
+// CERTIFICATE ISSUER
+// ============================================================
+
+function CertificateIssuer({ refreshAll }) {
+  const [templates, setTemplates] =
+    useState([]);
+
+  const [issued, setIssued] =
+    useState([]);
+
+  const [form, setForm] = useState({
+    templateId: '',
+    recipients: [{ uid: uid(), recipientName: '', recipientEmail: '' }],
+    eventTopic: '',
+    eventDate: '',
+  });
+
+  const [pasted, setPasted] = useState('');
+
+  const [batchResults, setBatchResults] =
+    useState(null);
+
+  const [preview, setPreview] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [rendering, setRendering] =
+    useState(false);
+
+  const [sending, setSending] =
+    useState(false);
+
+  const [error, setError] =
+    useState('');
+
+  function validRecipients() {
+    return form.recipients.map((row) => ({
+      uid: row.uid,
+      recipient_name: (row.recipientName || '').trim(),
+      recipient_email: (row.recipientEmail || '').trim(),
+    }));
+  }
+
+  function addRecipient() {
+    setForm({
+      ...form,
+      recipients: [
+        ...form.recipients,
+        { uid: uid(), recipientName: '', recipientEmail: '' },
+      ],
+    });
+  }
+
+  function updateRecipient(uidKey, field, value) {
+    setForm({
+      ...form,
+      recipients: form.recipients.map((row) =>
+        row.uid === uidKey ? { ...row, [field]: value } : row
+      ),
+    });
+  }
+
+  function removeRecipient(uidKey) {
+    setForm({
+      ...form,
+      recipients: form.recipients.filter((row) => row.uid !== uidKey),
+    });
+  }
+
+  function applyBulk() {
+    const parsed = [];
+
+    (pasted || '')
+      .split(/\r?\n/)
+      .filter((line) => line.trim() !== '')
+      .forEach((line) => {
+        let name = '';
+        let email = '';
+
+        const angle = line.match(/<([^<>]+)>/);
+        const raw = line.replace(/<[^<>]+>/, '').trim();
+
+        if (angle) {
+          email = angle[1].trim();
+          name = raw;
+        } else {
+          const parts = line
+            .split(',')
+            .map((part) => part.trim())
+            .filter(Boolean);
+
+          if (parts.length === 1) {
+            const single = parts[0];
+
+            if (single.includes('@')) {
+              email = single;
+              name = '';
+            } else {
+              name = single;
+              email = '';
+            }
+          } else {
+            name = parts[0];
+            email = parts[parts.length - 1].trim();
+          }
+        }
+
+        parsed.push({ uid: uid(), recipientName: name, recipientEmail: email });
+      });
+
+    if (parsed.length === 0) {
+      setError('No recipients found to import.');
+      return;
+    }
+
+    setForm({ ...form, recipients: parsed });
+    setPasted('');
+    setError('');
+  }
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      const [templateData, issuedData] =
+        await Promise.all([
+          fetchAdminCertificateTemplates(),
+          fetchAdminIssuedCertificates(),
+        ]);
+
+      setTemplates(
+        (templateData || []).filter((t) => t.is_active !== false)
+      );
+
+      setIssued(Array.isArray(issuedData) ? issuedData : []);
+
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function renderPreview(e) {
+    if (e) {
+      e.preventDefault();
+    }
+
+    setError('');
+
+    const rows = validRecipients();
+    const first = rows.find((r) => r.recipient_name && r.recipient_email);
+
+    if (!first) {
+      setError('Add at least one recipient with a name and email first.');
+      return;
+    }
+
+    setRendering(true);
+
+    try {
+      const data = await renderAdminCertificate({
+        templateId: form.templateId,
+        recipientName: first.recipient_name,
+        recipientEmail: first.recipient_email,
+        eventTopic: form.eventTopic,
+        eventDate: form.eventDate,
+      });
+
+      setPreview(data);
+
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRendering(false);
+    }
+  }
+
+  async function send(e) {
+    e.preventDefault();
+
+    setError('');
+    setBatchResults(null);
+
+    const rows = validRecipients().filter(
+      (r) => r.recipient_name && r.recipient_email
+    );
+
+    if (rows.length === 0) {
+      setError('Add at least one recipient with a name and email.');
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      const data = await sendAdminCertificatesBatch({
+        templateId: form.templateId,
+        recipients: rows.map(({ uid: _uid, ...rest }) => rest),
+        eventTopic: form.eventTopic,
+        eventDate: form.eventDate,
+      });
+
+      setBatchResults(data);
+
+      setForm({
+        ...form,
+        recipients: [{ uid: uid(), recipientName: '', recipientEmail: '' }],
+        eventTopic: '',
+        eventDate: '',
+      });
+
+      setPreview(null);
+
+      await load();
+
+      refreshAll();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const validCount = validRecipients().filter(
+    (r) => r.recipient_name && r.recipient_email
+  ).length;
+
+  async function downloadPreview() {
+    if (!preview) {
+      return;
+    }
+
+    const anchor = document.createElement('a');
+
+    anchor.href = preview.image;
+
+    anchor.download = preview.filename || 'certificate.jpg';
+
+    document.body.appendChild(anchor);
+
+    anchor.click();
+
+    document.body.removeChild(anchor);
+  }
+
+  return (
+    <ManagerSection
+      title="Issue Certificate"
+      icon={<Send size={22} />}
+    >
+      <ErrorMessage message={error} />
+
+      <div
+        style={{
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          borderRadius: 12,
+          background: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          color: '#166534',
+          lineHeight: 1.6,
+        }}
+      >
+        Pick a template, add one or more recipients, preview the first result and
+        send every certificate in a single batch. Paste a comma- or newline-
+        separated list (e.g. "Name &lt;email&gt;" or "Name, email") to import
+        recipients in one go.
+      </div>
+
+      <form
+        onSubmit={send}
+        style={formGridStyle}
+      >
+        <select
+          value={form.templateId}
+          onChange={(e) =>
+            setForm({ ...form, templateId: e.target.value })
+          }
+          style={inputStyle}
+          required
+        >
+          <option value="">
+            Select a template...
+          </option>
+
+          {templates.map((template) => (
+            <option
+              key={template.id}
+              value={template.id}
+            >
+              {template.name}
+            </option>
+          ))}
+        </select>
+
+        <textarea
+          rows={3}
+          placeholder={'Paste many recipients at once (one per line):\n' +
+            'Jane Doe <jane@example.com>\nJohn Smith, john@example.com'}
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }}
+        />
+
+        <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={applyBulk}
+            style={outlineButton}
+          >
+            Import Recipients
+          </button>
+
+          <button
+            type="button"
+            className="btn"
+            onClick={addRecipient}
+            style={outlineButton}
+          >
+            + Add Row
+          </button>
+        </div>
+
+        {form.recipients.map((row, index) => (
+          <div
+            key={row.uid}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '45px 1fr 1fr auto',
+              gap: '.5rem',
+              alignItems: 'center',
+            }}
+          >
+            <span
+              style={{
+                color: '#64748b',
+                fontSize: '.85rem',
+                textAlign: 'center',
+              }}
+            >
+              {index + 1}
+            </span>
+
+            <input
+              placeholder="Recipient name"
+              value={row.recipientName}
+              onChange={(e) =>
+                updateRecipient(row.uid, 'recipientName', e.target.value)
+              }
+              style={inputStyle}
+            />
+
+            <input
+              type="email"
+              placeholder="Recipient email"
+              value={row.recipientEmail}
+              onChange={(e) =>
+                updateRecipient(row.uid, 'recipientEmail', e.target.value)
+              }
+              style={inputStyle}
+            />
+
+            <button
+              type="button"
+              className="btn"
+              onClick={() => removeRecipient(row.uid)}
+              aria-label={`Remove recipient ${index + 1}`}
+              style={dangerButton}
+            >
+              <Trash size={16} />
+            </button>
+          </div>
+        ))}
+
+        <input
+          placeholder="Event / topic (optional, applies to all)"
+          value={form.eventTopic}
+          onChange={(e) =>
+            setForm({ ...form, eventTopic: e.target.value })
+          }
+          style={inputStyle}
+        />
+
+        <input
+          type="date"
+          placeholder="Event date (optional, applies to all)"
+          value={form.eventDate}
+          onChange={(e) =>
+            setForm({ ...form, eventDate: e.target.value })
+          }
+          style={inputStyle}
+        />
+
+        <div style={{ display: 'flex', gap: '.75rem' }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={renderPreview}
+            disabled={
+              rendering ||
+              !form.templateId ||
+              validRecipients().length === 0
+            }
+            style={outlineButton}
+          >
+            <Eye size={17} />
+            {rendering ? 'Rendering...' : 'Render Preview'}
+          </button>
+
+          <button
+            type="submit"
+            className="btn"
+            disabled={sending || !form.templateId || validCount === 0}
+            style={primaryButton}
+          >
+            <Send size={17} />
+            {sending
+              ? 'Sending...'
+              : `Send ${validCount} Certificate${validCount === 1 ? '' : 's'} by Email`}
+          </button>
+        </div>
+      </form>
+
+      {batchResults && (
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem',
+            margin: '1.5rem 0',
+            border: `1px solid ${(batchResults.failed || 0) > 0
+              ? '#fecaca'
+              : '#bbf7d0'}`,
+            background: (batchResults.failed || 0) > 0
+              ? '#fef2f2'
+              : '#f0fdf4',
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>
+            Sent {(batchResults.sent || 0)} of {(batchResults.total || 0)} certificates
+          </h2>
+
+          {(batchResults.failed || 0) > 0 && (
+            <div style={{ marginBottom: '1rem' }}>
+              {(batchResults.results || [])
+                .filter((r) => r.status !== 'sent')
+                .map((r, i) => (
+                  <p
+                    key={i}
+                    style={{ margin: '.25rem 0', color: '#991b1b' }}
+                  >
+                    <strong>{r.recipient_name || r.recipient_email}</strong>:{' '}
+                    {r.error || r.status}
+                  </p>
+                ))}
+            </div>
+          )}
+
+          {validRecipients().length > 0 && (
+            <p style={{ margin: 0, color: '#64748b' }}>
+              Your sender list is intact — nothing was lost.
+            </p>
+          )}
+        </div>
+      )}
+
+      {preview && (
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem',
+            marginBottom: '2rem',
+          }}
+        >
+          <h2>Preview</h2>
+
+          <p style={{ color: '#64748b', margin: '0 0 1rem' }}>
+            {preview.recipient_name} — {preview.type_label}
+            {preview.event_date ? ` — ${preview.event_date}` : ''}
+          </p>
+
+          <img
+            src={preview.image}
+            alt="Certificate preview"
+            style={{
+              width: '100%',
+              maxWidth: 720,
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 10px 25px rgba(0,0,0,.08)',
+              marginBottom: '1rem',
+            }}
+          />
+
+          <button
+            type="button"
+            className="btn"
+            onClick={downloadPreview}
+            style={outlineButton}
+          >
+            <Upload size={17} />
+            Download Preview
+          </button>
+        </div>
+      )}
+
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <h2>Recently Issued</h2>
+
+        {loading ? (
+          <p>Loading issued certificates...</p>
+        ) : issued.length === 0 ? (
+          <p style={{ color: '#64748b' }}>
+            No certificates issued yet.
+          </p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={th}>Recipient</th>
+                  <th style={th}>Type</th>
+                  <th style={th}>Event</th>
+                  <th style={th}>Status</th>
+                  <th style={th}>Date</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {issued.map((item) => (
+                  <tr key={item.id}>
+                    <td style={td}>{item.recipient_name}</td>
+                    <td style={td}>{item.type_label}</td>
+                    <td style={td}>{item.event_topic || '-'}</td>
+                    <td style={td}>{item.status}</td>
+                    <td style={td}>
+                      {item.sent_at || item.created_at}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
+// FOOTER FOCUS MANAGER
+// ============================================================
+
+function FooterFocusManager() {
+  const [items, setItems] = useState([]);
+
+  const [form, setForm] = useState({
+    text: '',
+    displayOrder: 0,
+    isPublished: true,
+  });
+
+  const [editingId, setEditingId] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+
+  const [saving, setSaving] = useState(false);
+
+  const [error, setError] = useState('');
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      const data = await fetchAdminFooterFocus();
+
+      setItems(Array.isArray(data) ? data : []);
+
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function reset() {
+    setEditingId(null);
+
+    setForm({
+      text: '',
+      displayOrder: 0,
+      isPublished: true,
+    });
+  }
+
+  function startEdit(item) {
+    setEditingId(item.id);
+
+    setForm({
+      text: item.text || '',
+      displayOrder: item.display_order || 0,
+      isPublished: item.is_published !== false,
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+
+    setError('');
+
+    if (!form.text.trim()) {
+      setError('Please enter the focus item text.');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      if (editingId) {
+        await updateAdminFooterFocus(editingId, form);
+      } else {
+        await createAdminFooterFocus(form);
+      }
+
+      reset();
+
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id) {
+    if (!window.confirm('Delete this footer focus item?')) {
+      return;
+    }
+
+    try {
+      await deleteAdminFooterFocus(id);
+
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function move(index, direction) {
+    const next = [...items];
+
+    const target = index + direction;
+
+    if (target < 0 || target >= next.length) {
+      return;
+    }
+
+    const current = next[index];
+
+    next[index] = next[target];
+
+    next[target] = current;
+
+    setItems(next);
+
+    try {
+      await reorderAdminFooterFocus(
+        next.map((item) => item.id)
+      );
+    } catch (e) {
+      setError(e.message);
+      await load();
+    }
+  }
+
+  return (
+    <ManagerSection
+      title="Footer Focus"
+      icon={<Target size={22} />}
+    >
+      <ErrorMessage message={error} />
+
+      <div
+        style={{
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          borderRadius: 12,
+          background: '#f0fdf4',
+          border: '1px solid #bbf7d0',
+          color: '#166534',
+          lineHeight: 1.6,
+        }}
+      >
+        These bullet items drive the “Our Core Focus" list at the bottom of
+        every page. Unpublished items are hidden from visitors.
+      </div>
+
+      <form
+        onSubmit={submit}
+        style={formGridStyle}
+      >
+        <textarea
+          placeholder="Focus item text, e.g. Childhood Cancer Healthcare"
+          value={form.text}
+          onChange={(e) =>
+            setForm({ ...form, text: e.target.value })
+          }
+          style={textareaStyle}
+          required
+        />
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '.9rem',
+          }}
+        >
+          <input
+            type="number"
+            placeholder="Display order"
+            value={form.displayOrder}
+            onChange={(e) =>
+              setForm({ ...form, displayOrder: Number(e.target.value) })
+            }
+            style={inputStyle}
+          />
+
+          <label
+            style={{
+              display: 'flex',
+              gap: '.5rem',
+              alignItems: 'center',
+              padding: '0 0.25rem',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={form.isPublished}
+              onChange={(e) =>
+                setForm({ ...form, isPublished: e.target.checked })
+              }
+            />
+            Published
+          </label>
+        </div>
+
+        <div style={{ display: 'flex', gap: '.75rem' }}>
+          <button
+            className="btn"
+            type="submit"
+            disabled={saving}
+            style={primaryButton}
+          >
+            {saving
+              ? 'Saving...'
+              : editingId
+                ? 'Update Item'
+                : 'Add Item'}
+          </button>
+
+          {editingId && (
+            <button
+              type="button"
+              className="btn"
+              onClick={reset}
+              style={outlineButton}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </form>
+
+      {loading ? (
+        <p>Loading focus items...</p>
+      ) : items.length === 0 ? (
+        <div
+          style={{
+            padding: '2rem',
+            textAlign: 'center',
+            border: '1px dashed #cbd5e1',
+            borderRadius: 12,
+            color: '#64748b',
+          }}
+        >
+          No focus items yet.
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '.75rem' }}>
+          {items.map((item, index) => (
+            <div
+              key={item.id}
+              className="card"
+              style={{
+                padding: '1rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div>
+                <strong>{item.text}</strong>
+
+                <p
+                  style={{
+                    margin: '.25rem 0 0',
+                    color: '#64748b',
+                    fontSize: '.8rem',
+                  }}
+                >
+                  Order: {item.display_order}
+                  {item.is_published === false ? ' — Hidden' : ''}
+                </p>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '.5rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => move(index, -1)}
+                  style={outlineButton}
+                  disabled={index === 0}
+                >
+                  ↑ Up
+                </button>
+
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => move(index, 1)}
+                  style={outlineButton}
+                  disabled={index === items.length - 1}
+                >
+                  ↓ Down
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => startEdit(item)}
+                  className="btn"
+                  style={outlineButton}
+                >
+                  <Edit3 size={15} />
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => remove(item.id)}
+                  className="btn"
+                  style={dangerButton}
+                >
+                  <Trash2 size={15} />
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </ManagerSection>
   );
 }
 

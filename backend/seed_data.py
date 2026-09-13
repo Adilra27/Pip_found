@@ -1,11 +1,229 @@
 import sys
 import os
+import shutil
+from pathlib import Path
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal, engine, Base
-from app.models import Cause, GalleryItem, ContactInquiry, Donation
+from app.models import (
+    Cause,
+    GalleryItem,
+    ContactInquiry,
+    Donation,
+    CertificateTemplate,
+    FounderProfile,
+    FounderMilestone,
+    Mentor,
+    FooterFocusItem,
+)
+
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def _media_url(relative: str) -> str:
+    """Return the /media/<path> URL for a file, normalising slashes."""
+    return "/media/" + relative.replace("\\", "/")
+
+
+def _ensure_template_assets() -> dict:
+    """Ensure the default volunteer template is under media/certificate_templates."""
+    source = BASE_DIR / "app" / "assets" / "piplad-volunteering-certificate.jpg"
+    target_dir = BASE_DIR / "media" / "certificate_templates"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    if source.is_file():
+        target = target_dir / source.name
+        if not target.is_file():
+            shutil.copy2(source, target)
+
+    return {
+        "volunteer": _media_url("certificate_templates/piplad-volunteering-certificate.jpg"),
+    }
+
+
+def _auto_layout(w: int, h: int) -> dict:
+    """Return a centred name/topic/date layout proportional to image *w* x *h*.
+
+    Text is drawn at anchor="mm" so (x,y) is the centre of each line.
+    Font sizes and max_widths scale with image dimensions so even small
+    backgrounds render readably.
+    """
+    base = min(w, h)
+    name_fs = max(12, int(base * 0.11))
+    topic_fs = max(10, int(base * 0.07))
+    date_fs = max(9, int(base * 0.055))
+    return {
+        "name": {
+            "x": w // 2,
+            "y": int(h * 0.44),
+            "font_size": name_fs,
+            "max_width": int(w * 0.82),
+            "color": "#1f2937",
+            "box": None,
+        },
+        "topic": {
+            "x": w // 2,
+            "y": int(h * 0.53),
+            "font_size": topic_fs,
+            "max_width": int(w * 0.78),
+            "color": "#334155",
+            "box": None,
+        },
+        "date": {
+            "x": w // 2,
+            "y": int(h * 0.62),
+            "font_size": date_fs,
+            "max_width": int(w * 0.50),
+            "color": "#475569",
+            "box": None,
+        },
+    }
+
+
+def _img_dimensions(url: str) -> tuple[int, int]:
+    """Return (width, height) for a /media/ local path, or a safe default."""
+    try:
+        from PIL import Image as _Img
+
+        rel = url.removeprefix("/media/")
+        path = (BASE_DIR / "media" / rel).resolve()
+        if path.is_file():
+            with _Img.open(path) as img:
+                return img.size
+    except Exception:
+        pass
+    return (1200, 800)
+
+
+# Mapping of filename → (template_name, type_label, display_order).
+# Slugs are derived deterministically from the filename stem.
+_NEW_TEMPLATE_META = [
+    ("01_volunteer_id_card_front.png",  "Volunteer ID Card",           "Volunteer ID Card",          10),
+    ("02_volunteer_id_card_back.png",   "Volunteer ID Card (Back)",    "Volunteer ID Card",          11),
+    ("03_certificate_participation.png","Certificate of Participation","Certificate of Participation", 12),
+    ("04_certificate_volunteer.png",    "Certificate of Volunteering", "Certificate of Volunteering", 13),
+    ("05_certificate_program_completion.png",
+                                        "Certificate of Program Completion","Certificate of Program Completion", 14),
+    ("06_certificate_training_workshop.png",
+                                        "Certificate of Training & Workshop",
+                                                                        "Certificate of Training & Workshop", 15),
+    ("07_certificate_internship.png",   "Certificate of Internship",   "Certificate of Internship",  16),
+    ("08_certificate_appreciation.png", "Certificate of Appreciation", "Certificate of Appreciation", 17),
+]
+
+
+def _seed_certificate_templates(db) -> None:
+    """Add the default certificate templates, skipping any that already exist by slug."""
+    existing_slugs = {s for (s,) in db.query(CertificateTemplate.slug).all()}
+
+    assets = _ensure_template_assets()
+
+    # First batch: the original defaults (kept for backward-compat).
+    base_templates = [
+        {
+            "name": "Volunteer Certificate",
+            "slug": "volunteer-certificate",
+            "type_label": "Certificate of Volunteering",
+            "image_url": assets["volunteer"],
+            "display_order": 0,
+            "layout": {
+                "name": {
+                    "x": 568,
+                    "y": 487,
+                    "font_size": 44,
+                    "max_width": 460,
+                    "color": "#1f2937",
+                    "box": [310, 452, 826, 522],
+                },
+                "date": {
+                    "x": 568,
+                    "y": 668,
+                    "font_size": 18,
+                    "max_width": 450,
+                    "color": "#475569",
+                    "box": [340, 638, 790, 690],
+                },
+                "topic": None,
+            },
+        },
+        {
+            "name": "Training Certificate",
+            "slug": "training-certificate",
+            "type_label": "Certificate of Training",
+            "image_url": _media_url("Certificate/AI training with TCS.jpeg"),
+            "display_order": 1,
+            "layout": {
+                "name": {"x": 640, "y": 420, "font_size": 40, "max_width": 700, "color": "#1f2937", "box": None},
+                "date": {"x": 640, "y": 620, "font_size": 18, "max_width": 500, "color": "#475569", "box": None},
+                "topic": {"x": 640, "y": 540, "font_size": 22, "max_width": 650, "color": "#334155", "box": None},
+            },
+        },
+        {
+            "name": "Certificate of Appreciation",
+            "slug": "appreciation-certificate",
+            "type_label": "Certificate of Appreciation",
+            "image_url": _media_url("Certificate/Certificate of appriciation.jpeg"),
+            "display_order": 2,
+            "layout": {
+                "name": {"x": 640, "y": 430, "font_size": 38, "max_width": 700, "color": "#1f2937", "box": None},
+                "date": {"x": 640, "y": 610, "font_size": 18, "max_width": 500, "color": "#475569", "box": None},
+                "topic": {"x": 640, "y": 520, "font_size": 22, "max_width": 650, "color": "#334155", "box": None},
+            },
+        },
+        {
+            "name": "Team Member Certificate",
+            "slug": "team-member-certificate",
+            "type_label": "Team Member Certificate",
+            "image_url": _media_url("Certificate/AI ML Education with TCS.jpeg"),
+            "display_order": 3,
+            "layout": {
+                "name": {"x": 640, "y": 420, "font_size": 38, "max_width": 700, "color": "#1f2937", "box": None},
+                "date": {"x": 640, "y": 610, "font_size": 18, "max_width": 500, "color": "#475569", "box": None},
+                "topic": {"x": 640, "y": 530, "font_size": 22, "max_width": 650, "color": "#334155", "box": None},
+            },
+        },
+    ]
+
+    added = 0
+    for tpl in base_templates:
+        if tpl["slug"] not in existing_slugs:
+            db.add(CertificateTemplate(**tpl))
+            added += 1
+
+    # Second batch: the 8 PNGs from media/certificate_templates/.
+    for filename, name, type_label, order in _NEW_TEMPLATE_META:
+        stem = Path(filename).stem
+        slug = slugify(stem) if "slugify" in dir() else stem
+        if slug in existing_slugs:
+            continue
+        url = _media_url(f"certificate_templates/{filename}")
+        w, h = _img_dimensions(url)
+        db.add(
+            CertificateTemplate(
+                name=name,
+                slug=slug,
+                type_label=type_label,
+                image_url=url,
+                display_order=order,
+                layout=_auto_layout(w, h),
+            )
+        )
+        added += 1
+
+    if added:
+        print(f"Seeded {added} certificate template(s)!")
+
+
+def slugify(value: str) -> str:
+    """Simple slugifier for certificate template filenames."""
+    import re
+    value = value.lower().replace("_", "-")
+    value = re.sub(r"[^a-z0-9-]", "", value)
+    value = re.sub(r"-{2,}", "-", value).strip("-")
+    return value or "template"
+
 
 def seed_database():
     Base.metadata.create_all(bind=engine)
@@ -99,6 +317,130 @@ def seed_database():
         for d in sample_donations:
             db.add(d)
         print("Seeded sample donations!")
+
+    # ============================================================
+    # Default certificate templates
+    # ============================================================
+    _seed_certificate_templates(db)
+
+    # ============================================================
+    # Default founder profile
+    # ============================================================
+    if db.query(FounderProfile).count() == 0:
+        founder = FounderProfile(
+            name="Pushkar Kumar",
+            role="Founder",
+            eyebrow="Our Founder's Vision",
+            title="From Corporate Success to Rural Transformation",
+            introduction=(
+                "Pushkar Kumar believes that every village holds untapped potential and every child "
+                "deserves a fair chance. After earning a B.Tech from SRM University and building a "
+                "career in the IT sector, he chose to dedicate himself to rural development."
+            ),
+            story=(
+                "His journey is rooted in a deep understanding of the gap between aspiration and "
+                "opportunity. His experience with rural communities shaped a vision where education, "
+                "healthcare, livelihoods and technology work together to create meaningful change."
+            ),
+            vision=(
+                "The vision is to build digitally connected villages where children can access quality "
+                "education, young people can gain market-ready skills, families can access healthcare, "
+                "farmers can adopt climate-smart practices and communities can preserve their cultural identity."
+            ),
+            quote=(
+                "The aim is to turn potential into prosperity — one village, one student, one livelihood at a time."
+            ),
+        )
+        db.add(founder)
+        db.flush()
+
+        founder.milestones = [
+            FounderMilestone(
+                founder_id=founder.id,
+                year="01",
+                title="Technology",
+                description="Building technology-enabled solutions for communities with limited connectivity.",
+                display_order=0,
+            ),
+            FounderMilestone(
+                founder_id=founder.id,
+                year="02",
+                title="Education",
+                description="Creating accessible learning pathways for rural students and educators.",
+                display_order=1,
+            ),
+            FounderMilestone(
+                founder_id=founder.id,
+                year="03",
+                title="Livelihoods",
+                description="Connecting rural youth with skills, employment and entrepreneurship opportunities.",
+                display_order=2,
+            ),
+            FounderMilestone(
+                founder_id=founder.id,
+                year="04",
+                title="Transformation",
+                description="Creating resilient communities through partnerships and measurable impact.",
+                display_order=3,
+            ),
+        ]
+
+        print("Seeded founder profile!")
+
+    # ============================================================
+    # Default mentors
+    # ============================================================
+    if db.query(Mentor).count() == 0:
+        default_mentors = [
+            Mentor(
+                name="Satyanarayan Singh",
+                role="Visionary Mentor & Champion of Rural Upliftment",
+                description=(
+                    "A respected grassroots leader who dedicated decades to rural development, "
+                    "education, infrastructure and community welfare."
+                ),
+                quote="His life is not just part of our history — it is the heartbeat of our mission.",
+                display_order=0,
+                is_published=True,
+            ),
+            Mentor(
+                name="Piplad Rishi",
+                role="Source of Wisdom and Compassion",
+                description=(
+                    "Piplad Rishi's association with knowledge, inquiry, resilience and ethical "
+                    "living provides an enduring philosophical inspiration for the Foundation."
+                ),
+                quote="Knowledge, resilience and compassionate action remain central to our journey.",
+                display_order=1,
+                is_published=True,
+            ),
+        ]
+        for mentor in default_mentors:
+            db.add(mentor)
+
+        print("Seeded mentors!")
+
+    # ============================================================
+    # Default footer focus items
+    # ============================================================
+    if db.query(FooterFocusItem).count() == 0:
+        default_focus = [
+            "Childhood Cancer Healthcare",
+            "Free Education & School Supplies",
+            "Daily Ration & Warm Meals",
+            "Women Skill Empowerment",
+            "Emergency Medical Financial Aid",
+        ]
+        for index, text in enumerate(default_focus):
+            db.add(
+                FooterFocusItem(
+                    text=text,
+                    display_order=index,
+                    is_published=True,
+                )
+            )
+
+        print("Seeded footer focus items!")
 
     db.commit()
     db.close()

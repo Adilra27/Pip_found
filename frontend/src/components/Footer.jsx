@@ -1,9 +1,46 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, MapPin, Phone, Mail, ShieldCheck } from 'lucide-react';
 import SocialLinks from './SocialLinks';
+import { fetchFooterFocus } from '../api';
+
+const DEFAULT_FOCUS = [
+  'Childhood Cancer Healthcare',
+  'Free Education & School Supplies',
+  'Daily Ration & Warm Meals',
+  'Women Skill Empowerment',
+  'Emergency Medical Financial Aid',
+];
 
 export default function Footer({ onOpenDonate }) {
+  const [focusItems, setFocusItems] = useState(DEFAULT_FOCUS);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadFocus = async () => {
+      try {
+        const data = await fetchFooterFocus();
+
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setFocusItems(data.map((item) => item.text));
+        }
+      } catch (error) {
+        console.error('Failed to fetch footer focus:', error);
+      }
+    };
+
+    loadFocus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const items = Array.isArray(focusItems) && focusItems.length > 0
+    ? focusItems
+    : DEFAULT_FOCUS;
+
   return (
     <footer style={{ background: '#0f172a', color: '#cbd5e1', paddingTop: '4rem', paddingBottom: '2rem' }}>
       <div className="container">
@@ -50,11 +87,9 @@ export default function Footer({ onOpenDonate }) {
           <div>
             <h4 style={{ color: '#ffffff', fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Our Core Focus</h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem', color: '#94a3b8' }}>
-              <li>• Childhood Cancer Healthcare</li>
-              <li>• Free Education & School Supplies</li>
-              <li>• Daily Ration & Warm Meals</li>
-              <li>• Women Skill Empowerment</li>
-              <li>• Emergency Medical Financial Aid</li>
+              {items.map((item, index) => (
+                <li key={index}>• {item}</li>
+              ))}
             </ul>
           </div>
 
