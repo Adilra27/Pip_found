@@ -210,10 +210,6 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
               </Link>
             </div>
           </div>
-
-          <div className="home-hero-logo-card">
-            <img src="/piplad-logo.jpg" alt="Piplad Welfare Foundation" />
-          </div>
         </div>
 
         <div className="home-hero-controls container">
@@ -379,7 +375,13 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
                 key={partner.slug}
                 to={`/partners/${partner.slug}`}
               >
-                <div className="home-partner-mark">{partner.short}</div>
+                <div className="home-partner-mark">
+                  {partner.logo ? (
+                    <img src={partner.logo} alt={`${partner.name} logo`} />
+                  ) : (
+                    partner.short
+                  )}
+                </div>
                 <div>
                   <h3>{partner.name}</h3>
                   <p>{partner.description}</p>
