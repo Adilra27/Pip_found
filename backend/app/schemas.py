@@ -54,6 +54,7 @@ class VolunteerApplicationResponse(VolunteerApplicationCreate):
     profile_pic_url: Optional[str] = None
     status: str
     volunteer_id: Optional[str] = None
+    position: Optional[str] = None
     card_sent_at: Optional[datetime] = None
     card_emailed: Optional[bool] = None
     rejection_email_sent_at: Optional[datetime] = None
@@ -487,6 +488,7 @@ class VolunteerCardGenerateRequest(BaseModel):
     issue_date: Optional[date] = None
     valid_till: Optional[date] = None
     location: Optional[str] = None
+    position: Optional[str] = None
     status: Optional[str] = "settings"
     qr_verification_token: Optional[str] = None
 
@@ -498,6 +500,7 @@ class GeneratedVolunteerCardResponse(BaseModel):
     email: str
     profile_pic_url: Optional[str] = None
     status: str
+    position: Optional[str] = None
     location: Optional[str] = None
     issue_date: Optional[date] = None
     valid_till: Optional[date] = None
@@ -540,6 +543,7 @@ class VerifiedVolunteerResponse(BaseModel):
     full_name: str
     volunteer_id: Optional[str] = None
     interest_area: Optional[str] = None
+    position: Optional[str] = None
     location: Optional[str] = None
     issue_date: Optional[date] = None
     valid_till: Optional[date] = None

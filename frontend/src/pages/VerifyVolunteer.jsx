@@ -71,6 +71,7 @@ export default function VerifyVolunteer() {
             <Field label="Full Name" value={data.full_name} full />
             <Field label="Volunteer ID" value={data.volunteer_id} />
             <Field label="Area of Interest" value={data.interest_area} />
+            <Field label="Position" value={data.position} />
             <Field label="Location" value={data.location} full />
             <Field label="Card Issue Date" value={data.issue_date} />
             <Field label="Valid Till" value={data.valid_till} />

@@ -146,6 +146,16 @@ with engine.begin() as connection:
                 )
             )
 
+        if "position" not in columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE volunteer_applications
+                    ADD COLUMN position VARCHAR(255)
+                    """
+                )
+            )
+
         if "rejection_email_sent_at" not in columns:
             connection.execute(
                 text(
@@ -473,6 +483,10 @@ _TEMPLATE_IMAGE_RENAMES = {
     "03_certificate_participation.png": "Certificate of Participation.jpeg",
 }
 
+# Official certificate template rows are pointed at committed clean
+# master templates below (separate ORM block), keeping the legacy
+# Admin "Certificates" tab identical to the official generator.
+
 with engine.begin() as connection:
     table_names = {name.lower() for name in inspect(connection).get_table_names()}
     if "certificate_templates" in table_names:
@@ -487,6 +501,23 @@ with engine.begin() as connection:
                 ),
                 {"new_url": new_url, "old_pattern": old_pattern},
             )
+
+
+# Official certificate templates now render onto committed clean master
+# templates with the spec layout (JSON stored via the ORM so it round-trips
+# correctly on PostgreSQL/SQLite).
+from .document_layouts import CERTIFICATE_TEMPLATE_SLUGS, layout_for
+from .models import CertificateTemplate
+from .template_coordinates import CLEAN_CERTIFICATE_TEMPLATES
+from sqlalchemy.orm import Session as _Session
+
+with _Session(bind=engine) as session:
+    for doc_type, slug in CERTIFICATE_TEMPLATE_SLUGS.items():
+        tpl = session.query(CertificateTemplate).filter_by(slug=slug).first()
+        if tpl:
+            tpl.image_url = f"/media/{CLEAN_CERTIFICATE_TEMPLATES[doc_type]}"
+            tpl.layout = layout_for(doc_type)
+    session.commit()
 
 
 # ============================================================

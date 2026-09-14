@@ -280,11 +280,11 @@ def render_volunteer_card_jpeg(app) -> bytes:
         overlay_pngs.append((photo_bytes, layout.get("photo")))
 
     fields = {
-        "name": (app.full_name or "").upper(),
+        "name": (app.full_name or "").strip(),
+        "position": (app.position or "").strip(),
         "volunteer_id": app.volunteer_id or "",
         "programme": app.interest_area or "",
         "location": app.location or "",
-        "issue_date": _display_date(app.issue_date),
         "valid_till": _display_date(app.valid_till),
     }
 
@@ -320,6 +320,7 @@ def build_volunteer_card(
     issue_date=None,
     valid_till=None,
     location: str | None = None,
+    position: str | None = None,
     status: str = "issued",
     qr_verification_token: str | None = None,
 ) -> models.VolunteerApplication:
@@ -333,6 +334,8 @@ def build_volunteer_card(
     app.valid_till = valid_till or (app.issue_date + timedelta(days=365 * 2))
     if location is not None:
         app.location = location
+    if position is not None:
+        app.position = position or None
     app.status = status
     app.card_qr_token = app.card_qr_token or qr_verification_token or generate_qr_token()
 

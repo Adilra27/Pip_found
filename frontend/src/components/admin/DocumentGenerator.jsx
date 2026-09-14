@@ -382,6 +382,7 @@ function VolunteerTab() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [positionById, setPositionById] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -404,7 +405,9 @@ function VolunteerTab() {
     setBusyId(id);
     setError('');
     try {
-      await generateAdminVolunteerCard(id, {});
+      await generateAdminVolunteerCard(id, {
+        position: positionById[id] || '',
+      });
       load();
     } catch (err) {
       setError(err.message);
@@ -442,6 +445,7 @@ function VolunteerTab() {
         <thead>
           <tr>
             <th style={th}>Volunteer</th>
+            <th style={{ ...th, width: 190 }}>Position</th>
             <th style={th}>ID</th>
             <th style={th}>Valid Till</th>
             <th style={th}>Official Card</th>
@@ -454,6 +458,17 @@ function VolunteerTab() {
               <td style={td}>
                 <b>{v.full_name}</b>
                 <div style={{ color: '#94a3b8', fontSize: '.8rem' }}>{v.email}</div>
+              </td>
+              <td style={td}>
+                <input
+                  type="text"
+                  placeholder="e.g. Community Volunteer"
+                  value={positionById[v.id] ?? (v.position || '')}
+                  onChange={(e) =>
+                    setPositionById((cur) => ({ ...cur, [v.id]: e.target.value }))
+                  }
+                  style={{ ...inputStyle, padding: '.4rem .6rem', fontSize: '.82rem' }}
+                />
               </td>
               <td style={td}>{v.volunteer_id || '—'}</td>
               <td style={td}>{v.valid_till || '—'}</td>
