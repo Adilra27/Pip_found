@@ -456,6 +456,40 @@ with engine.begin() as connection:
 
 
 # ============================================================
+# CERTIFICATE TEMPLATE IMAGE URL COMPATIBILITY
+# ============================================================
+
+# The official certificate images were renamed from the legacy
+# "01_/03_/05_..." filenames to the human-friendly names used in
+# app/document_layouts.py. Templates seeded before the rename still
+# reference the removed files, which surfaces as
+# "Template image not found on disk: /media/certificate_templates/07_certificate_internship.png".
+# Remap those rows at startup so rendering works again.
+
+_TEMPLATE_IMAGE_RENAMES = {
+    "05_certificate_program_completion.png": "Certificate of Completion.png",
+    "07_certificate_internship.png": "Certificate of Internship.png",
+    "08_certificate_appreciation.png": "Certificate of Appriciation.png",
+    "03_certificate_participation.png": "Certificate of Participation.jpeg",
+}
+
+with engine.begin() as connection:
+    table_names = {name.lower() for name in inspect(connection).get_table_names()}
+    if "certificate_templates" in table_names:
+        for old_name, new_name in _TEMPLATE_IMAGE_RENAMES.items():
+            old_pattern = f"%/certificate_templates/{old_name}"
+            new_url = f"/media/certificate_templates/{new_name}"
+            connection.execute(
+                text(
+                    "UPDATE certificate_templates "
+                    "SET image_url = :new_url "
+                    "WHERE image_url LIKE :old_pattern"
+                ),
+                {"new_url": new_url, "old_pattern": old_pattern},
+            )
+
+
+# ============================================================
 # FASTAPI APPLICATION
 # ============================================================
 
