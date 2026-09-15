@@ -42,10 +42,13 @@ from ..email_service import (
 )
 from ..foundation_design import (
     FOUNDATION_CERT_TYPES,
+    OUTPUT_W,
+    OUTPUT_H,
     jpeg_bytes,
     render_certificate,
     render_volunteer_card_front,
 )
+from ..memory_util import log_rss
 from ..qrcode_util import verify_url
 from .admin import get_current_admin
 
@@ -190,23 +193,35 @@ def _preview_volunteer_fields(payload: schemas.ManagedDocGenerateRequest) -> dic
 @router.post("/preview")
 def preview_managed_document(
     payload: schemas.ManagedDocGenerateRequest,
+    scale: float = Query(0.5, ge=0.25, le=1.0),
     _=Depends(get_current_admin),
 ):
-    """Render the selected document as a JPEG without storing anything."""
+    """Render the selected document as a JPEG without storing anything.
+
+    Previews use a half-resolution render by default so the small Render
+    worker never spikes its resident footprint just to show a thumbnail.
+    """
+    log_rss("preview render start")
     if payload.document_type in FOUNDATION_CERT_TYPES:
         image = render_certificate(
             payload.document_type,
+            out_w=round(OUTPUT_W * scale),
+            out_h=round(OUTPUT_H * scale),
             qr_data=verify_url("certificate", "PWF-PREVIEW"),
             logo_bytes=_logo_bytes(),
             **_preview_certificate_fields(payload),
         )
-        return Response(content=jpeg_bytes(image), media_type="image/jpeg")
+        data = jpeg_bytes(image)
+        log_rss("preview render end")
+        return Response(content=data, media_type="image/jpeg")
 
     if payload.document_type == VOLUNTEER_DOC_TYPE:
         image = render_volunteer_card_front(
             logo_bytes=_logo_bytes(), **_preview_volunteer_fields(payload)
         )
-        return Response(content=jpeg_bytes(image), media_type="image/jpeg")
+        data = jpeg_bytes(image)
+        log_rss("preview render end")
+        return Response(content=data, media_type="image/jpeg")
 
     raise HTTPException(status_code=400, detail="Unsupported document type.")
 
@@ -469,6 +484,7 @@ def send_certificate_managed_email(
         pdf_bytes = _certificate_pdf_bytes(db, cert)
     except Exception as exc:  # noqa: BLE001 - surface render failure clearly
         raise HTTPException(status_code=400, detail=f"Certificate PDF unavailable: {exc}") from exc
+    log_rss("certificate email before")
 
     label = cert.type_label or CERTIFICATE_LABELS.get(cert.certificate_type) or "Certificate"
     sent = send_certificate_documents_email(
@@ -484,6 +500,7 @@ def send_certificate_managed_email(
         pdf_bytes=pdf_bytes,
         pdf_filename=f"{cert.certificate_number or cert.id}.pdf",
     )
+    log_rss("certificate email after")
     if sent:
         cert.sent_at = datetime.utcnow()
         db.commit()
@@ -522,6 +539,7 @@ def send_volunteer_managed_email(
         db.commit()
         front_jpg = (VOLUNTEER_GENERATED_DIR / f"{basename}.jpg").read_bytes()
         card_pdf = (VOLUNTEER_GENERATED_DIR / f"{basename}.pdf").read_bytes()
+    log_rss("volunteer email before")
 
     sent = send_volunteer_welcome_email(
         to_email=app.email,
@@ -533,6 +551,7 @@ def send_volunteer_managed_email(
         id_card_pdf=card_pdf,
         verification_url=verify_url("volunteer", app.volunteer_id or app.card_qr_token or str(app.id)),
     )
+    log_rss("volunteer email after")
     if sent:
         app.card_sent_at = datetime.utcnow()
         db.commit()

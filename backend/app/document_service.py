@@ -19,6 +19,7 @@ from .document_layouts import (
     CERTIFICATE_IMAGES,
     layout_for,
 )
+from .memory_util import log_rss
 from .qrcode_util import build_qr_png, verify_url
 
 logger = logging.getLogger(__name__)
@@ -158,6 +159,7 @@ def render_certificate_jpeg(cert) -> bytes:
 
     document_type = cert.certificate_type
     if document_type in FOUNDATION_CERT_TYPES:
+        log_rss("certificate render start")
         identifier = cert.certificate_number or cert.qr_verification_token or ""
         fields = {
             "first_name": cert.first_name or "",
@@ -180,6 +182,7 @@ def render_certificate_jpeg(cert) -> bytes:
             logo_bytes=_logo_bytes(),
             **fields,
         )
+        log_rss("certificate render end")
         return jpeg_bytes(image)
 
     if document_type not in CERTIFICATE_IMAGES:
@@ -227,13 +230,16 @@ def save_rendered_certificate(cert) -> str:
 
     jpeg_path = CERT_GENERATED_DIR / f"{basename}.jpg"
     jpeg_path.write_bytes(jpeg)
-    (CERT_GENERATED_DIR / f"{basename}.pdf").write_bytes(
-        document_pdf_bytes(
-            jpeg,
-            orientation="landscape",
-            title=f"Certificate {cert.certificate_number or cert.id}",
-        )
+    log_rss("certificate PDF start")
+    pdf = document_pdf_bytes(
+        jpeg,
+        orientation="landscape",
+        title=f"Certificate {cert.certificate_number or cert.id}",
     )
+    (CERT_GENERATED_DIR / f"{basename}.pdf").write_bytes(pdf)
+    log_rss("certificate PDF end")
+    # Release the working buffers explicitly before returning.
+    del jpeg, pdf
     relative = f"/media/generated/certificates/{basename}.jpg"
     cert.generated_file_path = relative
     return relative
@@ -360,11 +366,14 @@ def render_volunteer_card_jpeg(app) -> bytes:
     """Render the official CR80 volunteer ID card front as print-quality JPEG."""
     from .foundation_design import jpeg_bytes, render_volunteer_card_front
 
-    return jpeg_bytes(
+    log_rss("volunteer card render start")
+    data = jpeg_bytes(
         render_volunteer_card_front(
             logo_bytes=_logo_bytes(), **_volunteer_card_fields(app)
         )
     )
+    log_rss("volunteer card render end")
+    return data
 
 
 def save_rendered_volunteer_card(app) -> str:
@@ -379,15 +388,20 @@ def save_rendered_volunteer_card(app) -> str:
     ensure_generated_dirs()
     fields = _volunteer_card_fields(app)
     logo = _logo_bytes()
+    log_rss("volunteer card faces start")
     front = jpeg_bytes(render_volunteer_card_front(logo_bytes=logo, **fields))
     back = jpeg_bytes(render_volunteer_card_back(logo_bytes=logo, **fields))
+    log_rss("volunteer card faces end")
 
     basename = app.volunteer_id or app.id
     front_path = VOLUNTEER_GENERATED_DIR / f"{basename}.jpg"
     front_path.write_bytes(front)
-    (VOLUNTEER_GENERATED_DIR / f"{basename}.pdf").write_bytes(
-        id_card_pdf_bytes(front, back, title=f"Volunteer ID Card {app.volunteer_id}")
-    )
+    log_rss("volunteer card PDF start")
+    pdf = id_card_pdf_bytes(front, back, title=f"Volunteer ID Card {app.volunteer_id}")
+    (VOLUNTEER_GENERATED_DIR / f"{basename}.pdf").write_bytes(pdf)
+    log_rss("volunteer card PDF end")
+    # Release the working buffers explicitly before returning.
+    del front, back, pdf
     relative = f"/media/generated/volunteers/{basename}.jpg"
     app.card_file_path = relative
     return relative

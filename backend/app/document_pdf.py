@@ -25,13 +25,15 @@ def jpeg_to_pdf_bytes(
 ) -> bytes:
     """Return A4 PDF bytes containing the single JPEG scaled to fit."""
     buffer = io.BytesIO()
+    stream = io.BytesIO(jpeg_bytes)
     page = landscape(A4) if landscape_page else A4
     c = pdf_canvas.Canvas(buffer, pagesize=page)
     c.setTitle(title)
     try:
-        image = ImageReader(io.BytesIO(jpeg_bytes))
+        image = ImageReader(stream)
         iw, ih = image.getSize()
     except Exception as exc:  # noqa: BLE001 - surface as a clean PDF failure
+        stream.close()
         logger.error("Could not read JPEG for PDF export: %s", exc)
         raise ValueError("JPEG could not be embedded in the PDF") from exc
 
@@ -46,6 +48,9 @@ def jpeg_to_pdf_bytes(
     c.drawImage(image, x, y, final_w, final_h)
     c.showPage()
     c.save()
+    # Free the embedded JPEG source and the output stream explicitly.
+    del image
+    stream.close()
     return buffer.getvalue()
 
 
@@ -85,12 +90,15 @@ def id_card_pdf_bytes(
     for jpeg in (front_jpeg, back_jpeg):
         if not jpeg:
             continue
-        image = ImageReader(io.BytesIO(jpeg))
+        stream = io.BytesIO(jpeg)
+        image = ImageReader(stream)
         iw, ih = image.getSize()
         page_w = iw / 300 * 72
         page_h = ih / 300 * 72
         c.setPageSize((page_w, page_h))
         c.drawImage(image, 0, 0, page_w, page_h)
         c.showPage()
+        del image
+        stream.close()
     c.save()
     return buffer.getvalue()

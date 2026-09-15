@@ -10,7 +10,9 @@ all implemented today. Each type plugs a new ``PALETTES["<type>"]`` entry plus
 a ``_render_*_body()`` function into the same shared layout and dispatch code.
 """
 
+import functools
 import math
+import threading
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -18,10 +20,23 @@ from PIL import Image, ImageDraw, ImageFont
 # ============================================================
 # Canvas
 # ============================================================
-# A4 landscape at 300 dpi.
+# The design coordinate space stays a print-accurate A4 landscape sheet
+# (3508 x 2480 px @ 300 dpi) so every layout rule, tracking / wrap threshold
+# and element position keeps behaving exactly as before.
 CANVAS_W = 3508
 CANVAS_H = 2480
 CX = CANVAS_W // 2
+
+# The rendered output is the low-memory clean-master resolution. All drawing
+# is translated from the design space above onto this smaller canvas through
+# :class:`ScaledDraw`, so the final JPEG drops from ~26 MB of pixel data to
+# ~4.7 MB without changing the visible layout.
+OUTPUT_W = 1536
+OUTPUT_H = 1024
+
+# Serialize certificate / ID-card rendering so a burst of admin actions never
+# stacks multiple full renders in memory at once on the small Render worker.
+_RENDER_LOCK = threading.RLock()
 
 # ============================================================
 # Brand palette
@@ -128,6 +143,13 @@ def _resolve_font(name: str) -> str:
     return str(_FALLBACK_FONT)
 
 
+# Registered (name, weight) for each live font object so :func:`_scaled_font`
+# can rebuild a scaled instance for the smaller output canvas. Bounded by the
+# lru_cache on :func:`_font` (128 entries).
+_FONT_META: dict[int, tuple[str, int | None]] = {}
+
+
+@functools.lru_cache(maxsize=128)
 def _font(name: str, size: int, weight: int | None = None) -> ImageFont.FreeTypeFont:
     """Load a truetype font, applying the requested weight to variable fonts."""
     font = ImageFont.truetype(_resolve_font(name), size)
@@ -150,7 +172,34 @@ def _font(name: str, size: int, weight: int | None = None) -> ImageFont.FreeType
             font.set_variation_by_axes(values)
         except Exception:  # noqa: BLE001 - keep the default instance on failure
             pass
+    _FONT_META[id(font)] = (name, weight)
     return font
+
+
+_SCALED_FONT_CACHE: dict[tuple[int, int], ImageFont.FreeTypeFont] = {}
+
+
+def _scaled_font(font, sx: float):
+    """Return ``font`` sized for the output canvas (identity when un-scaled).
+
+    Scaling is intentional: the coordinate transform scales the pixel width of
+    every glyph proportionally, so typography, spacing and wrap decisions stay
+    faithful to the full-resolution design.
+    """
+    if font is None:
+        return None
+    size = getattr(font, "size", 0) or 0
+    target = max(1, round(size * sx))
+    if target == size:
+        return font
+    key = (id(font), target)
+    cached = _SCALED_FONT_CACHE.get(key)
+    if cached is not None:
+        return cached
+    name, weight = _FONT_META.get(id(font), ("sans", None))
+    scaled = _font(name, target, weight)
+    _SCALED_FONT_CACHE[key] = scaled
+    return scaled
 
 
 def serif(size: int, weight: int = 400) -> ImageFont.FreeTypeFont:
@@ -177,6 +226,115 @@ def _hex(hex_value: str) -> tuple[int, int, int]:
 def _hexa(hex_value: str, alpha: int) -> tuple[int, int, int, int]:
     r, g, b = _hex(hex_value)
     return r, g, b, alpha
+
+
+def _blend(bg: tuple[int, int, int], fg: tuple[int, int, int], alpha: int) -> tuple[int, int, int]:
+    """Alpha-blend ``fg`` over an opaque ``bg`` into a single RGB color.
+
+    Lets the faint motif / grain layers draw directly on the small RGB canvas
+    instead of materializing a full-page RGBA overlay and compositing it.
+    """
+    if alpha >= 255:
+        return fg[:3]
+    if alpha <= 0:
+        return bg
+    a = alpha / 255.0
+    return tuple(round(b * (1 - a) + c * a) for b, c in zip(bg, fg[:3]))
+
+
+def _scale_xy(img: Image.Image) -> tuple[float, float]:
+    """Output scale factors for ``img`` against its design coordinate space."""
+    design_w, design_h = getattr(img, "_canvas_design", (CANVAS_W, CANVAS_H))
+    return img.width / design_w, img.height / design_h
+
+
+class ScaledDraw:
+    """Translate design-space drawing commands onto a smaller output canvas.
+
+    Every coordinate, size, stroke width and font is scaled by ``img``'s scale
+    factor, while measurement (``textlength``) keeps using the design-space
+    font so the existing layout / wrapping / shrink logic runs unchanged.
+    """
+
+    __slots__ = ("_d", "sx", "sy")
+
+    def __init__(self, draw, sx: float = 1.0, sy: float = 1.0):
+        self._d = draw
+        self.sx = float(sx)
+        self.sy = float(sy)
+
+    def _pts(self, xy):
+        sx, sy = self.sx, self.sy
+        if isinstance(xy, (tuple, list)) and len(xy) == 4 and all(
+            isinstance(v, (int, float)) for v in xy
+        ):
+            x0, y0, x1, y1 = xy
+            return [x0 * sx, y0 * sy, x1 * sx, y1 * sy]
+        return [(x * sx, y * sy) for x, y in xy]
+
+    def _w(self, width):
+        if width is None:
+            return None
+        return max(1, round(width * (self.sx + self.sy) / 2))
+
+    def _font(self, font):
+        return _scaled_font(font, self.sx)
+
+    # --- Measurement stays in the design space -----------------------------
+    def textlength(self, text, font=None, **kwargs):
+        return self._d.textlength(text, font=font, **kwargs)
+
+    # --- Primitives scale onto the output canvas --------------------------
+    def text(self, xy, text, fill=None, font=None, anchor=None, spacing=4,
+             align="left", stroke_width=0, **kwargs):
+        x, y = xy
+        return self._d.text(
+            (x * self.sx, y * self.sy),
+            text, fill=fill, font=self._font(font), anchor=anchor,
+            spacing=spacing, align=align,
+            stroke_width=self._w(stroke_width), **kwargs,
+        )
+
+    def line(self, xy, fill=None, width=1, joint=None):
+        return self._d.line(self._pts(xy), fill=fill, width=self._w(width), joint=joint)
+
+    def rectangle(self, xy, fill=None, outline=None, width=1):
+        return self._d.rectangle(
+            self._pts(xy), fill=fill, outline=outline, width=self._w(width)
+        )
+
+    def rounded_rectangle(self, xy, radius=0, fill=None, outline=None, width=1, corners=None):
+        return self._d.rounded_rectangle(
+            self._pts(xy), radius=self._w(radius), fill=fill,
+            outline=outline, width=self._w(width), corners=corners,
+        )
+
+    def ellipse(self, xy, fill=None, outline=None, width=1):
+        return self._d.ellipse(self._pts(xy), fill=fill, outline=outline, width=self._w(width))
+
+    def polygon(self, xy, fill=None, outline=None):
+        return self._d.polygon(self._pts(xy), fill=fill, outline=outline)
+
+    def __getattr__(self, item):
+        # Unused drawing primitives degrade to direct (un-scaled) calls.
+        return getattr(self._d, item)
+
+
+def _draw(img: Image.Image) -> ScaledDraw:
+    """A ``ScaledDraw`` bound to ``img`` using its design coordinate space."""
+    sx, sy = _scale_xy(img)
+    return ScaledDraw(ImageDraw.Draw(img), sx, sy)
+
+
+def _locked_render(fn):
+    """Hold the render lock for one document-rendering entry point."""
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        with _RENDER_LOCK:
+            return fn(*args, **kwargs)
+
+    return wrapper
 
 
 def _draw_tracked(
@@ -226,7 +384,7 @@ def _wrap_text(draw: ImageDraw.ImageDraw, text: str, font, max_width: float) -> 
 
 def _rounded_panel(img: Image.Image, box, radius: int, fill, outline=None, width: int = 2):
     """Draw a rounded rectangle plus an optional outline ring."""
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     x0, y0, x1, y1 = box
     if fill is not None:
         dr.rounded_rectangle([x0, y0, x1, y1], radius=radius, fill=fill)
@@ -268,54 +426,59 @@ def _centre_motif(img: Image.Image, palette: dict):
 
     Faint gold rings, whisper-thin radial rays and a small leaf rosette sit
     behind the headline content to add depth without stealing legibility.
+
+    The faint tints are pre-blended onto the page colour and drawn straight
+    onto the sheet, so no full-page RGBA overlay is materialized.
     """
-    overlay = Image.new("RGBA", (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
-    dr = ImageDraw.Draw(overlay)
+    dr = _draw(img)
+    bg = _hex(palette.get("page_bg", PAGE_BG))
     gold = _hex(GOLD_LIGHT)
     teal = _hex(palette.get("motif_color", TEAL))
     cx, cy = CX, 1160
 
     # Concentric rings.
-    for r, w, col, a in ((560, 2, gold, 70), (430, 1, gold, 58), (150, 1, gold, 80)):
-        dr.ellipse([cx - r, cy - r, cx + r, cy + r], outline=col + (a,), width=w)
+    for r, w, a in ((560, 2, 70), (430, 1, 58), (150, 1, 80)):
+        dr.ellipse([cx - r, cy - r, cx + r, cy + r], outline=_blend(bg, gold, a), width=w)
 
     # Whisper-thin radial rays.
+    ray_col = _blend(bg, teal, 13)
     for i in range(48):
         ang = math.radians(i * (360 / 48))
         c, s = math.cos(ang), math.sin(ang)
         r0 = 100 + (40 if i % 2 == 0 else 90)
         r1 = 585 if i % 2 == 0 else 545
-        dr.line([(cx + r0 * c, cy + r0 * s), (cx + r1 * c, cy + r1 * s)], fill=teal + (13,), width=3)
+        dr.line([(cx + r0 * c, cy + r0 * s), (cx + r1 * c, cy + r1 * s)], fill=ray_col, width=3)
 
     # Eight faint leaves radiating like a distant sunburst, alternating
     # gold / green / teal / sage so the centre carries a little colour.
-    cols = [gold, _hex(palette["green_700"]), _hex(TEAL), _hex(SAGE)]
+    cols = [gold, _hex(palette["green_700"]), teal, _hex(SAGE)]
+    tinted = [_blend(bg, col, 34) for col in cols]
     for i in range(8):
         ang = math.radians(-90 + i * 45)
         c, s = math.cos(ang), math.sin(ang)
         bx, by = cx + 70 * c, cy + 70 * s
-        _draw_leaf(dr, bx, by, 205, math.degrees(ang), cols[i % 4] + (34,))
-
-    img.paste(Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB"))
+        _draw_leaf(dr, bx, by, 205, math.degrees(ang), tinted[i % 4])
 
 
 def _background_fill(img: Image.Image, palette: dict):
     """A whisper of dotted paper grain so the sheet never feels flat.
 
     Faint dots across the field (skipping the QR region) that stay well
-    behind the text, medallion and QR code.
+    behind the text, medallion and QR code. Tints are pre-blended onto the
+    page colour and drawn directly, avoiding a full-page RGBA overlay.
     """
-    overlay = Image.new("RGBA", (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
-    dr = ImageDraw.Draw(overlay)
+    dr = _draw(img)
+    bg = _hex(palette.get("page_bg", PAGE_BG))
     green = _hex(palette["green_800"])
 
     # Dotted paper grain (skip the QR region so scanning stays clean).
+    dot_col = _blend(bg, green, 9)
     for y in range(170, CANVAS_H - 170, 46):
         off = 23 if (y // 46) % 2 else 0
         for x in range(170 + off, CANVAS_W - 170, 46):
             if 2558 <= x <= 3300 and 1800 <= y <= 2300:
                 continue
-            dr.ellipse([x, y, x + 3, y + 3], fill=green + (9,))
+            dr.ellipse([x, y, x + 3, y + 3], fill=dot_col)
 
     # A quiet scatter of small leaves filling the open areas.
     scatter = [
@@ -327,10 +490,9 @@ def _background_fill(img: Image.Image, palette: dict):
         (1430, 1900, 120), (2200, 1920, -60),
     ]
     cols = [green, _hex(palette["green_700"]), _hex(SAGE), _hex(GOLD_BRIGHT)]
+    tinted = [_blend(bg, col, 26) for col in cols]
     for i, (x, y, ang) in enumerate(scatter):
-        _draw_leaf(dr, x, y, 76 + 18 * (i % 3), ang, cols[i % 4] + (26,))
-
-    img.paste(Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB"))
+        _draw_leaf(dr, x, y, 76 + 18 * (i % 3), ang, tinted[i % 4])
 
 
 def _frame(img: Image.Image, palette: dict):
@@ -340,7 +502,7 @@ def _frame(img: Image.Image, palette: dict):
     with a delicate garland of light leaves (no gold, no dark tones) and a
     simple gold diamond at each corner.
     """
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     def garland_leaf(x, y, length, ang, col, idx):
         # Teal leaves stay fainter than the sage ones so the band stays airy.
@@ -383,11 +545,13 @@ def _paste_emblem(img: Image.Image, logo: Image.Image, cx: float, cy: float, dia
     """Paste the foundation logo cropped into a ringed medallion.
 
     A faint halo, a warm gold ring, a slim teal ringlet and a hairline gold
-    ring frame the logo without adding bulk to the masthead.
+    ring frame the logo without adding bulk to the masthead. The medallion is
+    rasterized in design space and scaled onto the (smaller) output canvas.
     """
+    sx, sy = _scale_xy(img)
     size = max(1, int(diameter))
     halo = _hexa(ring_color, 110)
-    ImageDraw.Draw(img).ellipse(
+    _draw(img).ellipse(
         [cx - size / 2 - 15, cy - size / 2 - 15, cx + size / 2 + 15, cy + size / 2 + 15],
         outline=halo,
         width=2,
@@ -395,36 +559,51 @@ def _paste_emblem(img: Image.Image, logo: Image.Image, cx: float, cy: float, dia
     circle = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     mask = Image.new("L", (size, size), 0)
     ImageDraw.Draw(mask).ellipse([0, 0, size - 1, size - 1], fill=255)
-    resized = logo.convert("RGBA").resize((size, size), Image.LANCZOS)
+    # Shrink the raw logo before decoding so huge source images never load
+    # at native resolution just to be pasted at ~170 px.
+    resized = logo
+    if min(resized.size) > size * 2:
+        resized = resized.copy()
+        resized.thumbnail((size * 2, size * 2), Image.LANCZOS)
+    resized = resized.convert("RGBA").resize((size, size), Image.LANCZOS)
     circle.paste(resized, (0, 0), mask)
     draw = ImageDraw.Draw(circle)
     draw.ellipse([2, 2, size - 2, size - 2], outline=_hex(ring_color), width=6)
     draw.ellipse([15, 15, size - 15, size - 15], outline=_hex(TEAL), width=3)
     draw.ellipse([24, 24, size - 24, size - 24], outline=_hexa(ring_color, 170), width=2)
-    img.paste(circle, (int(cx - size / 2), int(cy - size / 2)), circle)
+    out_w = max(1, round(size * sx))
+    out_h = max(1, round(size * sy))
+    if (out_w, out_h) != circle.size:
+        circle = circle.resize((out_w, out_h), Image.BILINEAR)
+    img.paste(circle, (int(cx * sx - out_w / 2), int(cy * sy - out_h / 2)), circle)
+    circle.close()
 
 
 def _text_on_circle(img: Image.Image, cx: float, cy: float, radius: float, text: str, font, fill, start_deg: float):
     """Draw text following the top of a circle (chiaroscuro on a seal)."""
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
+    sx, sy = _scale_xy(img)
     total = sum(dr.textlength(ch, font=font) for ch in text)
     span_deg = (total / (2 * math.pi * radius)) * 360
     angle = math.radians(start_deg)
     step = math.radians(span_deg / max(len(text) - 1, 1))
     fallback = int(radius * 0.9) * 2
+    fs = max(1, round(fallback * sx))
+    fh = max(1, round(fallback * sy))
+    sfont = _scaled_font(font, sx)
     for ch in text:
         px = cx + radius * math.cos(angle)
         py = cy + radius * math.sin(angle)
-        temp = Image.new("RGBA", (fallback, fallback), (0, 0, 0, 0))
+        temp = Image.new("RGBA", (fs, fh), (0, 0, 0, 0))
         tdr = ImageDraw.Draw(temp)
-        bbox = tdr.textbbox((0, 0), ch, font=font)
-        cw = tdr.textlength(ch, font=font)
-        chx = (fallback - cw) / 2 - bbox[0]
-        chy = (fallback - (bbox[3] - bbox[1])) / 2 - bbox[1]
-        tdr.text((chx, chy), ch, font=font, fill=fill)
+        bbox = tdr.textbbox((0, 0), ch, font=sfont)
+        cw = tdr.textlength(ch, font=sfont)
+        chx = (fs - cw) / 2 - bbox[0]
+        chy = (fh - (bbox[3] - bbox[1])) / 2 - bbox[1]
+        tdr.text((chx, chy), ch, font=sfont, fill=fill)
         tilt = math.degrees(angle) + 90
         temp = temp.rotate(-tilt, resample=Image.BICUBIC)
-        img.paste(temp, (int(px - fallback / 2), int(py - fallback / 2)), temp)
+        img.paste(temp, (int(px * sx - fs / 2), int(py * sy - fh / 2)), temp)
         angle += step
 
 
@@ -432,7 +611,7 @@ def _seal(img: Image.Image, cx: float, cy: float, radius: float, palette: dict):
     """Draw the procedural official seal (double ring, scallops, arched text)."""
     px = int(cx)
     py = int(cy)
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     gold = _hex(palette["gold_bright"])
     green = _hex(palette["green_800"])
     ivory_rgb = _hex(palette["ivory"])
@@ -508,7 +687,10 @@ def _qr_image(data: str, target: int = 350, border: int = 4):
         light=(255, 255, 255),
     )
     buffer.seek(0)
-    return Image.open(buffer).convert("RGBA")
+    try:
+        return Image.open(buffer).convert("RGBA")
+    finally:
+        buffer.close()
 
 
 # ============================================================
@@ -522,20 +704,27 @@ def _page_background(img: Image.Image, palette: dict):
     _centre_motif(img, palette)
 
 
-def _blank_canvas(palette: dict) -> Image.Image:
-    """A fresh A4 sheet in the palette's page colour (mint by default)."""
-    return Image.new("RGB", (CANVAS_W, CANVAS_H), _hex(palette.get("page_bg", PAGE_BG)))
+def _blank_canvas(palette: dict, w: int | None = None, h: int | None = None) -> Image.Image:
+    """A fresh sheet in the palette's page colour at the output resolution.
+
+    The canvas records its design coordinate space so :func:`_draw` can scale
+    every primitive down from the full-resolution layout.
+    """
+    img = Image.new("RGB", (w or OUTPUT_W, h or OUTPUT_H), _hex(palette.get("page_bg", PAGE_BG)))
+    img._canvas_design = (CANVAS_W, CANVAS_H)
+    return img
 
 
 def _masthead(img: Image.Image, palette: dict, logo_bytes: bytes | None):
     """Logo medallion, foundation name, tagline and divider rule."""
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     emblem_d = 170
     if logo_bytes:
         import io
 
         try:
-            logo = Image.open(io.BytesIO(logo_bytes)).convert("RGBA")
+            # Opened lazily; _paste_emblem shrinks it before decoding.
+            logo = Image.open(io.BytesIO(logo_bytes))
             _paste_emblem(img, logo, CX, 330, emblem_d, GOLD_BRIGHT)
         except Exception:  # noqa: BLE001 - logo must never break rendering
             pass
@@ -562,7 +751,7 @@ def _masthead(img: Image.Image, palette: dict, logo_bytes: bytes | None):
 
 def _title_block(img: Image.Image, palette: dict, big_word: str):
     """Two-line certificate title with letterspacing and the type's big word."""
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     _draw_tracked(dr, CX, 716, "CERTIFICATE OF", serif(104, 700), _hex(palette["title_color"]), tracking=8)
     _draw_tracked(dr, CX, 852, big_word, serif(170, 800), _hex(palette["title_color"]), tracking=9)
     return dr
@@ -570,7 +759,7 @@ def _title_block(img: Image.Image, palette: dict, big_word: str):
 
 def _presentation_line(img: Image.Image):
     """The 'proudly presented to' line shared by appreciation and internship."""
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     _draw_tracked(dr, CX, 972, "This certificate is proudly presented to", serif_italic(44), _hex(CHARCOAL), tracking=1)
     return dr
 
@@ -582,7 +771,7 @@ def _recipient_element(img: Image.Image, palette: dict, recipient: str):
     identity loses its presence; the underline tapers with a teal hairline and
     gold diamond tips that echo the masthead rule.
     """
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     max_line = 2500
     full_font = serif(212, 800)
     single_w = dr.textlength(recipient, font=full_font)
@@ -623,6 +812,7 @@ def _recipient_element(img: Image.Image, palette: dict, recipient: str):
 # Certificate of Appreciation
 # ============================================================
 
+@_locked_render
 def render_appreciation_certificate(
     *,
     first_name: str = "",
@@ -634,6 +824,8 @@ def render_appreciation_certificate(
     email: str = "",
     qr_data: str = "",
     logo_bytes: bytes | None = None,
+    out_w: int | None = None,
+    out_h: int | None = None,
 ) -> Image.Image:
     """Render the premium A4 Certificate of Appreciation.
 
@@ -648,10 +840,10 @@ def render_appreciation_certificate(
     cert_no = certificate_number.strip() or "CERT-YYYY-000000"
     issued = issue_date.strip() or ""
 
-    img = _blank_canvas(palette)
+    img = _blank_canvas(palette, out_w, out_h)
     _page_background(img, palette)
     _masthead(img, palette, logo_bytes)
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     # --- Title -----------------------------------------------------------
     _title_block(img, palette, "APPRECIATION")
@@ -721,7 +913,7 @@ def _signature_flourish(img: Image.Image, cx: float):
     ox, oy = cx, 2092
 
     def stroke(segments, width):
-        dr = ImageDraw.Draw(img)
+        dr = _draw(img)
         pts = []
         for p0, c1, c2, p1 in segments:
             sample = _bezier_points(
@@ -764,7 +956,7 @@ def _signature_flourish(img: Image.Image, cx: float):
 def _signature_block(img: Image.Image, cx: float):
     """Authorized sign-off flourish, rule, and role (lower-left)."""
     _signature_flourish(img, cx)
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     dr.line([cx - 320, 2120, cx + 320, 2120], fill=_hex(TEAL), width=3)
     dr.text((cx, 2180), "Authorized Signature", font=sans(34, 600), fill=_hex(CHARCOAL), anchor="ms")
     dr.text((cx, 2238), "PIPLAD WELFARE FOUNDATION", font=sans(28, 400), fill=_hex(MUTED), anchor="ms")
@@ -777,7 +969,7 @@ def _identity_block(img: Image.Image, palette: dict, issued: str, cert_no: str):
     which is set on a slim ivory plate with a hairline gold outline so it reads
     as an engraved, officially stamped credential number.
     """
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     _draw_tracked(dr, CX, 2030, "DATE OF ISSUE", sans(30, 600), _hex(MUTED), tracking=5)
     _draw_tracked(dr, CX, 2100, issued, serif(54, 600), _hex(palette["primary"]), tracking=1)
@@ -814,7 +1006,7 @@ def _qr_block(img: Image.Image, palette: dict, qr_data: str):
     """
     cx = CX + 1174
     box = (cx - 370, 1800, cx + 370, 2300)
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     _draw_tracked(dr, cx, 2150, "SCAN TO VERIFY", sans(32, 700), _hex(palette["primary"]), tracking=5)
 
@@ -832,12 +1024,17 @@ def _qr_block(img: Image.Image, palette: dict, qr_data: str):
         avail = qr_bottom - qr_top
         qr = _qr_image(qr_data, target=avail, border=4)
         qy = qr_top + (avail - qr.height) // 2
-        img.paste(qr, (int(cx - qr.width // 2), int(qy)), qr)
-
         qx = int(cx - qr.width // 2)
-        qy = int(qy)
         qw, qh = qr.size
-        n = 34  # bracket arm length
+        sx, sy = _scale_xy(img)
+        out_w = max(1, round(qw * sx))
+        out_h = max(1, round(qh * sy))
+        if (out_w, out_h) != (qw, qh):
+            qr = qr.resize((out_w, out_h), Image.BILINEAR)
+        img.paste(qr, (int(qx * sx), int(qy * sy)), qr)
+        qr.close()
+
+        n = 34  # bracket arm length (design space; scaled through dr)
         off = 14  # clear of the quiet zone so scanning is never affected
         gold = _hexa(GOLD_BRIGHT, 180)
         corners = [
@@ -847,10 +1044,10 @@ def _qr_block(img: Image.Image, palette: dict, qr_data: str):
             (qx + qw + off, qy + qh + off),
         ]
         for bx, by in corners:
-            sx = -1 if bx < qx else 1
-            sy = -1 if by < qy else 1
-            dr.line([(bx, by + sy * n), (bx, by)], fill=gold, width=3)
-            dr.line([(bx, by), (bx + sx * n, by)], fill=gold, width=3)
+            sdx = -1 if bx < qx else 1
+            sdy = -1 if by < qy else 1
+            dr.line([(bx, by + sdy * n), (bx, by)], fill=gold, width=3)
+            dr.line([(bx, by), (bx + sdx * n, by)], fill=gold, width=3)
     else:
         dr.text((cx, 2000), "QR unavailable", font=sans(30), fill=_hex(MUTED), anchor="ms")
 
@@ -863,7 +1060,7 @@ def _footer_strip(img: Image.Image, palette: dict):
     quiet so the certificate reads as an official, self-authenticating
     document.
     """
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     text = "VERIFIABLE AT PIPLADFOUNDATION.IN/VERIFY"
     font = sans(24, 700)
     half = _draw_tracked(dr, CX, 2296, text, font, _hex(GREEN_800), tracking=4) / 2
@@ -885,7 +1082,7 @@ def _internship_period_block(img: Image.Image, palette: dict, start: str, end: s
     period = f"{start} — {end}".strip(" —")
     if not period:
         return
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     _draw_tracked(dr, CX, 1830, "INTERNSHIP PERIOD", sans(30, 600), _hex(MUTED), tracking=5)
 
@@ -901,6 +1098,7 @@ def _internship_period_block(img: Image.Image, palette: dict, start: str, end: s
         dr.polygon([(dx - 9, 1905), (dx, 1896), (dx + 9, 1905), (dx, 1914)], fill=gold)
 
 
+@_locked_render
 def render_internship_certificate(
     *,
     first_name: str = "",
@@ -914,6 +1112,8 @@ def render_internship_certificate(
     email: str = "",
     qr_data: str = "",
     logo_bytes: bytes | None = None,
+    out_w: int | None = None,
+    out_h: int | None = None,
 ) -> Image.Image:
     """Render the premium A4 Certificate of Internship.
 
@@ -928,10 +1128,10 @@ def render_internship_certificate(
     cert_no = certificate_number.strip() or "CERT-YYYY-000000"
     issued = issue_date.strip() or ""
 
-    img = _blank_canvas(palette)
+    img = _blank_canvas(palette, out_w, out_h)
     _page_background(img, palette)
     _masthead(img, palette, logo_bytes)
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     # --- Title -----------------------------------------------------------
     _title_block(img, palette, "INTERNSHIP")
@@ -995,7 +1195,7 @@ def _completion_date_block(img: Image.Image, palette: dict, date_value: str):
     date_value = date_value.strip()
     if not date_value:
         return
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     _draw_tracked(dr, CX, 1860, "DATE", sans(30, 600), _hex(MUTED), tracking=5)
 
@@ -1012,6 +1212,7 @@ def _completion_date_block(img: Image.Image, palette: dict, date_value: str):
         dr.polygon([(dx - 9, y), (dx, y - 9), (dx + 9, y), (dx, y + 9)], fill=gold)
 
 
+@_locked_render
 def render_completion_certificate(
     *,
     first_name: str = "",
@@ -1025,6 +1226,8 @@ def render_completion_certificate(
     email: str = "",
     qr_data: str = "",
     logo_bytes: bytes | None = None,
+    out_w: int | None = None,
+    out_h: int | None = None,
 ) -> Image.Image:
     """Render the premium A4 Certificate of Completion.
 
@@ -1040,10 +1243,10 @@ def render_completion_certificate(
     cert_no = certificate_number.strip() or "CERT-YYYY-000000"
     issued = issue_date.strip() or ""
 
-    img = _blank_canvas(palette)
+    img = _blank_canvas(palette, out_w, out_h)
     _page_background(img, palette)
     _masthead(img, palette, logo_bytes)
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     # --- Title -----------------------------------------------------------
     _title_block(img, palette, "COMPLETION")
@@ -1100,9 +1303,11 @@ def _participation_motif(img: Image.Image, palette: dict):
 
     It evokes people coming together without introducing childish graphics -
     the tones stay quiet so the sheet keeps reading as an official document.
+    Tints are pre-blended onto the page colour and drawn directly, avoiding a
+    full-page RGBA overlay.
     """
-    overlay = Image.new("RGBA", (CANVAS_W, CANVAS_H), (0, 0, 0, 0))
-    dr = ImageDraw.Draw(overlay)
+    dr = _draw(img)
+    bg = _hex(palette.get("page_bg", PAGE_BG))
     cx, cy = CX, 1160
     teal = _hex(TEAL)
     gold = _hex(GOLD_BRIGHT)
@@ -1113,17 +1318,20 @@ def _participation_motif(img: Image.Image, palette: dict):
          cy + radius * math.sin(math.radians(-90 + i * (360 / nodes))))
         for i in range(nodes)
     ]
+    edge_col = _blend(bg, teal, 24)
+    node_col = _blend(bg, teal, 50)
+    gold_col = _blend(bg, gold, 70)
     for i in range(nodes):
-        dr.line([pts[i], pts[(i + 1) % nodes]], fill=teal + (24,), width=2)
+        dr.line([pts[i], pts[(i + 1) % nodes]], fill=edge_col, width=2)
     for i, (px, py) in enumerate(pts):
         if i % 4 == 3:
             s = 8
-            dr.polygon([(px - s, py), (px, py - s), (px + s, py), (px, py + s)], fill=gold + (70,))
+            dr.polygon([(px - s, py), (px, py - s), (px + s, py), (px, py + s)], fill=gold_col)
         else:
-            dr.ellipse([px - 2, py - 2, px + 2, py + 2], fill=teal + (50,))
-    img.paste(Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB"))
+            dr.ellipse([px - 2, py - 2, px + 2, py + 2], fill=node_col)
 
 
+@_locked_render
 def render_participation_certificate(
     *,
     first_name: str = "",
@@ -1135,6 +1343,8 @@ def render_participation_certificate(
     email: str = "",
     qr_data: str = "",
     logo_bytes: bytes | None = None,
+    out_w: int | None = None,
+    out_h: int | None = None,
 ) -> Image.Image:
     """Render the premium A4 Certificate of Participation.
 
@@ -1149,11 +1359,11 @@ def render_participation_certificate(
     cert_no = certificate_number.strip() or "CERT-YYYY-000000"
     issued = issue_date.strip() or ""
 
-    img = _blank_canvas(palette)
+    img = _blank_canvas(palette, out_w, out_h)
     _page_background(img, palette)
     _participation_motif(img, palette)
     _masthead(img, palette, logo_bytes)
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
 
     # --- Title -----------------------------------------------------------
     _title_block(img, palette, "PARTICIPATION")
@@ -1219,7 +1429,7 @@ def _center_square(img: Image.Image) -> Image.Image:
 
 def _card_trim_marks(img: Image.Image, mark):
     """Light crop ticks just outside each trim corner (cut in the bleed)."""
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     for lx, ty in ((CARD_L, CARD_T), (CARD_R, CARD_T), (CARD_L, CARD_B), (CARD_R, CARD_B)):
         sx = 1 if lx == CARD_L else -1
         sy = 1 if ty == CARD_T else -1
@@ -1234,7 +1444,7 @@ def _card_top_band(img: Image.Image, palette: dict, logo_bytes: bytes | None, su
     ivory = (252, 253, 251)
     solid = CARD_T + 132
     fade = 24
-    band = ImageDraw.Draw(img)
+    band = _draw(img)
     for y in range(solid + fade):
         if y < solid:
             t = y / max(solid - 1, 1)
@@ -1248,12 +1458,13 @@ def _card_top_band(img: Image.Image, palette: dict, logo_bytes: bytes | None, su
         import io
 
         try:
-            logo = Image.open(io.BytesIO(logo_bytes)).convert("RGBA")
+            # Opened lazily; _paste_emblem shrinks it before decoding.
+            logo = Image.open(io.BytesIO(logo_bytes))
             _paste_emblem(img, logo, CARD_L + 54, CARD_T + 72, 50, GOLD_BRIGHT)
         except Exception:  # noqa: BLE001 - logo must never break rendering
             pass
 
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     _draw_tracked(dr, CARD_L + 96, CARD_T + 56, "PIPLAD WELFARE FOUNDATION", sans(20, 700), (255, 255, 255), tracking=5, anchor="ls")
     if subtitle:
         _draw_tracked(dr, CARD_L + 97, CARD_T + 94, subtitle, sans(11, 700), _hex("#DDEBE6"), tracking=4, anchor="ls")
@@ -1262,7 +1473,7 @@ def _card_top_band(img: Image.Image, palette: dict, logo_bytes: bytes | None, su
 def _id_qr_zone(img: Image.Image, palette: dict, right: float, top: float, bottom: float, qr_data: str, label: str, max_w: float = 290):
     """Design-integrated QR: no box, sits flush on the card below a tracked
     label, with the short verify URL right-aligned beneath."""
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     right = int(right)
     _draw_tracked(dr, right, top + 24, label, sans(13, 700), _hex(GREEN_800), tracking=4, anchor="rs")
 
@@ -1294,11 +1505,24 @@ def _paste_card_photo(img: Image.Image, photo, center, diameter: int, initials: 
     ImageDraw.Draw(mask).rounded_rectangle([2, 2, d + 1, d + 1], radius=14, fill=255)
 
     if photo is not None:
+        stream = None
         try:
             if isinstance(photo, bytes):
-                photo = Image.open(io.BytesIO(photo))
-            photo = _center_square(photo.convert("RGB")).resize((d, d), Image.LANCZOS)
-            canvas.paste(photo, (2, 2))
+                stream = io.BytesIO(photo)
+                photo = Image.open(stream)
+            # Shrink before decoding: the pasted image is only `d` px after the
+            # centre-square crop, so holding the photo at native resolution is
+            # pure memory waste on the small Render worker.
+            if min(photo.size) > d * 3:
+                photo.thumbnail((d * 3, d * 3), Image.LANCZOS)
+            photo_rgb = photo.convert("RGB")
+            square = _center_square(photo_rgb).resize((d, d), Image.LANCZOS)
+            canvas.paste(square, (2, 2))
+            square.close()
+            photo_rgb.close()
+            photo.close()
+            if stream is not None:
+                stream.close()
         except Exception:  # noqa: BLE001 - photo must never break rendering
             photo = None
     if photo is None:
@@ -1313,6 +1537,7 @@ def _paste_card_photo(img: Image.Image, photo, center, diameter: int, initials: 
     img.paste(canvas, (int(center[0] - (d + pad) / 2), int(center[1] - (d + pad) / 2)), canvas)
 
 
+@_locked_render
 def render_volunteer_card_front(
     *,
     name: str = "",
@@ -1341,9 +1566,10 @@ def render_volunteer_card_front(
     joining_date = joining_date.strip()
 
     img = Image.new("RGB", (CARD_W, CARD_H), _hex("#FCFDFB"))
+    img._canvas_design = (CARD_W, CARD_H)
     _card_top_band(img, palette, logo_bytes)
 
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     green_ink = _hex(GREEN_950)
     muted = _hex(MUTED)
 
@@ -1384,6 +1610,7 @@ def render_volunteer_card_front(
     return img
 
 
+@_locked_render
 def render_volunteer_card_back(
     *,
     name: str = "",
@@ -1411,9 +1638,10 @@ def render_volunteer_card_back(
     status_text = (status or "issued").strip().title() or "Issued"
 
     img = Image.new("RGB", (CARD_W, CARD_H), _hex("#FCFDFB"))
+    img._canvas_design = (CARD_W, CARD_H)
     _card_top_band(img, palette, logo_bytes)
 
-    dr = ImageDraw.Draw(img)
+    dr = _draw(img)
     green_ink = _hex(GREEN_950)
     muted = _hex(MUTED)
 
@@ -1464,8 +1692,19 @@ def render_volunteer_card_back(
 # Public dispatch & serialization
 # ============================================================
 
-def render_certificate(cert_type: str, **fields) -> Image.Image:
-    """Render any registered certificate type (reusable dispatch)."""
+@_locked_render
+def render_certificate(
+    cert_type: str,
+    *,
+    out_w: int | None = None,
+    out_h: int | None = None,
+    **fields,
+) -> Image.Image:
+    """Render any registered certificate type (reusable dispatch).
+
+    ``out_w`` / ``out_h`` override the default clean-master resolution, e.g.
+    for a lower-resolution/preview render.
+    """
     factory = {
         "appreciation": render_appreciation_certificate,
         "internship": render_internship_certificate,
@@ -1477,7 +1716,7 @@ def render_certificate(cert_type: str, **fields) -> Image.Image:
             f"Certificate type {cert_type!r} is not implemented yet. "
             "Register it in FOUNDATION_CERT_TYPES to reuse this design system."
         )
-    return factory[cert_type](**fields)
+    return factory[cert_type](out_w=out_w, out_h=out_h, **fields)
 
 
 FOUNDATION_CERT_TYPES = ("appreciation", "internship", "completion", "participation")
@@ -1488,5 +1727,8 @@ def jpeg_bytes(image: Image.Image, quality: int = 95) -> bytes:
     import io
 
     buffer = io.BytesIO()
-    image.convert("RGB").save(buffer, format="JPEG", quality=quality, optimize=True, dpi=(300, 300))
-    return buffer.getvalue()
+    out = image if image.mode == "RGB" else image.convert("RGB")
+    out.save(buffer, format="JPEG", quality=quality, optimize=True, dpi=(140, 140))
+    data = buffer.getvalue()
+    buffer.close()
+    return data

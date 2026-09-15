@@ -66,6 +66,7 @@ from ..email_service import (
 )
 from ..document_service import generate_qr_token, MEDIA_DIR
 from ..donation_receipt import build_donation_receipt_html
+from ..memory_util import log_rss
 from ..welcome_card import (
     build_volunteer_qr_png,
     load_profile_photo,
@@ -1685,6 +1686,7 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
             official_card_jpg = None
             volunteer_verify_url = None
 
+        log_rss("volunteer welcome email before")
         sent = send_volunteer_welcome_email(
             to_email=volunteer.email,
             volunteer_name=volunteer.full_name,
@@ -1697,6 +1699,7 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
             id_card_pdf=official_card_pdf,
             verification_url=volunteer_verify_url,
         )
+        log_rss("volunteer welcome email after")
 
         if sent:
             volunteer.card_sent_at = datetime.utcnow()
