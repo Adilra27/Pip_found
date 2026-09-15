@@ -24,10 +24,12 @@ def public_frontend_url() -> str:
 def verify_url(kind: str, identifier: str) -> str:
     """Return the public verification URL for a certificate or volunteer.
 
-    ``kind`` is ``certificate`` or ``volunteer``; ``identifier`` is the
-    certificate number or volunteer token/ID.
+    Certificates use the public short form ``/verify/{certificate_number}``;
+    volunteer ID cards use ``/verify/volunteer/{volunteer_id}``.
     """
-    return f"{public_frontend_url()}/verify/{kind}/{identifier}"
+    if kind == "volunteer":
+        return f"{public_frontend_url()}/verify/volunteer/{identifier}"
+    return f"{public_frontend_url()}/verify/{identifier}"
 
 
 def build_qr_png(

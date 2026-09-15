@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Award, Download, Eye, FileImage, Loader2, Plus, RefreshCw,
-  ShieldCheck, ShieldX, UserCheck, FileText, BadgeCheck,
+  Award, Download, Eye, FileImage, FileText, Inbox, Loader2, Plus, RefreshCw,
+  ShieldCheck, ShieldX, UserCheck, BadgeCheck,
 } from 'lucide-react';
 import {
   downloadAdminCertificate,
@@ -15,28 +15,7 @@ import {
   revokeAdminVolunteerCard,
   resolveMediaUrl,
 } from '../../api';
-
-const inputStyle = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: '0.75rem',
-  border: '1px solid #cbd5e1',
-  borderRadius: 8,
-  background: '#fff',
-};
-
-const formGridStyle = {
-  display: 'grid',
-  gap: '.9rem',
-  marginBottom: '2rem',
-};
-
-const primaryButton = { background: '#059669', color: '#fff', border: 0 };
-const dangerButton = { background: '#fff', color: '#b91c1c', border: '1px solid #fecaca' };
-const outlineButton = { background: '#fff', color: '#0f172a', border: '1px solid #cbd5e1' };
-const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
-const th = { padding: '.7rem', background: '#f1f5f9', color: '#334155', fontSize: '.8rem' };
-const td = { padding: '.7rem', borderBottom: '1px solid #e2e8f0', color: '#475569' };
+import '../../styles/admin.css';
 
 const TYPE_FIELDS = {
   appreciation: [
@@ -89,25 +68,10 @@ const TYPE_LABELS = {
 
 function SectionTitle({ icon: Icon, children }) {
   return (
-    <h2
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '.5rem',
-        marginBottom: '1rem',
-      }}
-    >
+    <h2 className="adm-heading">
       <Icon size={20} />
       {children}
     </h2>
-  );
-}
-
-function Empty({ children }) {
-  return (
-    <p style={{ color: '#94a3b8', textAlign: 'center', padding: '2rem 0' }}>
-      {children}
-    </p>
   );
 }
 
@@ -213,36 +177,34 @@ function CertificateTab({ types }) {
     }
   }
 
+  const currentType = form.certificate_type;
+
   return (
     <div style={{ display: 'grid', gap: '1.5rem' }}>
-      <div className="card" style={{ padding: '1rem' }}>
+      <div className="card adm-panel">
         <SectionTitle icon={Award}>Generate Official Certificate</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '.9rem', marginBottom: '1rem' }}>
-          {(types || []).map((t) => (
-            <label
-              key={t.type}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '.5rem',
-                border: form.certificate_type === t.type ? '1px solid #059669' : '1px solid #cbd5e1',
-                borderRadius: 10,
-                padding: '.6rem .8rem',
-                cursor: 'pointer',
-                color: form.certificate_type === t.type ? '#047857' : '#334155',
-                background: form.certificate_type === t.type ? '#ecfdf5' : '#fff',
-              }}
-            >
-              <input
-                type="radio"
-                name="cert-type"
-                checked={form.certificate_type === t.type}
-                onChange={() => setField('certificate_type', t.type)}
-              />
-              {TYPE_LABELS[t.type] || t.label}
-              {!t.image_available && ' (missing template)'}
-            </label>
-          ))}
+
+        <div className="adm-type-grid">
+          {(types || []).map((t) => {
+            const active = currentType === t.type;
+            return (
+              <button
+                key={t.type}
+                type="button"
+                className="adm-type-card"
+                aria-pressed={active}
+                onClick={() => setField('certificate_type', t.type)}
+              >
+                <span className="adm-type-icon">
+                  <Award size={17} />
+                </span>
+                <span>
+                  {TYPE_LABELS[t.type] || t.label}
+                  {!t.image_available ? <span className="adm-sub"> (missing template)</span> : null}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <form
@@ -250,125 +212,203 @@ function CertificateTab({ types }) {
             e.preventDefault();
             handleGenerate();
           }}
-          style={formGridStyle}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '.75rem' }}>
-            {(TYPE_FIELDS[form.certificate_type] || TYPE_FIELDS.appreciation).map(([key, label, kind]) => (
+          {(TYPE_FIELDS[currentType] || TYPE_FIELDS.appreciation).map(([key, label, kind]) => (
+            <div style={{ marginBottom: '.8rem' }} key={key}>
+              <label className="adm-label" htmlFor={`dg-${key}`}>
+                {label}
+              </label>
               <input
-                key={key}
+                id={`dg-${key}`}
+                className="adm-input"
                 type={kind}
-                required={key === 'first_name' || (key === 'program_name' && ['internship', 'completion', 'participation'].includes(form.certificate_type))}
+                required={key === 'first_name' || (key === 'program_name' && ['internship', 'completion', 'participation'].includes(currentType))}
                 placeholder={label}
                 value={form[key]}
                 onChange={(e) => setField(key, e.target.value)}
-                style={inputStyle}
               />
-            ))}
-          </div>
+            </div>
+          ))}
 
-          <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
-            <button type="submit" className="btn" disabled={generating} style={primaryButton}>
+          <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', marginTop: '.4rem' }}>
+            <button type="submit" className="adm-btn adm-btn-primary" disabled={generating}>
               {generating ? <Loader2 size={17} className="spin" /> : <Plus size={17} />}
               {generating ? 'Generating…' : 'Generate Certificate'}
             </button>
           </div>
-          {error && <p style={{ color: '#b91c1c', margin: 0 }}>{error}</p>}
-          {info && <p style={{ color: '#047857', margin: 0 }}>{info}</p>}
+          {error && (
+            <p style={{ color: '#b91c1c', margin: '1rem 0 0' }}>
+              {error}
+            </p>
+          )}
+          {info && (
+            <p style={{ color: '#047857', margin: '1rem 0 0' }}>
+              {info}
+            </p>
+          )}
         </form>
       </div>
 
-      <div className="card" style={{ overflowX: 'auto', padding: '1rem' }}>
-        <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>
-          <select
-            value={typeFilter}
-            onChange={(e) => { setTypeFilter(e.target.value); setList({ ...list, page: 1 }); }}
-            style={inputStyle}
-          >
-            <option value="">All types</option>
-            {(types || []).map((t) => (
-              <option key={t.type} value={t.type}>
-                {TYPE_LABELS[t.type] || t.label}
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="Search name / number / email"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setList({ ...list, page: 1 }); }}
-            style={{ ...inputStyle, flex: 1, minWidth: 220 }}
-          />
-          <button type="button" className="btn" onClick={load} style={outlineButton}>
-            <RefreshCw size={16} />Refresh
-          </button>
+      <div className="card adm-panel">
+        <SectionTitle icon={FileText}>Registered Certificates</SectionTitle>
+
+        <div className="adm-toolbar">
+          <div className="adm-filter">
+            <label className="adm-filter-label" htmlFor="dg-filter">
+              Certificate Type
+            </label>
+            <select
+              id="dg-filter"
+              className="adm-input"
+              value={typeFilter}
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                setList({ ...list, page: 1 });
+              }}
+            >
+              <option value="">All types</option>
+              {(types || []).map((t) => (
+                <option key={t.type} value={t.type}>
+                  {TYPE_LABELS[t.type] || t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="adm-search">
+            <label className="adm-filter-label" htmlFor="dg-search">
+              Search
+            </label>
+            <input
+              id="dg-search"
+              className="adm-input"
+              placeholder="Search name / number / email"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setList({ ...list, page: 1 });
+              }}
+            />
+          </div>
+          <div className="adm-filter">
+            <span className="adm-filter-label">&nbsp;</span>
+            <button type="button" className="adm-btn adm-btn-ghost" onClick={load}>
+              <RefreshCw size={16} /> Refresh
+            </button>
+          </div>
         </div>
 
-        <table style={tableStyle}>
-          <thead>
-            <tr>
-              <th style={th}>Number</th>
-              <th style={th}>Type</th>
-              <th style={th}>Recipient</th>
-              <th style={th}>Issue Date</th>
-              <th style={th}>Status</th>
-              <th style={th} />
-            </tr>
-          </thead>
-          <tbody>
-            {(list.items || []).map((cert) => (
-              <tr key={cert.id}>
-                <td style={td}>
-                  <b>{cert.certificate_number || '—'}</b>
-                </td>
-                <td style={td}>{TYPE_LABELS[cert.certificate_type] || cert.certificate_type}</td>
-                <td style={td}>{cert.recipient_name}</td>
-                <td style={td}>{cert.issue_date || '—'}</td>
-                <td style={td}>
-                  {cert.revoked ? (
-                    <span style={{ color: '#b91c1c' }}>Revoked</span>
-                  ) : (
-                    <span style={{ color: '#047857' }}>Valid</span>
-                  )}
-                </td>
-                <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  {!cert.revoked && cert.rendered_url && (
-                    <button type="button" className="btn" title="Preview" style={outlineButton} onClick={() => window.open(resolveMediaUrl(cert.rendered_url), '_blank')}>
-                      <Eye size={15} />
-                    </button>
-                  )}
-                  {cert.rendered_url && (
-                    <button type="button" className="btn" title="Download JPG" style={outlineButton} onClick={() => downloadAdminCertificate(cert.id, 'jpg').catch((e) => setError(e.message))}>
-                      <Download size={15} />
-                    </button>
-                  )}
-                  {cert.rendered_url && (
-                    <button type="button" className="btn" title="Download PDF" style={outlineButton} onClick={() => downloadAdminCertificate(cert.id, 'pdf').catch((e) => setError(e.message))}>
-                      <FileText size={15} />
-                    </button>
-                  )}
-                  {!cert.revoked && (
-                    <button type="button" className="btn" title="Revoke" style={dangerButton} onClick={() => handleRevoke(cert.id)}>
-                      <ShieldX size={15} />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {list.items?.length === 0 && !loading && (
-          <Empty>No certificates yet — generate the first one above.</Empty>
+        {loading ? (
+          <div className="adm-loading">
+            <Loader2 size={18} className="spin" /> Loading certificates…
+          </div>
+        ) : (
+          <div className="adm-table-wrap">
+            <table className="adm-table">
+              <thead>
+                <tr>
+                  <th>Number</th>
+                  <th>Type</th>
+                  <th>Recipient</th>
+                  <th>Issue Date</th>
+                  <th>Status</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {(list.items || []).map((cert) => (
+                  <tr key={cert.id}>
+                    <td className="adm-num">{cert.certificate_number || '—'}</td>
+                    <td>{TYPE_LABELS[cert.certificate_type] || cert.certificate_type}</td>
+                    <td>{cert.recipient_name}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{cert.issue_date || '—'}</td>
+                    <td>
+                      {cert.revoked ? (
+                        <span className="adm-pill adm-pill-revoked">Revoked</span>
+                      ) : (
+                        <span className="adm-pill adm-pill-valid">Valid</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div className="adm-actions" style={{ justifyContent: 'flex-end' }}>
+                        {!cert.revoked && cert.rendered_url && (
+                          <button
+                            type="button"
+                            className="adm-action"
+                            title="Preview"
+                            onClick={() => window.open(resolveMediaUrl(cert.rendered_url), '_blank')}
+                          >
+                            <Eye size={15} /> Preview
+                          </button>
+                        )}
+                        {cert.rendered_url && (
+                          <button
+                            type="button"
+                            className="adm-action"
+                            title="Download JPG"
+                            onClick={() => downloadAdminCertificate(cert.id, 'jpg').catch((e) => setError(e.message))}
+                          >
+                            <Download size={15} /> JPG
+                          </button>
+                        )}
+                        {cert.rendered_url && (
+                          <button
+                            type="button"
+                            className="adm-action"
+                            title="Download PDF"
+                            onClick={() => downloadAdminCertificate(cert.id, 'pdf').catch((e) => setError(e.message))}
+                          >
+                            <FileText size={15} /> PDF
+                          </button>
+                        )}
+                        {!cert.revoked && (
+                          <button
+                            type="button"
+                            className="adm-action adm-action-danger"
+                            title="Revoke"
+                            onClick={() => handleRevoke(cert.id)}
+                          >
+                            <ShieldX size={15} /> Revoke
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {list.items?.length === 0 && !loading && (
+              <div className="adm-empty">
+                <span className="adm-empty-icon">
+                  <Inbox size={22} />
+                </span>
+                <strong>No certificates yet</strong>
+                <small>Generate the first one above — it will appear here.</small>
+              </div>
+            )}
+          </div>
         )}
+
         {list.total > list.page_size && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '.5rem', marginTop: '1rem' }}>
-            <button className="btn" style={outlineButton} disabled={list.page <= 1} onClick={() => setList({ ...list, page: list.page - 1 })}>
-              Prev
-            </button>
-            <span style={{ padding: '.5rem .8rem', color: '#475569' }}>
-              Page {list.page} of {Math.max(1, Math.ceil(list.total / list.page_size || 1))}
-            </span>
-            <button className="btn" style={outlineButton} disabled={list.page * list.page_size >= list.total} onClick={() => setList({ ...list, page: list.page + 1 })}>
-              Next
-            </button>
+          <div className="adm-pagination" style={{ justifyContent: 'center' }}>
+            <div className="adm-pager">
+              <button
+                className="adm-btn adm-btn-ghost"
+                disabled={list.page <= 1}
+                onClick={() => setList({ ...list, page: list.page - 1 })}
+              >
+                Prev
+              </button>
+              <span className="adm-pager-info">
+                Page {list.page} of {Math.max(1, Math.ceil(list.total / list.page_size || 1))}
+              </span>
+              <button
+                className="adm-btn adm-btn-ghost"
+                disabled={list.page * list.page_size >= list.total}
+                onClick={() => setList({ ...list, page: list.page + 1 })}
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -424,89 +464,132 @@ function VolunteerTab() {
   }
 
   return (
-    <div className="card" style={{ overflowX: 'auto', padding: '1rem' }}>
+    <div className="card adm-panel">
       <SectionTitle icon={BadgeCheck}>Volunteer ID Cards</SectionTitle>
-      <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>
-        <input
-          placeholder="Search name / email / ID"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ ...inputStyle, flex: 1, minWidth: 220 }}
-        />
-        <button type="button" className="btn" onClick={load} style={outlineButton}>
-          <RefreshCw size={16} />Refresh
-        </button>
+
+      <div className="adm-toolbar">
+        <div className="adm-search">
+          <label className="adm-filter-label" htmlFor="vs-search">
+            Search
+          </label>
+          <input
+            id="vs-search"
+            className="adm-input"
+            placeholder="Search name / email / ID"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="adm-filter">
+          <span className="adm-filter-label">&nbsp;</span>
+          <button type="button" className="adm-btn adm-btn-ghost" onClick={load}>
+            <RefreshCw size={16} /> Refresh
+          </button>
+        </div>
       </div>
 
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            <th style={th}>Volunteer</th>
-            <th style={th}>ID</th>
-            <th style={th}>Valid Till</th>
-            <th style={th}>Official Card</th>
-            <th style={th} />
-          </tr>
-        </thead>
-        <tbody>
-          {(volunteers || []).map((v) => (
-            <tr key={v.id}>
-              <td style={td}>
-                <b>{v.full_name}</b>
-                <div style={{ color: '#94a3b8', fontSize: '.8rem' }}>{v.email}</div>
-              </td>
-              <td style={td}>{v.volunteer_id || '—'}</td>
-              <td style={td}>{v.valid_till || '—'}</td>
-              <td style={td}>
-                {v.card_revoked_at ? (
-                  <span style={{ color: '#b91c1c' }}>Revoked</span>
-                ) : v.card_file_path ? (
-                  <span style={{ color: '#047857' }}>
-                    <ShieldCheck size={15} style={{ verticalAlign: 'middle' }} /> Ready
-                    <a
-                      href={resolveMediaUrl(v.verified_url)}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ display: 'block', fontSize: '.78rem', color: '#047857' }}
-                    >
-                      View verification page
-                    </a>
-                  </span>
-                ) : (
-                  <span style={{ color: '#94a3b8' }}>Not generated</span>
-                )}
-              </td>
-              <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={busyId === v.id || !!v.card_revoked_at}
-                  style={v.card_file_path && !v.card_revoked_at ? outlineButton : primaryButton}
-                  onClick={() => handleGenerateCard(v.id)}
-                >
-                  {busyId === v.id ? <Loader2 size={15} className="spin" /> : <Plus size={15} />}
-                  {v.card_file_path && !v.card_revoked_at ? 'Regenerate' : 'Generate Card'}
-                </button>
-                {v.card_file_path && !v.card_revoked_at && (
-                  <>
-                    <button type="button" className="btn" title="Download JPG" style={outlineButton} onClick={() => downloadAdminVolunteerCard(v.id, 'jpg').catch((e) => setError(e.message))}>
-                      <Download size={15} />
-                    </button>
-                    <button type="button" className="btn" title="Download PDF" style={outlineButton} onClick={() => downloadAdminVolunteerCard(v.id, 'pdf').catch((e) => setError(e.message))}>
-                      <FileText size={15} />
-                    </button>
-                    <button type="button" className="btn" title="Revoke" style={dangerButton} onClick={() => handleRevoke(v.id)}>
-                      <ShieldX size={15} />
-                    </button>
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {volunteers?.length === 0 && !loading && (
-        <Empty>No accepted volunteers with this search.</Empty>
+      {loading ? (
+        <div className="adm-loading">
+          <Loader2 size={18} className="spin" /> Loading volunteers…
+        </div>
+      ) : (
+        <div className="adm-table-wrap">
+          <table className="adm-table">
+            <thead>
+              <tr>
+                <th>Volunteer</th>
+                <th>ID</th>
+                <th>Valid Till</th>
+                <th>Official Card</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {(volunteers || []).map((v) => (
+                <tr key={v.id}>
+                  <td>
+                    <b className="adm-num" style={{ fontWeight: 700 }}>{v.full_name}</b>
+                    <div className="adm-sub">{v.email}</div>
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{v.volunteer_id || '—'}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{v.valid_till || '—'}</td>
+                  <td>
+                    {v.card_revoked_at ? (
+                      <span className="adm-pill adm-pill-revoked">Revoked</span>
+                    ) : v.card_file_path ? (
+                      <span className="adm-pill adm-pill-ready">
+                        <ShieldCheck size={14} /> Ready
+                      </span>
+                    ) : (
+                      <span className="adm-pill adm-pill-muted">Not generated</span>
+                    )}
+                    {v.card_file_path && !v.card_revoked_at ? (
+                      <a
+                        href={resolveMediaUrl(v.verified_url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="adm-sub"
+                        style={{ color: '#047857', display: 'block' }}
+                      >
+                        View verification page
+                      </a>
+                    ) : null}
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <div className="adm-actions" style={{ justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        className={v.card_file_path && !v.card_revoked_at ? 'adm-btn adm-btn-ghost' : 'adm-btn adm-btn-primary'}
+                        disabled={busyId === v.id || !!v.card_revoked_at}
+                        onClick={() => handleGenerateCard(v.id)}
+                      >
+                        {busyId === v.id ? <Loader2 size={15} className="spin" /> : <Plus size={15} />}
+                        {v.card_file_path && !v.card_revoked_at ? 'Regenerate' : 'Generate Card'}
+                      </button>
+                      {v.card_file_path && !v.card_revoked_at ? (
+                        <>
+                          <button
+                            type="button"
+                            className="adm-action"
+                            title="Download JPG"
+                            onClick={() => downloadAdminVolunteerCard(v.id, 'jpg').catch((e) => setError(e.message))}
+                          >
+                            <Download size={15} /> JPG
+                          </button>
+                          <button
+                            type="button"
+                            className="adm-action"
+                            title="Download PDF"
+                            onClick={() => downloadAdminVolunteerCard(v.id, 'pdf').catch((e) => setError(e.message))}
+                          >
+                            <FileText size={15} /> PDF
+                          </button>
+                          <button
+                            type="button"
+                            className="adm-action adm-action-danger"
+                            title="Revoke"
+                            onClick={() => handleRevoke(v.id)}
+                          >
+                            <ShieldX size={15} /> Revoke
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {volunteers?.length === 0 && !loading && (
+            <div className="adm-empty">
+              <span className="adm-empty-icon">
+                <Inbox size={22} />
+              </span>
+              <strong>No volunteers found</strong>
+              <small>Try a different search or verify the accepted applications.</small>
+            </div>
+          )}
+        </div>
       )}
       {error && <p style={{ color: '#b91c1c', marginTop: '1rem' }}>{error}</p>}
     </div>
@@ -525,17 +608,17 @@ export default function DocumentGenerator() {
   }, []);
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
-      <div className="card" style={{ padding: '1rem' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '.5rem', marginBottom: '1rem' }}>
+    <div className="adm" style={{ display: 'grid', gap: '1rem' }}>
+      <div className="card adm-panel">
+        <h2 className="adm-heading">
           <FileImage size={20} /> Official Documents
         </h2>
-        <p style={{ color: '#64748b', marginTop: 0 }}>
+        <p className="adm-hint" style={{ marginBottom: '.35rem' }}>
           Generate official certificates and the Volunteer ID card from the
           registered templates. Every document carries a unique QR code that
           opens /verify pages to validate authenticity.
         </p>
-        <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+        <div className="adm-tabs">
           {[
             ['certificates', 'Certificates', Award],
             ['volunteers', 'Volunteer ID Cards', UserCheck],
@@ -543,9 +626,8 @@ export default function DocumentGenerator() {
             <button
               key={key}
               type="button"
-              className="btn"
+              className={tab === key ? 'adm-btn adm-btn-primary' : 'adm-btn adm-btn-ghost'}
               onClick={() => setTab(key)}
-              style={tab === key ? primaryButton : outlineButton}
             >
               <Icon size={16} /> {label}
             </button>
@@ -555,7 +637,7 @@ export default function DocumentGenerator() {
 
       {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
       {types === null ? (
-        <p style={{ color: '#94a3b8' }}>Loading document options…</p>
+        <div className="adm-loading">Loading document options…</div>
       ) : tab === 'certificates' ? (
         <CertificateTab types={types} />
       ) : (

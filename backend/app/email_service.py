@@ -10,6 +10,7 @@ failure is visible (e.g. in the admin panel) instead of raising.
 import base64
 import logging
 import os
+from html import escape
 
 import requests
 
@@ -141,62 +142,87 @@ def send_volunteer_welcome_email(
     volunteer_email: str,
     volunteer_id: str,
     joined_date,
-    card_jpg: bytes,
+    card_jpg: bytes | None = None,
     certificate_image: bytes | None = None,
     id_card_jpg: bytes | None = None,
+    id_card_pdf: bytes | None = None,
     verification_url: str | None = None,
 ) -> bool:
-    """Send the volunteer welcome e-mail: message body + card JPG + certificate.
+    """Share the official Volunteer ID Card with an accepted volunteer.
 
-    The e-mail body is the friendly welcome message (HTML + plain text); the
-    graphical welcome card (QR + profile photo) and the official certificate
-    are attached as JPEG files so they display in every e-mail client. When an
-    official Volunteer ID card JPEG is supplied it is attached as well and the
-    public verification link is included in the body.
+    The old graphical "welcome card" message has been removed. The e-mail now
+    leads with the official ID card issued by the design system: the front face
+    (JPG) and the print-ready double-sided CR80 PDF are attached, and the
+    verification URL is included so the card can be verified online.
     """
-    from .welcome_card import build_welcome_message_html, build_welcome_message_text
+    from datetime import date, datetime
 
-    text_body = build_welcome_message_text(
-        full_name=volunteer_name,
-        volunteer_email=volunteer_email,
-        volunteer_id=volunteer_id,
-        joined_date=joined_date,
+    joined = joined_date
+    if isinstance(joined, (date, datetime)):
+        joined = joined.strftime("%d %B %Y")
+    elif joined in (None, ""):
+        joined = "Recently accepted"
+
+    vid = volunteer_id or "PWF-VOL-STANDBY"
+
+    text_body = "\n".join(
+        [
+            f"Dear {volunteer_name},",
+            "",
+            "Welcome to the Piplad Welfare Foundation family! We are delighted "
+            "to have you join us as a volunteer.",
+            "",
+            "Your official Volunteer ID Card is attached to this e-mail.",
+            "",
+            "Your Volunteer Details",
+            f"Name: {volunteer_name}",
+            f"Email: {volunteer_email}",
+            f"Volunteer ID: {vid}",
+            f"Joining Date: {joined}",
+            "",
+            *(
+                [
+                    "You can verify your Volunteer ID Card online at:",
+                    verification_url,
+                    "",
+                ]
+                if verification_url
+                else []
+            ),
+            "Please keep your card safe and carry it during volunteer activities.",
+            "",
+            "With regards,",
+            "Piplad Welfare Foundation",
+            "Creating Opportunities, Creating Lives",
+            "Support: info@pipladfoundation.in | +91-8981266033",
+        ]
     )
-    html_body = build_welcome_message_html(
-        full_name=volunteer_name,
+
+    html_body = _build_volunteer_id_email_html(
+        volunteer_name=volunteer_name,
         volunteer_email=volunteer_email,
-        volunteer_id=volunteer_id,
-        joined_date=joined_date,
+        volunteer_id=vid,
+        joined_date=joined,
+        verification_url=verification_url,
     )
 
-    if verification_url:
-        text_body += (
-            f"\n\nVerify your official Volunteer ID card online:\n{verification_url}\n"
-        )
-        verify_html = (
-            f'<p style="margin:4px 0 0;"><a href="{verification_url}" '
-            f'style="color:#047857;">Verify your Volunteer ID Card online</a></p>'
-        )
-        if html_body and "</body>" in html_body:
-            html_body = html_body.replace("</body>", f"{verify_html}</body>")
-        else:
-            html_body += verify_html
-
-    attachments = [
-        {
-            "filename": "Volunteer_Card.jpg",
-            "data": card_jpg,
-            "maintype": "image",
-            "subtype": "jpeg",
-        }
-    ]
+    attachments = []
     if id_card_jpg:
         attachments.append(
             {
-                "filename": "Volunteer_ID_Card.jpg",
+                "filename": "Volunteer_ID_Card_Front.jpg",
                 "data": id_card_jpg,
                 "maintype": "image",
                 "subtype": "jpeg",
+            }
+        )
+    if id_card_pdf:
+        attachments.append(
+            {
+                "filename": "Volunteer_ID_Card.pdf",
+                "data": id_card_pdf,
+                "maintype": "application",
+                "subtype": "pdf",
             }
         )
     if certificate_image:
@@ -208,14 +234,152 @@ def send_volunteer_welcome_email(
                 "subtype": "jpeg",
             }
         )
+    if card_jpg:  # legacy graphical welcome card, no longer produced by callers
+        attachments.append(
+            {
+                "filename": "Welcome_Card.jpg",
+                "data": card_jpg,
+                "maintype": "image",
+                "subtype": "jpeg",
+            }
+        )
 
     return _deliver_email(
         to_email=to_email,
-        subject="Welcome to Piplad Welfare Foundation!",
+        subject="Your Official Volunteer ID Card - Piplad Welfare Foundation",
         text_body=text_body,
         html_body=html_body,
         attachments=attachments,
     )
+
+
+def _build_volunteer_id_email_html(
+    *,
+    volunteer_name: str,
+    volunteer_email: str,
+    volunteer_id: str,
+    joined_date: str,
+    verification_url: str | None,
+) -> str:
+    """Branded, mobile-friendly HTML body for the Volunteer ID Card e-mail."""
+
+    def row(label: str, value: str) -> str:
+        return (
+            f'<tr><td style="padding:8px 12px;color:#64748b;font-size:13px;'
+            f'font-weight:600;white-space:nowrap;">{escape(label)}</td>'
+            f'<td style="padding:8px 12px;color:#0f172a;font-size:13px;'
+            f'font-weight:600;">{escape(value)}</td></tr>'
+        )
+
+    details_rows = (
+        row("Name", volunteer_name)
+        + row("Email", volunteer_email)
+        + row("Volunteer ID", volunteer_id)
+        + row("Joining Date", joined_date)
+    )
+
+    verify_button = (
+        f'<table role="presentation" cellpadding="0" cellspacing="0" '
+        f'style="margin:0 0 22px;"><tr><td align="center" bgcolor="#059669" '
+        f'style="border-radius:8px;">'
+        f'<a href="{escape(verification_url)}" '
+        f'style="display:inline-block;padding:12px 26px;color:#ffffff;'
+        f'font-size:14px;font-weight:bold;text-decoration:none;border-radius:8px;">'
+        f'Verify Volunteer ID Card Online</a></td></tr></table>'
+        if verification_url
+        else ""
+    )
+
+    return f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f6f8;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="background:#f4f6f8;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0"
+               style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;
+                      overflow:hidden;font-family:Arial,Helvetica,sans-serif;
+                      border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background:#059669;padding:26px 32px;text-align:center;">
+              <div style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:.04em;">
+                Piplad Welfare Foundation
+              </div>
+              <div style="color:#d1fae5;font-size:12px;margin-top:4px;letter-spacing:.12em;">
+                Official Volunteer ID Card
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px 32px;">
+              <p style="margin:0 0 16px;font-size:16px;color:#0f172a;">
+                Dear {escape(volunteer_name)},
+              </p>
+              <p style="margin:0 0 20px;font-size:14px;color:#334155;line-height:1.6;">
+                Welcome to the Piplad Welfare Foundation family! Your official
+                <b>Volunteer ID Card</b> is attached with this e-mail.
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                     style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+                            margin:0 0 22px;">
+                <tr>
+                  <td style="padding:12px 12px 4px;color:#475569;font-size:11px;
+                             text-transform:uppercase;letter-spacing:.08em;font-weight:700;">
+                    Volunteer Details
+                  </td>
+                </tr>
+                {details_rows}
+              </table>
+
+              {verify_button}
+
+              <p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.6;">
+                The attached PDF is the print-ready version of your card
+                (front and back). Please keep it safe and carry it during
+                volunteer activities.
+              </p>
+
+              <p style="margin:0 0 8px;font-size:14px;color:#0f172a;">
+                With regards,
+              </p>
+              <p style="margin:0;font-size:14px;color:#0f172a;">
+                <b>Piplad Welfare Foundation</b>
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                     style="margin-top:24px;background:#f0fdf4;border:1px solid #d1fae5;
+                            border-radius:10px;">
+                <tr>
+                  <td style="padding:14px 16px;font-size:12px;color:#047857;line-height:1.7;">
+                    <b>Need help?</b> Contact us at
+                    <a href="mailto:info@pipladfoundation.in"
+                       style="color:#047857;font-weight:bold;text-decoration:none;">
+                      info@pipladfoundation.in</a>
+                    or call +91-8981266033.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f8fafc;padding:16px 32px;text-align:center;
+                       border-top:1px solid #e2e8f0;">
+              <div style="color:#94a3b8;font-size:11px;">
+                Your card is verifiable at the link above. This e-mail was sent
+                to you by the Piplad Welfare Foundation.
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
 
 
 def send_volunteer_rejection_email(
@@ -328,6 +492,213 @@ def send_certificate_email(
             }
         ],
     )
+
+
+def send_certificate_documents_email(
+    *,
+    to_email: str,
+    recipient_name: str,
+    type_label: str,
+    event_topic: str,
+    event_date: str,
+    certificate_number: str,
+    verification_url: str,
+    pdf_bytes: bytes,
+    pdf_filename: str,
+    subject: str | None = None,
+) -> bool:
+    """Email the official certificate PDF with the full verification details.
+
+    Attaches the print-ready certificate PDF and includes the recipient name,
+    certificate type, certificate number, issue date, program and the canonical
+    verification URL in a professional branded (HTML + plain text) message.
+    """
+    clean_type = (type_label or "Certificate").strip() or "Certificate"
+    cert_number = (certificate_number or "").strip()
+    program = (event_topic or "").strip()
+    issued_on = (event_date or "").strip()
+
+    text_body = "\n".join(
+        [
+            f"Dear {recipient_name},",
+            "",
+            f"We are pleased to share your {clean_type} from the Piplad Welfare Foundation.",
+            "",
+            *([f"Certificate Number: {cert_number}"] if cert_number else []),
+            *([f"Issue Date: {issued_on}"] if issued_on else []),
+            *([f"Program: {program}"] if program else []),
+            "",
+            "You can verify this certificate online at:",
+            verification_url,
+            "",
+            "Your certificate PDF is attached to this e-mail. Please keep it safe "
+            "and feel free to share it on your social profiles.",
+            "",
+            "With regards,",
+            "Piplad Welfare Foundation",
+            "Creating Opportunities, Creating Lives",
+            "Support: info@pipladfoundation.in | +91-8981266033",
+        ]
+    )
+
+    html_body = _build_certificate_email_html(
+        recipient_name=recipient_name,
+        type_label=clean_type,
+        event_topic=program,
+        event_date=issued_on,
+        certificate_number=cert_number,
+        verification_url=verification_url,
+    )
+
+    return _deliver_email(
+        to_email=to_email,
+        subject=subject or f"Your {clean_type} - Piplad Welfare Foundation",
+        text_body=text_body,
+        html_body=html_body,
+        attachments=[
+            {
+                "filename": pdf_filename,
+                "data": pdf_bytes,
+                "maintype": "application",
+                "subtype": "pdf",
+            }
+        ],
+    )
+
+
+def _build_certificate_email_html(
+    *,
+    recipient_name: str,
+    type_label: str,
+    event_topic: str,
+    event_date: str,
+    certificate_number: str,
+    verification_url: str,
+) -> str:
+    """Branded, mobile-friendly HTML body for certificate e-mails."""
+    name = escape(recipient_name)
+    doc_type = escape(type_label)
+    program = escape(event_topic)
+    issued_on = escape(event_date)
+    number = escape(certificate_number)
+
+    def detail_row(label: str, value: str) -> str:
+        if not value:
+            return ""
+        return (
+            f'<tr><td style="padding:8px 12px;color:#64748b;font-size:13px;'
+            f'font-weight:600;white-space:nowrap;letter-spacing:.02em;">{label}</td>'
+            f'<td style="padding:8px 12px;color:#0f172a;font-size:13px;'
+            f'font-weight:600;">{value}</td></tr>'
+        )
+
+    details_rows = (
+        detail_row("Certificate Number", number)
+        + detail_row("Issue Date", issued_on)
+        + detail_row("Program", program)
+    )
+
+    return f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f4f6f8;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="background:#f4f6f8;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0"
+               style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;
+                      overflow:hidden;font-family:Arial,Helvetica,sans-serif;
+                      border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background:#059669;padding:26px 32px;text-align:center;">
+              <div style="color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:.04em;">
+                Piplad Welfare Foundation
+              </div>
+              <div style="color:#d1fae5;font-size:12px;margin-top:4px;letter-spacing:.12em;">
+                Creating Opportunities, Creating Lives
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:30px 32px;">
+              <p style="margin:0 0 16px;font-size:16px;color:#0f172a;">
+                Dear {name},
+              </p>
+              <p style="margin:0 0 20px;font-size:14px;color:#334155;line-height:1.6;">
+                We are pleased to share your <b>{doc_type}</b> with you from the
+                Piplad Welfare Foundation. Your certificate of honour is now
+                officially issued and digitally verifiable online.
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                     style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+                            margin:0 0 22px;">
+                <tr>
+                  <td style="padding:12px 12px 4px;color:#475569;font-size:11px;
+                             text-transform:uppercase;letter-spacing:.08em;font-weight:700;">
+                    Certificate Details
+                  </td>
+                </tr>
+                {details_rows}
+              </table>
+
+              <table role="presentation" cellpadding="0" cellspacing="0"
+                     style="margin:0 0 22px;">
+                <tr>
+                  <td align="center" style="border-radius:8px;"
+                      bgcolor="#059669">
+                    <a href="{escape(verification_url)}"
+                       style="display:inline-block;padding:12px 26px;color:#ffffff;
+                              font-size:14px;font-weight:bold;text-decoration:none;
+                              border-radius:8px;">Verify Certificate Online</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.6;">
+                Your certificate PDF is attached to this e-mail. Please keep it
+                safe and feel free to share it on your social profiles.
+              </p>
+
+              <p style="margin:0 0 8px;font-size:14px;color:#0f172a;">
+                With regards,
+              </p>
+              <p style="margin:0;font-size:14px;color:#0f172a;">
+                <b>Piplad Welfare Foundation</b>
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                     style="margin-top:24px;background:#f0fdf4;border:1px solid #d1fae5;
+                            border-radius:10px;">
+                <tr>
+                  <td style="padding:14px 16px;font-size:12px;color:#047857;line-height:1.7;">
+                    <b>Need help?</b> Contact us at
+                    <a href="mailto:info@pipladfoundation.in"
+                       style="color:#047857;font-weight:bold;text-decoration:none;">
+                      info@pipladfoundation.in</a>
+                    or call +91-8981266033.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f8fafc;padding:16px 32px;text-align:center;
+                       border-top:1px solid #e2e8f0;">
+              <div style="color:#94a3b8;font-size:11px;">
+                Your certificate is verifiable at the link above. This e-mail was
+                sent to you by the Piplad Welfare Foundation.
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
 
 
 def send_team_card_email(

@@ -84,6 +84,7 @@ export default function App() {
             <Route path="/admin" element={<Admin />} />
             <Route path="/partners/:partnerSlug" element={<Partner />} />
             <Route path="/verify/certificate/:identifier" element={<VerifyCertificate />} />
+            <Route path="/verify/:identifier" element={<VerifyCertificate />} />
             <Route path="/verify/volunteer/:identifier" element={<VerifyVolunteer />} />
           </Routes>
         </main>

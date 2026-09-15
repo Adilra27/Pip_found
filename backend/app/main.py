@@ -19,6 +19,7 @@ from .routes import (
     blog,
     causes,
     certificates,
+    cert_management,
     contact,
     donation,
     generation,
@@ -581,6 +582,11 @@ app.include_router(
 app.include_router(
     generation.router,
     tags=["Admin Generated Documents"],
+)
+
+app.include_router(
+    cert_management.router,
+    tags=["Admin Certificate Management"],
 )
 
 app.include_router(

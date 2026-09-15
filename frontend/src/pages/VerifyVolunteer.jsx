@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ShieldCheck, ShieldAlert, ShieldX, Loader2, ArrowLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import { verifyVolunteer } from '../api';
+import VerificationShell from '../components/verify/VerificationShell';
 import '../styles/verify.css';
 
 function Field({ label, value, full }) {
@@ -12,6 +12,14 @@ function Field({ label, value, full }) {
       <b>{value}</b>
     </div>
   );
+}
+
+function formatDate(value) {
+  if (!value) return null;
+  const parts = String(value).split('-');
+  if (parts.length !== 3) return value;
+  const [year, month, day] = parts;
+  return `${day}/${month}/${year}`;
 }
 
 export default function VerifyVolunteer() {
@@ -28,60 +36,90 @@ export default function VerifyVolunteer() {
 
   if (state.loading) {
     return (
-      <div className="verify-page">
-        <div className="verify-card" style={{ textAlign: 'center' }}>
-          <div className="verify-badge loading">
-            <Loader2 size="32" className="spin" />
-          </div>
-          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800 }}>Verifying…</h1>
-        </div>
-      </div>
+      <VerificationShell
+        documentLabel="volunteer ID"
+        heading="Verifying…"
+        badgeKind="loading"
+        qrIdentifier={identifier}
+      />
     );
   }
 
   const data = state.data;
-  const kind = data?.valid ? 'valid' : data?.revoked ? 'revoked' : data?.expired ? 'expired' : 'unknown';
-  const Icon = data?.valid ? ShieldCheck : data?.revoked || data?.expired ? ShieldAlert : ShieldX;
+
+  if (state.error || !data) {
+    return (
+      <VerificationShell
+        documentLabel="volunteer ID"
+        heading="Volunteer ID Not Found"
+        badgeKind="unknown"
+        description={state.error || 'We were unable to validate this Volunteer ID with the identifier provided.'}
+        qrIdentifier={identifier}
+      />
+    );
+  }
+
+  if (data.valid && data.full_name !== 'Unknown') {
+    return (
+      <VerificationShell
+        documentLabel="volunteer ID"
+        heading="Volunteer ID Verified"
+        badgeKind="valid"
+        qrIdentifier={identifier}
+      >
+        <div className="verify-details">
+          <Field label="Full Name" value={data.full_name} full />
+          <Field label="Volunteer ID" value={data.volunteer_id} />
+          <Field label="Area of Interest" value={data.interest_area} />
+          <Field label="Location" value={data.location} full />
+          <Field label="Card Issue Date" value={formatDate(data.issue_date)} />
+          <Field label="Valid Till" value={formatDate(data.valid_till)} />
+          <Field label="Issued By" value={data.issued_by} full />
+        </div>
+      </VerificationShell>
+    );
+  }
+
+  if (data.revoked) {
+    return (
+      <VerificationShell
+        documentLabel="volunteer ID"
+        heading="Volunteer ID Revoked"
+        badgeKind="revoked"
+        description={data.reason || 'This Volunteer ID has been revoked.'}
+        qrIdentifier={identifier}
+      >
+        <div className="verify-details">
+          <Field label="Volunteer ID" value={data.volunteer_id} full />
+        </div>
+      </VerificationShell>
+    );
+  }
+
+  if (data.expired) {
+    return (
+      <VerificationShell
+        documentLabel="volunteer ID"
+        heading="Volunteer ID Expired"
+        badgeKind="expired"
+        description={data.reason || 'This Volunteer ID is no longer valid.'}
+        qrIdentifier={identifier}
+      >
+        <div className="verify-details">
+          <Field label="Volunteer ID" value={data.volunteer_id} full />
+          <Field label="Valid Till" value={formatDate(data.valid_till)} />
+        </div>
+      </VerificationShell>
+    );
+  }
 
   return (
-    <div className="verify-page">
-      <div className="verify-card">
-        <div className="verify-status">
-          <div className={`verify-badge ${kind}`}>
-            <Icon size="34" />
-          </div>
-          <h1>
-            {data?.valid
-              ? 'Verified Volunteer'
-              : data?.revoked
-                ? 'Volunteer ID Revoked'
-                : data?.expired
-                  ? 'Volunteer ID Expired'
-                  : 'Volunteer ID Not Found'}
-          </h1>
-          <p>
-            {data?.reason || (data?.valid
-              ? 'This volunteer is a verified member of Piplad Welfare Foundation.'
-              : 'We were unable to validate this Volunteer ID with the identifier provided.')}
-          </p>
-        </div>
-
-        {data?.valid && data?.full_name !== 'Unknown' && (
-          <div className="verify-details">
-            <Field label="Full Name" value={data.full_name} full />
-            <Field label="Volunteer ID" value={data.volunteer_id} />
-            <Field label="Area of Interest" value={data.interest_area} />
-            <Field label="Location" value={data.location} full />
-            <Field label="Card Issue Date" value={data.issue_date} />
-            <Field label="Valid Till" value={data.valid_till} />
-            <Field label="Issued By" value={data.issued_by} full />
-          </div>
-        )}
-
-        <Link className="back-link" to="/">
-          <ArrowLeft size="16" /> Back to Piplad Welfare Foundation
-        </Link>
-      </div>
-    </div>
+    <VerificationShell
+      documentLabel="volunteer ID"
+      heading="Volunteer ID Not Found"
+      badgeKind="unknown"
+      description={data.reason || 'We were unable to validate this Volunteer ID with the identifier provided.'}
+      qrIdentifier={identifier}
+    />
   );
 }

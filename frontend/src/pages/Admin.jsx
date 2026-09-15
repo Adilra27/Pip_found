@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import DocumentGenerator from '../components/admin/DocumentGenerator';
+import CertificateManagement from '../components/admin/CertificateManagement';
+import CertificateHistory from '../components/admin/CertificateHistory';
 
 import {
+  BadgeCheck,
   CalendarDays,
+  History,
   Image as ImageIcon,
   LogIn,
   LogOut,
@@ -4091,6 +4095,16 @@ export default function Admin() {
       FileText,
     ],
     [
+      'cert-mgmt',
+      'Cert. Management',
+      BadgeCheck,
+    ],
+    [
+      'cert-history',
+      'Cert. History',
+      History,
+    ],
+    [
       'issue',
       'Issue Certificate',
       Send,
@@ -4427,6 +4441,14 @@ export default function Admin() {
 
           {tab === 'generated' && (
             <DocumentGenerator />
+          )}
+
+          {tab === 'cert-mgmt' && (
+            <CertificateManagement />
+          )}
+
+          {tab === 'cert-history' && (
+            <CertificateHistory />
           )}
 
           {tab === 'footer' && (

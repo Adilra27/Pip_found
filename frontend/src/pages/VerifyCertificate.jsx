@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ShieldCheck, ShieldX, ShieldAlert, Loader2, ArrowLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import { verifyCertificate } from '../api';
+import VerificationShell from '../components/verify/VerificationShell';
 import '../styles/verify.css';
 
 const TYPE_LABELS = {
@@ -22,6 +22,33 @@ function Field({ label, value, full }) {
   );
 }
 
+function formatDate(value) {
+  if (!value) return null;
+  const parts = String(value).split('-');
+  if (parts.length !== 3) return value;
+  const [year, month, day] = parts;
+  return `${day}/${month}/${year}`;
+}
+
+function RelevantDates({ startingDate, endDate, competitionDate }) {
+  const items = [];
+  if (startingDate) items.push(['Program Start', startingDate]);
+  if (endDate) items.push(['Program End', endDate]);
+  if (competitionDate) items.push(['Competition Date', competitionDate]);
+  if (items.length === 0) return null;
+  return (
+    <div className="verify-dates">
+      <span className="verify-dates-label">Relevant Dates</span>
+      {items.map(([label, value]) => (
+        <div key={label} className="verify-dates-item">
+          <b>{label}</b>
+          <b>{formatDate(value)}</b>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function VerifyCertificate() {
   const { identifier } = useParams();
   const [state, setState] = useState({ loading: true, data: null, error: null });
@@ -36,53 +63,91 @@ export default function VerifyCertificate() {
 
   if (state.loading) {
     return (
-      <div className="verify-page">
-        <div className="verify-card" style={{ textAlign: 'center' }}>
-          <div className="verify-badge loading">
-            <Loader2 size="32" className="spin" />
-          </div>
-          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800 }}>Verifying…</h1>
-        </div>
-      </div>
+      <VerificationShell
+        documentLabel="certificate"
+        heading="Verifying…"
+        badgeKind="loading"
+        qrIdentifier={identifier}
+      />
     );
   }
 
   const data = state.data;
-  const kind = data?.valid ? 'valid' : data?.revoked ? 'revoked' : data?.expired ? 'expired' : 'unknown';
+
+  if (state.error || !data) {
+    return (
+      <VerificationShell
+        documentLabel="certificate"
+        heading="Certificate Not Found"
+        badgeKind="unknown"
+        description={state.error || 'We were unable to validate this certificate with the identifier provided.'}
+        qrIdentifier={identifier}
+      />
+    );
+  }
+
+  if (data.valid && data.recipient_name !== 'Unknown') {
+    return (
+      <VerificationShell
+        documentLabel="certificate"
+        heading="Certificate Verified"
+        badgeKind="valid"
+        qrIdentifier={identifier}
+      >
+        <div className="verify-details">
+          <Field label="Recipient" value={data.recipient_name} full />
+          <Field label="Certificate Type" value={TYPE_LABELS[data.certificate_type] || data.certificate_type} />
+          <Field label="Program" value={data.program_name} full />
+          <Field label="Certificate Number" value={data.certificate_number} />
+          <Field label="Issue Date" value={formatDate(data.issue_date)} />
+          <Field label="Issued By" value={data.issued_by} full />
+        </div>
+        <RelevantDates
+          startingDate={data.starting_date}
+          endDate={data.end_date}
+          competitionDate={data.competition_date}
+        />
+        <Field label="Organisation" value={data.organisation_name} full />
+        <Field label="Competition Location" value={data.competition_location} full />
+      </VerificationShell>
+    );
+  }
+
+  if (data.revoked) {
+    return (
+      <VerificationShell
+        documentLabel="certificate"
+        heading="Certificate Revoked"
+        badgeKind="revoked"
+        description={data.reason || 'This certificate has been revoked by the issuer.'}
+        qrIdentifier={identifier}
+      >
+        <div className="verify-details">
+          <Field label="Certificate Number" value={data.certificate_number} full />
+        </div>
+      </VerificationShell>
+    );
+  }
+
+  if (data.expired) {
+    return (
+      <VerificationShell
+        documentLabel="certificate"
+        heading="Certificate Expired"
+        badgeKind="expired"
+        description={data.reason || 'This certificate is no longer valid.'}
+        qrIdentifier={identifier}
+      />
+    );
+  }
 
   return (
-    <div className="verify-page">
-      <div className="verify-card">
-        <div className="verify-status">
-          <div className={`verify-badge ${kind}`}>
-            {data?.valid ? <ShieldCheck size="34" /> : data?.revoked || data?.expired ? <ShieldAlert size="34" /> : <ShieldX size="34" />}
-          </div>
-          <h1>
-            {data?.valid ? 'Valid Certificate' : data?.revoked ? 'Certificate Revoked' : data?.expired ? 'Certificate Expired' : 'Certificate Not Found'}
-          </h1>
-          <p>{data?.reason || (data?.valid ? 'This certificate was issued and verified by Piplad Welfare Foundation.' : 'We were unable to validate this certificate with the identifier provided.')}</p>
-        </div>
-
-        {data?.valid && data?.recipient_name !== 'Unknown' && (
-          <div className="verify-details">
-            <Field label="Recipient" value={data.recipient_name} full />
-            <Field label="Certificate No." value={data.certificate_number} />
-            <Field label="Type" value={TYPE_LABELS[data.certificate_type] || data.certificate_type} />
-            <Field label="Program / Event" value={data.program_name} full />
-            <Field label="Organisation" value={data.organisation_name} full />
-            <Field label="Competition Date" value={data.competition_date} />
-            <Field label="Competition Location" value={data.competition_location} />
-            <Field label="Starting Date" value={data.starting_date} />
-            <Field label="End Date" value={data.end_date} />
-            <Field label="Issue Date" value={data.issue_date} />
-            <Field label="Issued By" value={data.issued_by} full />
-          </div>
-        )}
-
-        <Link className="back-link" to="/">
-          <ArrowLeft size="16" /> Back to Piplad Welfare Foundation
-        </Link>
-      </div>
-    </div>
+    <VerificationShell
+      documentLabel="certificate"
+      heading="Certificate Not Found"
+      badgeKind="unknown"
+      description={data.reason || 'We were unable to validate this certificate with the identifier provided.'}
+      qrIdentifier={identifier}
+    />
   );
 }

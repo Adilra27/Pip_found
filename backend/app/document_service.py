@@ -17,7 +17,6 @@ from .certificate_render import build_certificate_image
 from .document_layouts import (
     CERTIFICATE_LABELS,
     CERTIFICATE_IMAGES,
-    VOLUNTEER_CARD_IMAGE,
     layout_for,
 )
 from .qrcode_util import build_qr_png, verify_url
@@ -149,8 +148,40 @@ def _certificate_fields(document_type: str, cert) -> dict:
 
 
 def render_certificate_jpeg(cert) -> bytes:
-    """Render the official certificate JPEG bytes for an IssuedCertificate."""
+    """Render the official certificate JPEG bytes for an IssuedCertificate.
+
+    Credentials registered with the procedural foundation design system
+    (``FOUNDATION_CERT_TYPES``) are rendered by :mod:`.foundation_design`;
+    everything else falls back to the legacy template-stamping renderer.
+    """
+    from .foundation_design import FOUNDATION_CERT_TYPES, jpeg_bytes, render_certificate
+
     document_type = cert.certificate_type
+    if document_type in FOUNDATION_CERT_TYPES:
+        identifier = cert.certificate_number or cert.qr_verification_token or ""
+        fields = {
+            "first_name": cert.first_name or "",
+            "last_name": cert.last_name or "",
+            "name": cert.recipient_name or "",
+            "program_name": cert.program_name or "",
+            "certificate_number": cert.certificate_number or "",
+            "issue_date": _display_date(cert.issue_date),
+            "email": cert.recipient_email or "",
+        }
+        if document_type == "internship":
+            fields["starting_date"] = _display_date(cert.starting_date)
+            fields["end_date"] = _display_date(cert.end_date)
+        if document_type == "completion":
+            fields["organisation_name"] = cert.organisation_name or ""
+            fields["completion_date"] = _display_date(cert.competition_date)
+        image = render_certificate(
+            document_type,
+            qr_data=verify_url("certificate", identifier),
+            logo_bytes=_logo_bytes(),
+            **fields,
+        )
+        return jpeg_bytes(image)
+
     if document_type not in CERTIFICATE_IMAGES:
         raise ValueError(f"Unsupported certificate type: {document_type}")
 
@@ -177,13 +208,33 @@ def render_certificate_jpeg(cert) -> bytes:
     )
 
 
+def _logo_bytes() -> bytes | None:
+    """Return the Piplad logo PNG bytes used by the design system, or None."""
+    logo_path = Path(__file__).resolve().parent / "assets" / "piplad-logo.png"
+    if logo_path.is_file():
+        return logo_path.read_bytes()
+    return None
+
+
 def save_rendered_certificate(cert) -> str:
-    """Write the rendered certificate JPEG to disk and return the media path."""
+    """Write the rendered certificate JPEG + print-quality PDF to the
+    generated directory and return the media path of the JPEG."""
+    from .document_pdf import document_pdf_bytes
+
     ensure_generated_dirs()
-    filename = f"{cert.certificate_number or cert.id}.jpg"
-    path = CERT_GENERATED_DIR / filename
-    path.write_bytes(render_certificate_jpeg(cert))
-    relative = f"/media/generated/certificates/{filename}"
+    basename = cert.certificate_number or cert.id
+    jpeg = render_certificate_jpeg(cert)
+
+    jpeg_path = CERT_GENERATED_DIR / f"{basename}.jpg"
+    jpeg_path.write_bytes(jpeg)
+    (CERT_GENERATED_DIR / f"{basename}.pdf").write_bytes(
+        document_pdf_bytes(
+            jpeg,
+            orientation="landscape",
+            title=f"Certificate {cert.certificate_number or cert.id}",
+        )
+    )
+    relative = f"/media/generated/certificates/{basename}.jpg"
     cert.generated_file_path = relative
     return relative
 
@@ -270,45 +321,54 @@ def certificate_download_name(cert) -> str:
 # Volunteer ID cards
 # ============================================================
 
-def render_volunteer_card_jpeg(app) -> bytes:
-    """Render the official volunteer ID card JPEG bytes."""
-    layout = layout_for("volunteer")
-
-    photo_bytes = load_photo_bytes(app.profile_pic_url)
-    overlay_pngs = []
-    if photo_bytes:
-        overlay_pngs.append((photo_bytes, layout.get("photo")))
-
-    fields = {
-        "name": (app.full_name or "").upper(),
-        "volunteer_id": app.volunteer_id or "",
-        "programme": app.interest_area or "",
-        "location": app.location or "",
-        "issue_date": _display_date(app.issue_date),
-        "valid_till": _display_date(app.valid_till),
+def _volunteer_card_fields(app) -> dict:
+    """The dynamic fields shared by the front and back of the CR80 card."""
+    return {
+        "name": app.full_name or "",
+        "volunteer_id": app.volunteer_id or str(app.id),
+        "email": app.email or "",
+        "phone": app.phone or "",
+        "designation": app.interest_area or "Volunteer",
+        "joining_date": _display_date(app.issue_date) or _display_date(app.created_at.date()),
+        "status": app.status or "issued",
+        "photo": load_photo_bytes(app.profile_pic_url),
+        "qr_data": verify_url("volunteer", app.volunteer_id or app.card_qr_token or str(app.id)),
     }
 
-    qr_data = None
-    if app.card_qr_token:
-        qr_data = verify_url("volunteer", app.card_qr_token)
 
-    template_path = _absolute_template_path(VOLUNTEER_CARD_IMAGE)
-    return build_certificate_image(
-        image_url=template_path,
-        layout=layout,
-        fields=fields,
-        qr_data=qr_data,
-        overlay_pngs=overlay_pngs,
+def render_volunteer_card_jpeg(app) -> bytes:
+    """Render the official CR80 volunteer ID card front as print-quality JPEG."""
+    from .foundation_design import jpeg_bytes, render_volunteer_card_front
+
+    return jpeg_bytes(
+        render_volunteer_card_front(
+            logo_bytes=_logo_bytes(), **_volunteer_card_fields(app)
+        )
     )
 
 
 def save_rendered_volunteer_card(app) -> str:
-    """Render, save and return the media path of a volunteer ID card."""
+    """Render, save and return the media path of the volunteer ID card.
+
+    Writes both faces and a CR80-size (bleed + crop marks) double-sided PDF
+    so the card prints at actual ID-card dimensions.
+    """
+    from .document_pdf import id_card_pdf_bytes
+    from .foundation_design import jpeg_bytes, render_volunteer_card_back, render_volunteer_card_front
+
     ensure_generated_dirs()
-    filename = f"{app.volunteer_id or app.id}.jpg"
-    path = VOLUNTEER_GENERATED_DIR / filename
-    path.write_bytes(render_volunteer_card_jpeg(app))
-    relative = f"/media/generated/volunteers/{filename}"
+    fields = _volunteer_card_fields(app)
+    logo = _logo_bytes()
+    front = jpeg_bytes(render_volunteer_card_front(logo_bytes=logo, **fields))
+    back = jpeg_bytes(render_volunteer_card_back(logo_bytes=logo, **fields))
+
+    basename = app.volunteer_id or app.id
+    front_path = VOLUNTEER_GENERATED_DIR / f"{basename}.jpg"
+    front_path.write_bytes(front)
+    (VOLUNTEER_GENERATED_DIR / f"{basename}.pdf").write_bytes(
+        id_card_pdf_bytes(front, back, title=f"Volunteer ID Card {app.volunteer_id}")
+    )
+    relative = f"/media/generated/volunteers/{basename}.jpg"
     app.card_file_path = relative
     return relative
 

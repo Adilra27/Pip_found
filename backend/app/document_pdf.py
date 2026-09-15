@@ -65,3 +65,32 @@ def document_pdf_bytes(
         landscape_page=landscape_page,
         title=title,
     )
+
+
+def id_card_pdf_bytes(
+    front_jpeg: bytes,
+    back_jpeg: bytes | None = None,
+    *,
+    title: str = "Piplad Welfare Foundation Volunteer ID Card",
+) -> bytes:
+    """Return a CR80-size PDF (card + 3 mm bleed) for double-sided printing.
+
+    Each page is exactly the rendered card canvas in physical size, so the
+    file prints at real ID-card dimensions; the corner crop marks baked into
+    the images define the 85.6 x 53.98 mm trim line.
+    """
+    buffer = io.BytesIO()
+    c = pdf_canvas.Canvas(buffer)
+    c.setTitle(title)
+    for jpeg in (front_jpeg, back_jpeg):
+        if not jpeg:
+            continue
+        image = ImageReader(io.BytesIO(jpeg))
+        iw, ih = image.getSize()
+        page_w = iw / 300 * 72
+        page_h = ih / 300 * 72
+        c.setPageSize((page_w, page_h))
+        c.drawImage(image, 0, 0, page_w, page_h)
+        c.showPage()
+    c.save()
+    return buffer.getvalue()

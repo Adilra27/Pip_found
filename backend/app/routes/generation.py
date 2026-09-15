@@ -39,7 +39,7 @@ router = APIRouter(prefix="/api/admin/generated", tags=["Admin Generated Documen
 
 
 def _cert_to_response(cert) -> schemas.GeneratedCertificateResponse:
-    qr_token = cert.qr_verification_token or cert.certificate_number or ""
+    qr_token = cert.certificate_number or cert.qr_verification_token or ""
     return schemas.GeneratedCertificateResponse(
         id=cert.id,
         certificate_number=cert.certificate_number,
@@ -430,15 +430,17 @@ def download_volunteer_card(
         save_rendered_volunteer_card(app)
         db.commit()
     if format == "pdf":
-        pdf_bytes = document_pdf_bytes(
-            path.read_bytes(),
-            orientation="portrait",
-            title=f"Volunteer ID Card {app.volunteer_id}",
-        )
+        pdf_path = VOLUNTEER_GENERATED_DIR / f"{app.volunteer_id or app.id}.pdf"
+        if not pdf_path.is_file():
+            from ..document_service import save_rendered_volunteer_card
+
+            app.card_file_path = None
+            save_rendered_volunteer_card(app)
+            db.commit()
         from fastapi.responses import Response
 
         return Response(
-            content=pdf_bytes,
+            content=pdf_path.read_bytes(),
             media_type="application/pdf",
             headers={
                 "Content-Disposition": (

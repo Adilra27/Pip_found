@@ -598,7 +598,7 @@ export async function deleteAdminTeamMember(id) {
   });
 }
 
-async function adminFetchBlob(path) {
+async function adminFetchBlob(path, options = {}) {
   const credentials = getAdminCredentials();
 
   if (!credentials) {
@@ -607,7 +607,7 @@ async function adminFetchBlob(path) {
     throw error;
   }
 
-  const headers = new Headers();
+  const headers = new Headers(options.headers || {});
   headers.set(
     'Authorization',
     `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`
@@ -615,6 +615,7 @@ async function adminFetchBlob(path) {
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     cache: 'no-store',
+    ...options,
     headers,
   });
 
@@ -1234,4 +1235,56 @@ export async function downloadAdminCertificate(id, format = 'jpg') {
 export async function downloadAdminVolunteerCard(id, format = 'jpg') {
   const blob = await adminFetchBlob(`/admin/generated/volunteers/${id}/download?format=${format}`);
   downloadBlob(blob, `volunteer-id-card-${format === 'pdf' ? 'pdf' : 'jpg'}`);
+}
+
+// ============================================================
+// ADMIN CERTIFICATE MANAGEMENT (admin generate flow)
+// ============================================================
+
+export async function fetchCertManagementStats() {
+  return adminFetch('/admin/cert-management/stats');
+}
+
+export async function previewManagedDocument(payload) {
+  return adminFetchBlob('/admin/cert-management/preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function generateManagedDocument(payload) {
+  return adminFetch('/admin/cert-management/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function sendManagedDocumentEmail(kind, recordId) {
+  return adminFetch(`/admin/cert-management/${kind}/${recordId}/send-email`, {
+    method: 'POST',
+  });
+}
+
+export async function fetchManagedDocumentPdf(kind, recordId) {
+  const endpoint =
+    kind === 'certificate'
+      ? `/admin/generated/certificates/${recordId}/download?format=pdf`
+      : `/admin/generated/volunteers/${recordId}/download?format=pdf`;
+  return adminFetchBlob(endpoint);
+}
+
+export async function fetchCertificateHistory({
+  search = '',
+  type = 'all',
+  status = 'all',
+  page = 1,
+  pageSize = 20,
+} = {}) {
+  const params = new URLSearchParams({ page, page_size: pageSize });
+  if (search) params.set('search', search);
+  if (type && type !== 'all') params.set('type', type);
+  if (status && status !== 'all') params.set('status', status);
+  return adminFetch(`/admin/cert-management/history?${params.toString()}`);
 }

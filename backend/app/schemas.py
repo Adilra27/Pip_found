@@ -511,6 +511,71 @@ class GeneratedVolunteerCardResponse(BaseModel):
 
 
 # ============================================================
+# CERTIFICATE MANAGEMENT (admin generate flow)
+# ============================================================
+
+class ManagedDocGenerateRequest(BaseModel):
+    """One request shape for the 4 certificate types + the Volunteer ID card.
+
+    Certificate numbers / volunteer IDs are always generated server-side;
+    the admin form never supplies them.
+    """
+
+    document_type: str
+    first_name: str
+    last_name: Optional[str] = None
+    recipient_email: Optional[str] = None
+    program_name: Optional[str] = None
+    starting_date: Optional[date] = None
+    end_date: Optional[date] = None
+    organisation_name: Optional[str] = None
+    competition_date: Optional[date] = None
+    issue_date: Optional[date] = None
+
+    # Volunteer ID card fields.
+    phone: Optional[str] = None
+    designation: Optional[str] = None
+    status: Optional[str] = "issued"
+    photo_data_url: Optional[str] = None
+
+
+class ManagedDocResponse(BaseModel):
+    kind: str  # "certificate" | "volunteer"
+    record_id: int
+    document_type: str
+    document_number: Optional[str] = None
+    recipient_name: str
+    recipient_email: Optional[str] = None
+    rendered_url: Optional[str] = None
+    verified_url: Optional[str] = None
+    created_at: datetime
+
+
+class CertificateHistoryItem(BaseModel):
+    kind: str  # "certificate" | "volunteer"
+    record_id: int
+    document_number: Optional[str] = None
+    recipient_name: str
+    document_type: str
+    type_label: str
+    program: Optional[str] = None
+    issue_date: Optional[date] = None
+    email: Optional[str] = None
+    status: str  # "valid" | "revoked"
+    email_sent: bool = False
+    created_at: datetime
+    rendered_url: Optional[str] = None
+    verified_url: Optional[str] = None
+
+
+class CertificateHistoryResponse(BaseModel):
+    items: List[CertificateHistoryItem]
+    total: int
+    page: int
+    page_size: int
+
+
+# ============================================================
 # PUBLIC VERIFICATION
 # ============================================================
 
