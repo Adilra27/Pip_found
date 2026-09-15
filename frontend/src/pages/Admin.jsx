@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 
-import DocumentGenerator from '../components/admin/DocumentGenerator';
 import CertificateManagement from '../components/admin/CertificateManagement';
 import CertificateHistory from '../components/admin/CertificateHistory';
 
@@ -17,7 +16,6 @@ import {
   Trash2,
   Upload,
   Video,
-  FileText,
   DollarSign,
   Users,
   Heart,
@@ -4074,11 +4072,6 @@ export default function Admin() {
       Award,
     ],
     [
-      'generated',
-      'Official Documents',
-      FileText,
-    ],
-    [
       'cert-mgmt',
       'Cert. Management',
       BadgeCheck,
@@ -4400,10 +4393,6 @@ export default function Admin() {
                 loadDashboard
               }
             />
-          )}
-
-          {tab === 'generated' && (
-            <DocumentGenerator />
           )}
 
           {tab === 'cert-mgmt' && (

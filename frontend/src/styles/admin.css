@@ -1,7 +1,7 @@
 /* ============================================================
    ADMIN — CERTIFICATE MANAGEMENT
    Design-token layer for the certificate management system
-   (CertificateManagement / CertificateHistory / DocumentGenerator).
+   (CertificateManagement / CertificateHistory).
    Scoped under `.adm` so it never leaks into the rest of Admin.jsx.
    ============================================================ */
 
