@@ -49,7 +49,7 @@ runs on Render with **PostgreSQL** (no SQLite).
 | `BREVO_API_KEY` | No | Brevo HTTPS API key; the only email transport. Absent => email sending is skipped (logged) so failures stay visible |
 | `EMAIL_FROM` / `EMAIL_FROM_NAME` | No | Verified Brevo sender used for outbound email |
 | `CONTACT_WEBSITE`/`CONTACT_EMAIL`/`CONTACT_PHONE` | No | Contact footer for the volunteer welcome email (defaults to the foundation website/email; phone only when set) |
-| `PUBLIC_FRONTEND_URL` | No | Public frontend base URL embedded in certificate / volunteer-card QR codes. Defaults to `http://localhost:5173` for local dev |
+| `PUBLIC_FRONTEND_URL` | No | Public frontend base URL embedded in certificate / volunteer-card QR codes. Defaults to `https://pip-dev.onrender.com` (the Render-hosted frontend) |
 
 ## Official Documents (certificates & Volunteer ID cards)
 
