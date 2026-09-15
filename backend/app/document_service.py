@@ -337,6 +337,26 @@ def _volunteer_card_fields(app) -> dict:
 
 
 def render_volunteer_card_jpeg(app) -> bytes:
+    """Render the official volunteer ID card JPEG bytes."""
+    layout = layout_for("volunteer")
+
+    photo_bytes = load_photo_bytes(app.profile_pic_url)
+    overlay_pngs = []
+    if photo_bytes:
+        overlay_pngs.append((photo_bytes, layout.get("photo")))
+
+    fields = {
+        "name": (app.full_name or "").strip(),
+        "position": (app.position or "").strip(),
+        "volunteer_id": app.volunteer_id or "",
+        "programme": app.interest_area or "",
+        "location": app.location or "",
+        "valid_till": _display_date(app.valid_till),
+
+    }
+
+
+def render_volunteer_card_jpeg(app) -> bytes:
     """Render the official CR80 volunteer ID card front as print-quality JPEG."""
     from .foundation_design import jpeg_bytes, render_volunteer_card_front
 
@@ -380,6 +400,7 @@ def build_volunteer_card(
     issue_date=None,
     valid_till=None,
     location: str | None = None,
+    position: str | None = None,
     status: str = "issued",
     qr_verification_token: str | None = None,
 ) -> models.VolunteerApplication:
@@ -393,6 +414,8 @@ def build_volunteer_card(
     app.valid_till = valid_till or (app.issue_date + timedelta(days=365 * 2))
     if location is not None:
         app.location = location
+    if position is not None:
+        app.position = position or None
     app.status = status
     app.card_qr_token = app.card_qr_token or qr_verification_token or generate_qr_token()
 

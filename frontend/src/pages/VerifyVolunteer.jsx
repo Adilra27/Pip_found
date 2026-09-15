@@ -114,12 +114,45 @@ export default function VerifyVolunteer() {
   }
 
   return (
-    <VerificationShell
-      documentLabel="volunteer ID"
-      heading="Volunteer ID Not Found"
-      badgeKind="unknown"
-      description={data.reason || 'We were unable to validate this Volunteer ID with the identifier provided.'}
-      qrIdentifier={identifier}
-    />
+    <div className="verify-page">
+      <div className="verify-card">
+        <div className="verify-status">
+          <div className={`verify-badge ${kind}`}>
+            <Icon size="34" />
+          </div>
+          <h1>
+            {data?.valid
+              ? 'Verified Volunteer'
+              : data?.revoked
+                ? 'Volunteer ID Revoked'
+                : data?.expired
+                  ? 'Volunteer ID Expired'
+                  : 'Volunteer ID Not Found'}
+          </h1>
+          <p>
+            {data?.reason || (data?.valid
+              ? 'This volunteer is a verified member of Piplad Welfare Foundation.'
+              : 'We were unable to validate this Volunteer ID with the identifier provided.')}
+          </p>
+        </div>
+
+        {data?.valid && data?.full_name !== 'Unknown' && (
+          <div className="verify-details">
+            <Field label="Full Name" value={data.full_name} full />
+            <Field label="Volunteer ID" value={data.volunteer_id} />
+            <Field label="Area of Interest" value={data.interest_area} />
+            <Field label="Position" value={data.position} />
+            <Field label="Location" value={data.location} full />
+            <Field label="Card Issue Date" value={data.issue_date} />
+            <Field label="Valid Till" value={data.valid_till} />
+            <Field label="Issued By" value={data.issued_by} full />
+          </div>
+        )}
+
+        <Link className="back-link" to="/">
+          <ArrowLeft size="16" /> Back to Piplad Welfare Foundation
+        </Link>
+      </div>
+    </div>
   );
 }

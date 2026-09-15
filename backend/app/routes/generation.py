@@ -7,7 +7,6 @@ public verification page.
 """
 
 from datetime import datetime
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -21,6 +20,7 @@ from ..document_layouts import (
     CERTIFICATE_TEMPLATE_SLUGS,
     CERTIFICATE_TYPES,
     CERTIFICATE_IMAGES,
+    VOLUNTEER_CARD_IMAGE,
 )
 from ..document_pdf import document_pdf_bytes
 from ..document_service import (
@@ -72,6 +72,7 @@ def _volunteer_to_response(app) -> schemas.GeneratedVolunteerCardResponse:
         email=app.email,
         profile_pic_url=app.profile_pic_url,
         status=app.status,
+        position=app.position,
         location=app.location,
         issue_date=app.issue_date,
         valid_till=app.valid_till,
@@ -90,14 +91,10 @@ def _volunteer_to_response(app) -> schemas.GeneratedVolunteerCardResponse:
 @router.get("/options")
 def generation_options(db: Session = Depends(get_db), _=Depends(get_current_admin)):
     templates = {
-        doc_type: (
-            MEDIA_DIR / "certificate_templates" / Path(image).name
-        ).is_file()
+        doc_type: (MEDIA_DIR / image).is_file()
         for doc_type, image in CERTIFICATE_IMAGES.items()
     }
-    volunteer_image = (
-        MEDIA_DIR / "certificate_templates" / "volunteer card.png"
-    )
+    volunteer_image = MEDIA_DIR / VOLUNTEER_CARD_IMAGE
     return {
         "certificate_types": [
             {
@@ -398,6 +395,7 @@ def generate_volunteer_card(
             issue_date=payload.issue_date if payload else None,
             valid_till=payload.valid_till if payload else None,
             location=payload.location if payload else None,
+            position=payload.position if payload else None,
             status="issued",
             qr_verification_token=(
                 payload.qr_verification_token if payload else None

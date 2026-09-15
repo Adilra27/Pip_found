@@ -2627,6 +2627,13 @@ def send_certificate(
     )
 
 
+def _certificate_qr_data(token: str) -> str:
+    """Public verification URL for a freshly created certificate token."""
+    from ..qrcode_util import verify_url
+
+    return verify_url("certificate", token)
+
+
 def _issue_single_certificate(
     db: Session,
     template,
@@ -2642,12 +2649,14 @@ def _issue_single_certificate(
     (status ``rendered``) and the reason is returned in ``error`` so batch
     sends can keep going.
     """
+    token = generate_qr_token()
     image_bytes = build_certificate_image(
         image_url=template.image_url,
         layout=template.layout or {},
         recipient_name=recipient_name,
         event_topic=event_topic,
         event_date=_format_event_date(event_date),
+        qr_data=_certificate_qr_data(token),
     )
 
     type_label = template.type_label or template.name
@@ -2670,6 +2679,7 @@ def _issue_single_certificate(
         event_topic=event_topic or None,
         event_date=event_date,
         type_label=type_label,
+        qr_verification_token=token,
         status="sent" if sent else "rendered",
         sent_at=datetime.utcnow() if sent else None,
     )

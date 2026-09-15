@@ -190,6 +190,7 @@ class VolunteerApplication(Base):
     email = Column(String(255), nullable=False)
     phone = Column(String(50), nullable=False)
     interest_area = Column(String(255), nullable=False)
+    position = Column(String(255), nullable=True)
     about_yourself = Column(Text, nullable=True)
     profile_pic_url = Column(String(500), nullable=True)
     status = Column(String(50), nullable=False, default="pending", index=True)

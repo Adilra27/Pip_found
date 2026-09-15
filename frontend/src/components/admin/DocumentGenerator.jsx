@@ -422,6 +422,7 @@ function VolunteerTab() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [positionById, setPositionById] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -444,7 +445,9 @@ function VolunteerTab() {
     setBusyId(id);
     setError('');
     try {
-      await generateAdminVolunteerCard(id, {});
+      await generateAdminVolunteerCard(id, {
+        position: positionById[id] || '',
+      });
       load();
     } catch (err) {
       setError(err.message);
@@ -488,108 +491,95 @@ function VolunteerTab() {
         </div>
       </div>
 
-      {loading ? (
+{loading ? (
         <div className="adm-loading">
           <Loader2 size={18} className="spin" /> Loading volunteers…
         </div>
       ) : (
-        <div className="adm-table-wrap">
-          <table className="adm-table">
-            <thead>
-              <tr>
-                <th>Volunteer</th>
-                <th>ID</th>
-                <th>Valid Till</th>
-                <th>Official Card</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {(volunteers || []).map((v) => (
-                <tr key={v.id}>
-                  <td>
-                    <b className="adm-num" style={{ fontWeight: 700 }}>{v.full_name}</b>
-                    <div className="adm-sub">{v.email}</div>
-                  </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{v.volunteer_id || '—'}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{v.valid_till || '—'}</td>
-                  <td>
-                    {v.card_revoked_at ? (
-                      <span className="adm-pill adm-pill-revoked">Revoked</span>
-                    ) : v.card_file_path ? (
-                      <span className="adm-pill adm-pill-ready">
-                        <ShieldCheck size={14} /> Ready
-                      </span>
-                    ) : (
-                      <span className="adm-pill adm-pill-muted">Not generated</span>
-                    )}
-                    {v.card_file_path && !v.card_revoked_at ? (
-                      <a
-                        href={resolveMediaUrl(v.verified_url)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="adm-sub"
-                        style={{ color: '#047857', display: 'block' }}
-                      >
-                        View verification page
-                      </a>
-                    ) : null}
-                  </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <div className="adm-actions" style={{ justifyContent: 'flex-end' }}>
-                      <button
-                        type="button"
-                        className={v.card_file_path && !v.card_revoked_at ? 'adm-btn adm-btn-ghost' : 'adm-btn adm-btn-primary'}
-                        disabled={busyId === v.id || !!v.card_revoked_at}
-                        onClick={() => handleGenerateCard(v.id)}
-                      >
-                        {busyId === v.id ? <Loader2 size={15} className="spin" /> : <Plus size={15} />}
-                        {v.card_file_path && !v.card_revoked_at ? 'Regenerate' : 'Generate Card'}
-                      </button>
-                      {v.card_file_path && !v.card_revoked_at ? (
-                        <>
-                          <button
-                            type="button"
-                            className="adm-action"
-                            title="Download JPG"
-                            onClick={() => downloadAdminVolunteerCard(v.id, 'jpg').catch((e) => setError(e.message))}
-                          >
-                            <Download size={15} /> JPG
-                          </button>
-                          <button
-                            type="button"
-                            className="adm-action"
-                            title="Download PDF"
-                            onClick={() => downloadAdminVolunteerCard(v.id, 'pdf').catch((e) => setError(e.message))}
-                          >
-                            <FileText size={15} /> PDF
-                          </button>
-                          <button
-                            type="button"
-                            className="adm-action adm-action-danger"
-                            title="Revoke"
-                            onClick={() => handleRevoke(v.id)}
-                          >
-                            <ShieldX size={15} /> Revoke
-                          </button>
-                        </>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {volunteers?.length === 0 && !loading && (
-            <div className="adm-empty">
-              <span className="adm-empty-icon">
-                <Inbox size={22} />
-              </span>
-              <strong>No volunteers found</strong>
-              <small>Try a different search or verify the accepted applications.</small>
-            </div>
-          )}
-        </div>
+      <table style={tableStyle}>
+        <thead>
+          <tr>
+            <th style={th}>Volunteer</th>
+            <th style={{ ...th, width: 190 }}>Position</th>
+            <th style={th}>ID</th>
+            <th style={th}>Valid Till</th>
+            <th style={th}>Official Card</th>
+            <th style={th} />
+          </tr>
+        </thead>
+        <tbody>
+          {(volunteers || []).map((v) => (
+            <tr key={v.id}>
+              <td style={td}>
+                <b>{v.full_name}</b>
+                <div style={{ color: '#94a3b8', fontSize: '.8rem' }}>{v.email}</div>
+              </td>
+              <td style={td}>
+                <input
+                  type="text"
+                  placeholder="e.g. Community Volunteer"
+                  value={positionById[v.id] ?? (v.position || '')}
+                  onChange={(e) =>
+                    setPositionById((cur) => ({ ...cur, [v.id]: e.target.value }))
+                  }
+                  style={{ ...inputStyle, padding: '.4rem .6rem', fontSize: '.82rem' }}
+                />
+              </td>
+              <td style={td}>{v.volunteer_id || '—'}</td>
+              <td style={td}>{v.valid_till || '—'}</td>
+              <td style={td}>
+                {v.card_revoked_at ? (
+                  <span style={{ color: '#b91c1c' }}>Revoked</span>
+                ) : v.card_file_path ? (
+                  <span style={{ color: '#047857' }}>
+                    <ShieldCheck size={15} style={{ verticalAlign: 'middle' }} /> Ready
+                    <a
+                      href={resolveMediaUrl(v.verified_url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ display: 'block', fontSize: '.78rem', color: '#047857' }}
+                    >
+                      View verification page
+                    </a>
+                  </span>
+                ) : (
+                  <span style={{ color: '#94a3b8' }}>Not generated</span>
+                )}
+              </td>
+              <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busyId === v.id || !!v.card_revoked_at}
+                  style={v.card_file_path && !v.card_revoked_at ? outlineButton : primaryButton}
+                  onClick={() => handleGenerateCard(v.id)}
+                >
+                  {busyId === v.id ? <Loader2 size={15} className="spin" /> : <Plus size={15} />}
+                  {v.card_file_path && !v.card_revoked_at ? 'Regenerate' : 'Generate Card'}
+                </button>
+                {v.card_file_path && !v.card_revoked_at && (
+                  <>
+                    <button type="button" className="btn" title="Download JPG" style={outlineButton} onClick={() => downloadAdminVolunteerCard(v.id, 'jpg').catch((e) => setError(e.message))}>
+                      <Download size={15} />
+                    </button>
+                    <button type="button" className="btn" title="Download PDF" style={outlineButton} onClick={() => downloadAdminVolunteerCard(v.id, 'pdf').catch((e) => setError(e.message))}>
+                      <FileText size={15} />
+                    </button>
+                    <button type="button" className="btn" title="Revoke" style={dangerButton} onClick={() => handleRevoke(v.id)}>
+                      <ShieldX size={15} />
+                    </button>
+                  </>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {volunteers?.length === 0 && !loading && (
+        <Empty>No accepted volunteers with this search.</Empty>
+      )
+      )}
+      {error && <p style={{ color: '#b91c1c', marginTop: '1rem' }}>{error}</p>}
       )}
       {error && <p style={{ color: '#b91c1c', marginTop: '1rem' }}>{error}</p>}
     </div>

@@ -26,7 +26,7 @@ def verify_certificate(identifier: str, db: Session = Depends(get_db)):
         )
         .first()
     )
-    if not cert or cert.generated_file_path is None:
+    if not cert or not cert.qr_verification_token:
         return schemas.VerifiedCertificateResponse(
             valid=False,
             reason="Certificate number not found or never issued.",
@@ -93,6 +93,7 @@ def verify_volunteer(identifier: str, db: Session = Depends(get_db)):
             full_name=app.full_name,
             volunteer_id=app.volunteer_id,
             interest_area=app.interest_area,
+            position=app.position,
             location=app.location,
             issue_date=app.issue_date,
             valid_till=app.valid_till,
@@ -106,6 +107,7 @@ def verify_volunteer(identifier: str, db: Session = Depends(get_db)):
             full_name=app.full_name,
             volunteer_id=app.volunteer_id,
             interest_area=app.interest_area,
+            position=app.position,
             location=app.location,
             issue_date=app.issue_date,
             valid_till=app.valid_till,
@@ -115,6 +117,7 @@ def verify_volunteer(identifier: str, db: Session = Depends(get_db)):
         full_name=app.full_name,
         volunteer_id=app.volunteer_id,
         interest_area=app.interest_area,
+        position=app.position,
         location=app.location,
         issue_date=app.issue_date,
         valid_till=app.valid_till,
