@@ -753,7 +753,7 @@ def _title_block(img: Image.Image, palette: dict, big_word: str):
     """Two-line certificate title with letterspacing and the type's big word."""
     dr = _draw(img)
     _draw_tracked(dr, CX, 716, "CERTIFICATE OF", serif(104, 700), _hex(palette["title_color"]), tracking=8)
-    _draw_tracked(dr, CX, 852, big_word, serif(170, 800), _hex(palette["title_color"]), tracking=9)
+    _draw_tracked(dr, CX, 852, big_word, serif(146, 800), _hex(palette["title_color"]), tracking=9)
     return dr
 
 
