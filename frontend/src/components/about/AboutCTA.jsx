@@ -1,6 +1,7 @@
 // src/components/about/AboutCTA.jsx
 
 import React from "react";
+import { Link } from "react-router-dom";
 import { aboutCTAData } from "../../data/aboutdata";
 
 const AboutCTA = () => {
@@ -30,19 +31,19 @@ const AboutCTA = () => {
 
           <div className="about-cta-actions">
 
-            <a
-              href="/join-us"
+            <Link
+              to="/join"
               className="about-btn about-btn-primary"
             >
               {data.primaryButton}
-            </a>
+            </Link>
 
-            <a
-              href="/donate-now"
+            <Link
+              to="/donate"
               className="about-btn about-btn-light"
             >
               {data.secondaryButton}
-            </a>
+            </Link>
 
           </div>
 

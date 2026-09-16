@@ -15,12 +15,6 @@ export async function fetchCauses() {
   return res.json();
 }
 
-export async function fetchCauseById(id) {
-  const res = await fetch(`${API_BASE_URL}/causes/${id}`);
-  if (!res.ok) throw new Error('Failed to fetch cause details');
-  return res.json();
-}
-
 export async function submitContact(data) {
   const res = await fetch(`${API_BASE_URL}/contact`, {
     method: 'POST',

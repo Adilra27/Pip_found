@@ -258,17 +258,6 @@
   background: #f0fdf4;
 }
 
-.adm-btn-danger {
-  background: #fff;
-  color: #b91c1c;
-  border-color: #fecaca;
-}
-
-.adm-btn-danger:hover:not(:disabled) {
-  border-color: #fca5a5;
-  background: #fef2f2;
-}
-
 /* ---- Banners -------------------------------------------------- */
 .adm-alert {
   display: flex;
@@ -337,11 +326,6 @@
 .adm-chip-amber {
   background: #fef3c7;
   color: #92400e;
-}
-
-.adm-chip-green {
-  background: #d1fae5;
-  color: #065f46;
 }
 
 .adm-preview-img {
@@ -501,24 +485,6 @@
   background: #ef4444;
 }
 
-.adm-pill-muted {
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-.adm-pill-muted::before {
-  background: #94a3b8;
-}
-
-.adm-pill-ready {
-  background: #ecfdf5;
-  color: #047857;
-}
-
-.adm-pill-ready::before {
-  background: #34d399;
-}
-
 /* ---- Row action buttons ------------------------------------------- */
 .adm-actions {
   display: flex;
@@ -665,14 +631,6 @@
   font-size: 0.82rem;
   color: #475569;
   white-space: nowrap;
-}
-
-/* ---- Tabs ------------------------------------------------------------ */
-.adm-tabs {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin-top: 1rem;
 }
 
 /* ---- Loading ---------------------------------------------------------- */

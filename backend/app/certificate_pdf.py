@@ -8,7 +8,6 @@ Returns the raw PDF bytes so the caller can attach them to an email without
 writing to disk.
 """
 
-import os
 from datetime import datetime
 from pathlib import Path
 

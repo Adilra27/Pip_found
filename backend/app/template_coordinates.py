@@ -18,7 +18,7 @@ The volunteer card BACK side is deliberately absent here: per the spec it is
 ``UNCHANGED`` - never erased, redrawn or QR-regenerated.
 """
 
-# Source templates, keyed by certificate document type.
+# Source templates, keyed by certificate document type (cleaning/calibration tools).
 SOURCE_CERTIFICATE_TEMPLATES = {
     "participation": "certificate_templates/Certificate of Participation.jpeg",
     "appreciation": "certificate_templates/Certificate of Appriciation.png",
@@ -321,11 +321,6 @@ _VOL_FIELD_MAXW = {
 def _align_anchor(align: str) -> str:
     """Map the spec's textual alignment to a PIL text anchor."""
     return "mm" if align == "center" else "lm"
-
-
-def certificate_field_of(document_type: str, layout_key: str) -> str:
-    """Return the spec field name behind a runtime layout key for a type."""
-    return _CERT_KEYS[document_type][layout_key]
 
 
 def certificate_layout(document_type: str) -> dict:

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { fetchTeam, fetchFounder, fetchMentors } from '../api';
+import { fetchFounder, fetchMentors } from '../api';
 
 import AboutHero from '../components/about/AboutHero';
 import WhoWeAre from '../components/about/WhoWeAre';
@@ -15,52 +15,10 @@ import AboutCTA from '../components/about/AboutCTA';
 
 import '../styles/about.css';
 
-export default function About({ onOpenDonate }) {
+export default function About() {
   const location = useLocation();
 
-  const [team, setTeam] = useState([]);
-  const [teamLoading, setTeamLoading] = useState(true);
-  const [teamError, setTeamError] = useState(null);
-
   const [aboutData, setAboutData] = useState(null);
-  const [aboutLoading, setAboutLoading] = useState(true);
-
-  /*
-   * Load team information
-   */
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadTeam = async () => {
-      try {
-        setTeamLoading(true);
-        setTeamError(null);
-
-        const data = await fetchTeam();
-
-        if (isMounted) {
-          setTeam(Array.isArray(data) ? data : []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch team:', error);
-
-        if (isMounted) {
-          setTeamError('Unable to load team information.');
-          setTeam([]);
-        }
-      } finally {
-        if (isMounted) {
-          setTeamLoading(false);
-        }
-      }
-    };
-
-    loadTeam();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   /*
    * Load founder profile and mentors for the About page.
@@ -73,8 +31,6 @@ export default function About({ onOpenDonate }) {
 
     const loadAboutData = async () => {
       try {
-        setAboutLoading(true);
-
         const [founderData, mentorsData] = await Promise.all([
           fetchFounder(),
           fetchMentors(),
@@ -88,10 +44,6 @@ export default function About({ onOpenDonate }) {
 
         if (isMounted) {
           setAboutData(null);
-        }
-      } finally {
-        if (isMounted) {
-          setAboutLoading(false);
         }
       }
     };
@@ -186,7 +138,6 @@ export default function About({ onOpenDonate }) {
       ========================================== */}
       <FounderStory
         data={aboutData?.founder || null}
-        loading={aboutLoading}
       />
 
       {/* =========================================
@@ -194,16 +145,12 @@ export default function About({ onOpenDonate }) {
       ========================================== */}
       <MentorsSection
         data={aboutData?.mentors || null}
-        loading={aboutLoading}
-        team={team}
-        loadingTeam={teamLoading}
-        error={teamError}
       />
 
       {/* =========================================
           10. FINAL CTA
       ========================================== */}
-      <AboutCTA onOpenDonate={onOpenDonate} />
+      <AboutCTA />
 
     </main>
   );

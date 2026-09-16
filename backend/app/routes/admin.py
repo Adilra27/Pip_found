@@ -64,7 +64,7 @@ from ..email_service import (
     send_volunteer_rejection_email,
     send_volunteer_welcome_email,
 )
-from ..document_service import generate_qr_token, MEDIA_DIR
+from ..document_service import generate_qr_token
 from ..donation_receipt import build_donation_receipt_html
 from ..memory_util import log_rss
 from ..welcome_card import (
@@ -91,12 +91,6 @@ router = APIRouter(
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 MEDIA_DIR = BASE_DIR / "media"
-
-GALLERY_DIR = MEDIA_DIR / "gallery"
-VIDEO_DIR = MEDIA_DIR / "videos"
-PROJECT_DIR = MEDIA_DIR / "projects"
-TEAM_DIR = MEDIA_DIR / "team"
-ABOUT_DIR = MEDIA_DIR / "about"
 
 
 def _read_media_file(media_path: str | None) -> bytes | None:
@@ -240,68 +234,6 @@ def _validate_upload(
         )
 
     return extension
-
-
-def _save_upload(
-    file: UploadFile,
-    destination_dir: Path,
-    filename: str,
-    max_size: int,
-) -> Path:
-    destination_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    destination = destination_dir / filename
-
-    total = 0
-
-    try:
-        with destination.open("wb") as output:
-
-            while True:
-                chunk = file.file.read(
-                    1024 * 1024
-                )
-
-                if not chunk:
-                    break
-
-                total += len(chunk)
-
-                if total > max_size:
-                    raise HTTPException(
-                        413,
-                        "File is too large. "
-                        f"Maximum allowed size is "
-                        f"{max_size // (1024 * 1024)} MB.",
-                    )
-
-                output.write(chunk)
-
-    except HTTPException:
-
-        if destination.exists():
-            destination.unlink(
-                missing_ok=True
-            )
-
-        raise
-
-    except Exception as exc:
-
-        if destination.exists():
-            destination.unlink(
-                missing_ok=True
-            )
-
-        raise HTTPException(
-            500,
-            f"Could not save uploaded file: {exc}",
-        ) from exc
-
-    return destination
 
 
 def _upload_to_cloudinary(
@@ -1693,8 +1625,6 @@ def _send_volunteer_welcome_card_background(volunteer_id: int) -> None:
             volunteer_email=volunteer.email,
             volunteer_id=volunteer_id,
             joined_date=datetime.utcnow(),
-            card_jpg=None,
-            certificate_image=None,
             id_card_jpg=official_card_jpg,
             id_card_pdf=official_card_pdf,
             verification_url=volunteer_verify_url,

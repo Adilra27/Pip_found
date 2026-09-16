@@ -708,16 +708,6 @@ a {
   color: #ffffff;
 }
 
-.btn-amber {
-  background-color: var(--brand-amber);
-
-  color: #ffffff;
-}
-
-.btn-amber:hover {
-  background-color: #b45309;
-}
-
 /* ============================================================
    ADMIN ACTION BUTTONS
 ============================================================ */
@@ -1090,19 +1080,6 @@ a {
 
 .admin-nav-btn.active:active {
   transform: scale(0.97) translateY(0);
-}
-
-.admin-nav-divider {
-  height: 1px;
-
-  background: linear-gradient(
-    90deg,
-    transparent,
-    #cbd5e1,
-    transparent
-  );
-
-  margin: 0.7rem 0;
 }
 
 /* ============================================================

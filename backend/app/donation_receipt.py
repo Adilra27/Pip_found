@@ -44,7 +44,6 @@ def build_donation_receipt_html(
     order = html.escape(order_id or "N/A")
     payment = html.escape(payment_id or "N/A")
     date = html.escape(_format_date(paid_at or datetime.utcnow()))
-    inr_words = ""
 
     return f"""<!DOCTYPE html>
 <html lang="en">

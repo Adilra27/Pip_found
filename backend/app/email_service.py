@@ -142,8 +142,6 @@ def send_volunteer_welcome_email(
     volunteer_email: str,
     volunteer_id: str,
     joined_date,
-    card_jpg: bytes | None = None,
-    certificate_image: bytes | None = None,
     id_card_jpg: bytes | None = None,
     id_card_pdf: bytes | None = None,
     verification_url: str | None = None,
@@ -223,24 +221,6 @@ def send_volunteer_welcome_email(
                 "data": id_card_pdf,
                 "maintype": "application",
                 "subtype": "pdf",
-            }
-        )
-    if certificate_image:
-        attachments.append(
-            {
-                "filename": "Volunteer_Certificate.jpg",
-                "data": certificate_image,
-                "maintype": "image",
-                "subtype": "jpeg",
-            }
-        )
-    if card_jpg:  # legacy graphical welcome card, no longer produced by callers
-        attachments.append(
-            {
-                "filename": "Welcome_Card.jpg",
-                "data": card_jpg,
-                "maintype": "image",
-                "subtype": "jpeg",
             }
         )
 
@@ -443,54 +423,6 @@ def send_donation_documents_email(
         text_body=text_body,
         html_body=receipt_html,
         attachments=attachments,
-    )
-
-
-def send_certificate_email(
-    *,
-    to_email: str,
-    recipient_name: str,
-    type_label: str,
-    event_topic: str,
-    event_date: str,
-    image_bytes: bytes,
-    filename: str,
-) -> bool:
-    """Email a rendered certificate/card image to a recipient."""
-    clean_type = (type_label or "Certificate").strip() or "Certificate"
-    body_lines = [
-        f"Dear {recipient_name},",
-        "",
-        f"We are pleased to share your {clean_type} from the Piplad "
-        "Welfare Foundation.",
-        "",
-    ]
-    if event_topic:
-        body_lines.append(f"Event / Topic: {event_topic}")
-    if event_date:
-        body_lines.append(f"Date: {event_date}")
-    body_lines += [
-        "",
-        "The certificate is attached to this e-mail. Please keep it safe "
-        "and feel free to share it on your social profiles.",
-        "",
-        "With regards,",
-        "Piplad Welfare Foundation",
-        "Creating Opportunities, Creating Lives",
-    ]
-
-    return _deliver_email(
-        to_email=to_email,
-        subject=f"Your {clean_type} - Piplad Welfare Foundation",
-        text_body="\n".join(body_lines),
-        attachments=[
-            {
-                "filename": filename,
-                "data": image_bytes,
-                "maintype": "image",
-                "subtype": "jpeg",
-            }
-        ],
     )
 
 

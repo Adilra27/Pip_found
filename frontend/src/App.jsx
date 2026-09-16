@@ -68,7 +68,7 @@ export default function App() {
         <main style={{ flexGrow: 1 }}>
           <Routes>
             <Route path="/" element={<Home onOpenDonate={() => handleOpenDonate()} onSelectCauseToDonate={(c) => handleOpenDonate(c)} />} />
-            <Route path="/about" element={<About onOpenDonate={() => handleOpenDonate()} />} />
+            <Route path="/about" element={<About />} />
             <Route path="/causes" element={<Causes onSelectCauseToDonate={(c) => handleOpenDonate(c)} />} />
             <Route path="/donate" element={<Donate onOpenDonate={() => handleOpenDonate()} />} />
             <Route path="/gallery" element={<Gallery />} />

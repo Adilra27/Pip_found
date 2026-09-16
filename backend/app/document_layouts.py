@@ -55,7 +55,3 @@ def _build_layouts() -> None:
     for doc_type in CERTIFICATE_TYPES:
         DOCUMENT_LAYOUTS[doc_type] = template_coordinates.certificate_layout(doc_type)
     DOCUMENT_LAYOUTS["volunteer"] = template_coordinates.volunteer_layout()
-
-
-def certificate_image_url(document_type: str) -> str:
-    return CERTIFICATE_IMAGES[document_type]

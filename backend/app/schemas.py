@@ -14,10 +14,6 @@ class CauseBase(BaseModel):
     image_url: Optional[str] = None
 
 
-class CauseCreate(CauseBase):
-    slug: str
-
-
 class CauseResponse(CauseBase):
     id: int
     slug: str
@@ -326,27 +322,6 @@ class FounderProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class FounderMilestoneUpdate(BaseModel):
-    year: str = "01"
-    title: str
-    description: Optional[str] = None
-    display_order: int = 0
-
-
-class FounderProfileUpdate(BaseModel):
-    name: Optional[str] = None
-    role: Optional[str] = None
-    eyebrow: Optional[str] = None
-    title: Optional[str] = None
-    image_url: Optional[str] = None
-    image_alt: Optional[str] = None
-    introduction: Optional[str] = None
-    story: Optional[str] = None
-    vision: Optional[str] = None
-    quote: Optional[str] = None
-    milestones: Optional[List[FounderMilestoneUpdate]] = None
-
-
 class MentorBase(BaseModel):
     name: str
     role: Optional[str] = None
@@ -359,57 +334,6 @@ class MentorBase(BaseModel):
 
 class MentorResponse(MentorBase):
     id: int
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# ============================================================
-# CERTIFICATE TEMPLATES
-# ============================================================
-
-class TextAnchor(BaseModel):
-    x: float = 0
-    y: float = 0
-    font_size: int = 24
-    max_width: int = 600
-    color: str = "#1f2937"
-
-
-class CertificateLayout(BaseModel):
-    name: TextAnchor = TextAnchor()
-    date: Optional[TextAnchor] = None
-    topic: Optional[TextAnchor] = None
-
-
-class CertificateTemplateBase(BaseModel):
-    name: str
-    slug: str
-    type_label: Optional[str] = None
-    image_url: Optional[str] = None
-    layout: Optional[dict] = None
-    is_active: bool = True
-    display_order: int = 0
-
-
-class CertificateTemplateResponse(CertificateTemplateBase):
-    id: int
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class IssuedCertificateResponse(BaseModel):
-    id: int
-    template_id: Optional[int] = None
-    recipient_name: str
-    recipient_email: Optional[str] = None
-    event_topic: Optional[str] = None
-    event_date: Optional[date] = None
-    type_label: Optional[str] = None
-    rendered_url: Optional[str] = None
-    status: str
-    sent_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

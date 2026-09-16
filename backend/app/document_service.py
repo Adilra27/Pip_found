@@ -6,7 +6,6 @@ matter which entry point triggered them.
 """
 
 import logging
-import mimetypes
 import os
 import secrets
 from datetime import datetime
@@ -20,7 +19,7 @@ from .document_layouts import (
     layout_for,
 )
 from .memory_util import log_rss
-from .qrcode_util import build_qr_png, verify_url
+from .qrcode_util import verify_url
 
 logger = logging.getLogger(__name__)
 
@@ -339,26 +338,6 @@ def _volunteer_card_fields(app) -> dict:
         "status": app.status or "issued",
         "photo": load_photo_bytes(app.profile_pic_url),
         "qr_data": verify_url("volunteer", app.volunteer_id or app.card_qr_token or str(app.id)),
-    }
-
-
-def render_volunteer_card_jpeg(app) -> bytes:
-    """Render the official volunteer ID card JPEG bytes."""
-    layout = layout_for("volunteer")
-
-    photo_bytes = load_photo_bytes(app.profile_pic_url)
-    overlay_pngs = []
-    if photo_bytes:
-        overlay_pngs.append((photo_bytes, layout.get("photo")))
-
-    fields = {
-        "name": (app.full_name or "").strip(),
-        "position": (app.position or "").strip(),
-        "volunteer_id": app.volunteer_id or "",
-        "programme": app.interest_area or "",
-        "location": app.location or "",
-        "valid_till": _display_date(app.valid_till),
-
     }
 
 
