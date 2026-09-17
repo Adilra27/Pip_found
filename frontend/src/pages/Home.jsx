@@ -245,31 +245,25 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
 
       {/* WHO WE ARE */}
       <section className="home-section home-who-we-are">
-        <div className="container home-two-column">
-          <div className="home-photo-panel">
-            <img src="/piplad-logo.png" alt="Piplad Welfare Foundation logo" />
-            <div className="home-photo-badge"><MapPin size={17} /> Rural-first, community-led</div>
-          </div>
-          <div>
-            <SectionHeading
-              eyebrow={whoWeAreData.eyebrow}
-              title={whoWeAreData.title}
-              description={whoWeAreData.description}
-            />
-            <p className="home-secondary-copy">{whoWeAreData.secondaryDescription}</p>
-            <div className="home-highlight-grid">
-              {whoWeAreData.highlights.map((item) => (
-                <div className="home-highlight-card" key={item.title}>
-                  <span>{item.icon}</span>
-                  <div>
-                    <h3>{item.title}</h3>
-                    <p>{item.description}</p>
-                  </div>
+        <div className="container">
+          <SectionHeading
+            eyebrow={whoWeAreData.eyebrow}
+            title={whoWeAreData.title}
+            description={whoWeAreData.description}
+          />
+          <p className="home-secondary-copy">{whoWeAreData.secondaryDescription}</p>
+          <div className="home-highlight-grid">
+            {whoWeAreData.highlights.map((item) => (
+              <div className="home-highlight-card" key={item.title}>
+                <span>{item.icon}</span>
+                <div>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
                 </div>
-              ))}
-            </div>
-            <Link to="/about" className="home-text-link">Learn more about Piplad <ArrowRight size={17} /></Link>
+              </div>
+            ))}
           </div>
+          <Link to="/about" className="home-text-link">Learn more about Piplad <ArrowRight size={17} /></Link>
         </div>
       </section>
 

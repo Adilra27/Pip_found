@@ -36,6 +36,7 @@
 .home-impact-grid span { display: block; margin-top: .2rem; color: #64748b; font-size: .82rem; font-weight: 650; }
 
 .home-who-we-are { background: #fff; }
+.home-who-chip { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem 1rem; margin-bottom: 1rem; background: #ecfdf5; color: #065f46; border: 1px solid #bbf7d0; border-radius: 999px; font-size: .82rem; font-weight: 700; }
 .home-two-column { display: grid; grid-template-columns: .85fr 1.15fr; gap: 4.5rem; align-items: center; }
 .home-photo-panel { position: relative; padding: 1rem; background: linear-gradient(145deg,#ecfdf5,#f0fdf4); border-radius: 28px; box-shadow: 0 20px 60px rgba(15,23,42,.08); }
 .home-photo-panel img { display: block; width: 100%; height: 180px; object-fit: contain; border-radius: 20px; }
