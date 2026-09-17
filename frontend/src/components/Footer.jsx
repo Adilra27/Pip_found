@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, MapPin, Phone, Mail, ShieldCheck } from 'lucide-react';
 import SocialLinks from './SocialLinks';
 import { fetchFooterFocus } from '../api';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const DEFAULT_FOCUS = [
   'Childhood Cancer Healthcare',
@@ -14,6 +15,7 @@ const DEFAULT_FOCUS = [
 
 export default function Footer({ onOpenDonate }) {
   const [focusItems, setFocusItems] = useState(DEFAULT_FOCUS);
+  const { settings } = useSiteSettings();
 
   useEffect(() => {
     let isMounted = true;
@@ -99,15 +101,15 @@ export default function Footer({ onOpenDonate }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.9rem', color: '#94a3b8' }}>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                 <MapPin size={18} color="#10b981" style={{ flexShrink: 0, marginTop: '3px' }} />
-                <span>Vill-Manikpur, Shahkhund-813108, Bhagalpur, Bihar</span>
+                <span>{settings.address}</span>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <Phone size={18} color="#10b981" style={{ flexShrink: 0 }} />
-                <span>+91-8981266033</span>
+                <span>{settings.phone}</span>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <Mail size={18} color="#10b981" style={{ flexShrink: 0 }} />
-                <span>info@pipladfoundation.in</span>
+                <span>{settings.email}</span>
               </div>
               <button className="btn btn-primary" onClick={onOpenDonate} style={{ marginTop: '0.5rem', width: 'fit-content' }}>
                 <Heart size={16} fill="#ffffff" /> Make a Donation

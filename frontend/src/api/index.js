@@ -16,7 +16,22 @@ export async function fetchCauses() {
 }
 
 // ============================================================
-// VISITOR TRACKING
+// PUBLIC SITE SETTINGS (contact details etc.)
+// ============================================================
+
+export async function fetchSiteSettings() {
+  const res = await fetch(`${API_BASE_URL}/settings`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch site settings');
+  }
+
+  return res.json();
+}
+
+
+// ============================================================
+// PUBLIC VISITOR TRACKING
 // ============================================================
 
 const VISITOR_KEY_STORAGE = 'pwf_visitor_key';
@@ -216,6 +231,14 @@ export async function fetchAdminStats() {
 
 export async function fetchAdminVisits(days = 30, months = 6) {
   return adminFetch(`/admin/visits?days=${days}&months=${months}`);
+}
+
+export async function updateSiteSettings(values) {
+  return adminFetch('/admin/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(values),
+  });
 }
 
 export async function fetchAdminVolunteers() {

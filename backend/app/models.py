@@ -461,3 +461,23 @@ class SiteVisit(Base):
     visitor_key = Column(String(100), nullable=False, index=True)
     visit_date = Column(Date, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SiteSetting(Base):
+    """Editable site-wide settings (phone, email, address, map query, ...).
+
+    Stored as simple key/value rows so new settings can be added without a
+    schema change. The site reads these through GET /api/settings; admins
+    edit them through PUT /api/admin/settings.
+    """
+
+    __tablename__ = "site_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(100), unique=True, nullable=False, index=True)
+    value = Column(String(1000), nullable=False, default="")
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )

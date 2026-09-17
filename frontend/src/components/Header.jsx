@@ -7,11 +7,13 @@ import {
   X,
   ChevronDown,
 } from 'lucide-react';
+import { useSiteSettings, telHref } from '../hooks/useSiteSettings';
 
 export default function Header({ onOpenDonate }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const location = useLocation();
+  const { settings } = useSiteSettings();
 
   const navItems = [
     {
@@ -120,19 +122,19 @@ export default function Header({ onOpenDonate }) {
 
           <div className="header-contact-info">
             <a
-              href="tel:+918981266033"
+              href={telHref(settings.phone)}
               className="header-contact-item"
             >
               <Phone size={14} />
-              <span>+91-8981266033</span>
+              <span>{settings.phone}</span>
             </a>
 
             <a
-              href="mailto:info@pipladfoundation.in"
+              href={`mailto:${settings.email}`}
               className="header-contact-item"
             >
               <Mail size={14} />
-              <span>info@pipladfoundation.in</span>
+              <span>{settings.email}</span>
             </a>
           </div>
         </div>

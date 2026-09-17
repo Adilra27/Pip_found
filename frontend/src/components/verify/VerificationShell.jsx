@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useSiteSettings, telHref } from '../../hooks/useSiteSettings';
 
 const STATUS_ROW = {
   valid: 'VALID',
@@ -37,6 +38,7 @@ export default function VerificationShell({
   children = null,
 }) {
   const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const { settings } = useSiteSettings();
 
   return (
     <div className="verify-page">
@@ -98,11 +100,11 @@ export default function VerificationShell({
             <h4>Need help with verification?</h4>
             <div className="verify-support-row">
               <Mail size={15} />
-              <a href="mailto:info@pipladfoundation.in">info@pipladfoundation.in</a>
+              <a href={`mailto:${settings.email}`}>{settings.email}</a>
             </div>
             <div className="verify-support-row">
               <Phone size={15} />
-              <a href="tel:+918981266033">+91-8981266033</a>
+              <a href={telHref(settings.phone)}>{settings.phone}</a>
             </div>
             <div className="verify-support-row" style={{ marginTop: 6 }}>
               Contact our team via the <Link to="/contact">Contact page</Link> for any

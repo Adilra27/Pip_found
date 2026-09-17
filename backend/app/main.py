@@ -25,6 +25,7 @@ from .routes import (
     generation,
     impact,
     media,
+    settings,
     team,
     verify,
     visits,
@@ -663,6 +664,11 @@ app.include_router(
 app.include_router(
     visits.router,
     tags=["Visits"],
+)
+
+app.include_router(
+    settings.router,
+    tags=["Settings"],
 )
 
 

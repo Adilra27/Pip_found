@@ -2,19 +2,15 @@ import React, { useState } from 'react';
 import { submitContact } from '../api';
 import { MapPin, Phone, Mail, Send, CheckCircle2, Loader2, Navigation } from 'lucide-react';
 import SocialLinks from '../components/SocialLinks';
-
-const FOUNDATION_ADDRESS = 'Manik Pur Buzurg, Bihar';
-
-const FOUNDATION_MAPS_QUERY = encodeURIComponent(
-  'Manik Pur Buzurg, माणिक पुर बुज़ुर्ग, Bihar'
-);
-
-const MAPS_EMBED_SRC = `https://www.google.com/maps?q=${FOUNDATION_MAPS_QUERY}&output=embed`;
-
-const DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${FOUNDATION_MAPS_QUERY}`;
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 export default function Contact() {
+  const { settings } = useSiteSettings();
   const [name, setName] = useState('');
+
+  const mapsQuery = encodeURIComponent(settings.map_query);
+  const mapsEmbedSrc = `https://www.google.com/maps?q=${mapsQuery}&output=embed`;
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${mapsQuery}`;
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [subject, setSubject] = useState('');
@@ -73,9 +69,9 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Headquarters Address</h4>
-                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>{FOUNDATION_ADDRESS}</p>
+                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>{settings.address}</p>
                   <a
-                    href={DIRECTIONS_URL}
+                    href={directionsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: '#059669', fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none' }}
@@ -91,7 +87,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Helpline & WhatsApp</h4>
-                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>+91-8981266033</p>
+                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>{settings.phone}</p>
                 </div>
               </div>
 
@@ -101,7 +97,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Email Address</h4>
-                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>info@pipladfoundation.in</p>
+                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>{settings.email}</p>
                 </div>
               </div>
 
@@ -121,7 +117,7 @@ export default function Contact() {
               }}
             >
               <a
-                href={DIRECTIONS_URL}
+                href={directionsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Open in Google Maps"
@@ -129,7 +125,7 @@ export default function Contact() {
               >
                 <iframe
                   title="Piplad Welfare Foundation Location"
-                  src={MAPS_EMBED_SRC}
+                  src={mapsEmbedSrc}
                   width="100%"
                   height="200"
                   style={{ border: 0, display: 'block', width: '100%', pointerEvents: 'none' }}

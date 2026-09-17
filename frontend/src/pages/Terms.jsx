@@ -1,7 +1,10 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 export default function Terms() {
+  const { settings } = useSiteSettings();
+
   return (
     <div>
       <section style={{ background: '#0f172a', color: '#ffffff', padding: '4rem 0 3rem 0', textAlign: 'center' }}>
@@ -26,7 +29,7 @@ export default function Terms() {
 
             <h2 className="heading-md" style={{ marginBottom: '1rem', color: '#0f172a' }}>2. How to Request a Refund</h2>
             <p style={{ marginBottom: '1.5rem' }}>
-              To request a refund, please write an email to <strong>info@pipladfoundation.in</strong> with your donation details, transaction reference ID, payment method used, and reason for refund. Refund requests will be reviewed by our board within 5 working days.
+              To request a refund, please write an email to <strong>{settings.email}</strong> with your donation details, transaction reference ID, payment method used, and reason for refund. Refund requests will be reviewed by our board within 5 working days.
             </p>
 
             <h2 className="heading-md" style={{ marginBottom: '1rem', color: '#0f172a' }}>3. 80G Tax Receipt Terms</h2>
@@ -36,7 +39,7 @@ export default function Terms() {
 
             <h2 className="heading-md" style={{ marginBottom: '1rem', color: '#0f172a' }}>4. Cancellation Policy</h2>
             <p>
-              Recurring or monthly pledges can be paused or cancelled at any time by sending a request to our support helpline at <strong>+91-8981266033</strong> or emailing support.
+              Recurring or monthly pledges can be paused or cancelled at any time by sending a request to our support helpline at <strong>{settings.phone}</strong> or emailing support.
             </p>
           </div>
         </div>

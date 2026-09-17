@@ -39,6 +39,8 @@ const STATUS_OPTIONS = [
   ['revoked', 'Revoked'],
 ];
 
+const PAGE_SIZE = 8;
+
 function ErrorMessage({ message }) {
   if (!message) return null;
   return (
@@ -102,7 +104,7 @@ export default function CertificateHistory() {
   const [type, setType] = useState('all');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
-  const [data, setData] = useState({ items: [], total: 0, page: 1, page_size: 20 });
+  const [data, setData] = useState({ items: [], total: 0, page: 1, page_size: PAGE_SIZE });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -117,7 +119,7 @@ export default function CertificateHistory() {
         type,
         status,
         page: queryPage,
-        pageSize: 20,
+        pageSize: PAGE_SIZE,
       });
       setData(result);
     } catch (err) {
@@ -137,9 +139,9 @@ export default function CertificateHistory() {
     load(1);
   };
 
-  const totalPages = Math.max(1, Math.ceil(data.total / 20));
-  const from = data.total === 0 ? 0 : (data.page - 1) * 20 + 1;
-  const to = Math.min(data.page * 20, data.total);
+  const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+  const from = data.total === 0 ? 0 : (data.page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(data.page * PAGE_SIZE, data.total);
 
   const openPdf = async (row) => {
     setBusy(`view-${row.record_id}`);

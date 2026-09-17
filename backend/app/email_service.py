@@ -32,6 +32,36 @@ def _from_address() -> tuple[str, str] | None:
     return display, address
 
 
+def _site_support() -> tuple[str, str]:
+    """Return the support (email, phone) pair shown in email footers.
+
+    Reads the admin-editable ``site_settings`` table and falls back to the
+    classic hardcoded values when the table is missing or unavailable.
+    """
+    email = "info@pipladfoundation.in"
+    phone = "+91-8981266033"
+
+    try:
+        from .database import SessionLocal
+        from .models import SiteSetting
+
+        with SessionLocal() as session:
+            values = {
+                row.key: row.value
+                for row in session.query(SiteSetting).all()
+            }
+
+        email = values.get("email") or email
+        phone = values.get("phone") or phone
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning(
+            "Could not load site settings for email footer: %s",
+            exc,
+        )
+
+    return email, phone
+
+
 def _brevo_attachment(attachment: dict) -> dict:
     return {
         "name": attachment["filename"],
@@ -163,6 +193,8 @@ def send_volunteer_welcome_email(
 
     vid = volunteer_id or "PWF-VOL-STANDBY"
 
+    support_email, support_phone = _site_support()
+
     text_body = "\n".join(
         [
             f"Dear {volunteer_name},",
@@ -192,7 +224,7 @@ def send_volunteer_welcome_email(
             "With regards,",
             "Piplad Welfare Foundation",
             "Creating Opportunities, Creating Lives",
-            "Support: info@pipladfoundation.in | +91-8981266033",
+            f"Support: {support_email} | {support_phone}",
         ]
     )
 
@@ -242,6 +274,8 @@ def _build_volunteer_id_email_html(
     verification_url: str | None,
 ) -> str:
     """Branded, mobile-friendly HTML body for the Volunteer ID Card e-mail."""
+
+    support_email, support_phone = _site_support()
 
     def row(label: str, value: str) -> str:
         return (
@@ -336,10 +370,10 @@ def _build_volunteer_id_email_html(
                 <tr>
                   <td style="padding:14px 16px;font-size:12px;color:#047857;line-height:1.7;">
                     <b>Need help?</b> Contact us at
-                    <a href="mailto:info@pipladfoundation.in"
+                    <a href="mailto:{escape(support_email)}"
                        style="color:#047857;font-weight:bold;text-decoration:none;">
-                      info@pipladfoundation.in</a>
-                    or call +91-8981266033.
+                      {escape(support_email)}</a>
+                    or call {escape(support_phone)}.
                   </td>
                 </tr>
               </table>
@@ -369,6 +403,8 @@ def send_volunteer_rejection_email(
     interest_area: str,
 ) -> bool:
     """Inform a volunteer that their application was declined by the admin."""
+    support_email, _support_phone = _site_support()
+
     text_body = (
         f"Dear {volunteer_name},\n\n"
         "Thank you for your interest in volunteering with the Piplad Welfare "
@@ -377,7 +413,7 @@ def send_volunteer_rejection_email(
         + (f" for the area of {interest_area}" if interest_area else "")
         + " has not been accepted at this time.\n\n"
         "We encourage you to apply again in the future. If you have any "
-        "questions, please reach out to us at info@pipladfoundation.in.\n\n"
+        f"questions, please reach out to us at {support_email}.\n\n"
         "With regards,\n"
         "Piplad Welfare Foundation\nCreating Opportunities, Creating Lives"
     )
@@ -450,6 +486,8 @@ def send_certificate_documents_email(
     program = (event_topic or "").strip()
     issued_on = (event_date or "").strip()
 
+    support_email, support_phone = _site_support()
+
     text_body = "\n".join(
         [
             f"Dear {recipient_name},",
@@ -469,7 +507,7 @@ def send_certificate_documents_email(
             "With regards,",
             "Piplad Welfare Foundation",
             "Creating Opportunities, Creating Lives",
-            "Support: info@pipladfoundation.in | +91-8981266033",
+            f"Support: {support_email} | {support_phone}",
         ]
     )
 
@@ -508,6 +546,7 @@ def _build_certificate_email_html(
     verification_url: str,
 ) -> str:
     """Branded, mobile-friendly HTML body for certificate e-mails."""
+    support_email, support_phone = _site_support()
     name = escape(recipient_name)
     doc_type = escape(type_label)
     program = escape(event_topic)
@@ -607,10 +646,10 @@ def _build_certificate_email_html(
                 <tr>
                   <td style="padding:14px 16px;font-size:12px;color:#047857;line-height:1.7;">
                     <b>Need help?</b> Contact us at
-                    <a href="mailto:info@pipladfoundation.in"
+                    <a href="mailto:{escape(support_email)}"
                        style="color:#047857;font-weight:bold;text-decoration:none;">
-                      info@pipladfoundation.in</a>
-                    or call +91-8981266033.
+                      {escape(support_email)}</a>
+                    or call {escape(support_phone)}.
                   </td>
                 </tr>
               </table>

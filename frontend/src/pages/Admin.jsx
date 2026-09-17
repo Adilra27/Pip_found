@@ -34,6 +34,7 @@ import {
   Send,
   Target,
   UserCheck,
+  Settings,
 } from 'lucide-react';
 
 import {
@@ -93,6 +94,8 @@ import {
   resendAdminDonationReceipt,
   fetchAdminImpact,
   updateAdminImpact,
+  fetchSiteSettings,
+  updateSiteSettings,
 } from '../api';
 
 
@@ -5222,6 +5225,11 @@ export default function Admin() {
       'Impact Metrics',
       BarChart3,
     ],
+    [
+      'settings',
+      'Site Settings',
+      Settings,
+    ],
   ];
 
   return (
@@ -5585,6 +5593,10 @@ export default function Admin() {
 
           {tab === 'impact' && (
             <ImpactManager />
+          )}
+
+          {tab === 'settings' && (
+            <SiteSettingsManager />
           )}
 
           {/* =================================================
@@ -7249,6 +7261,267 @@ function FooterFocusManager() {
             </div>
           ))}
         </div>
+      )}
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
+// SITE SETTINGS MANAGER
+// ============================================================
+
+function SiteSettingsManager() {
+  const [form, setForm] = useState({
+    phone: '',
+    email: '',
+    address: '',
+    map_query: '',
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  const [saving, setSaving] = useState(false);
+
+  const [error, setError] = useState('');
+
+  const [info, setInfo] = useState('');
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      const data =
+        await fetchSiteSettings();
+
+      setForm({
+        phone: data.phone || '',
+        email: data.email || '',
+        address: data.address || '',
+        map_query: data.map_query || '',
+      });
+
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function submit(e) {
+    e.preventDefault();
+
+    setError('');
+    setInfo('');
+
+    if (
+      !form.phone.trim() ||
+      !form.email.trim()
+    ) {
+      setError(
+        'Phone number and email are required.'
+      );
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const data =
+        await updateSiteSettings(form);
+
+      setForm({
+        phone: data.phone || form.phone,
+        email: data.email || form.email,
+        address: data.address || form.address,
+        map_query:
+          data.map_query || form.map_query,
+      });
+
+      setInfo(
+        'Settings saved and live across the website.'
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const fields = [
+    [
+      'phone',
+      'Phone Number',
+      'Shown in the top bar, footer and contact page. e.g. +91-8981266033',
+      true,
+    ],
+    [
+      'email',
+      'Email ID',
+      'Shown in the top bar, footer, contact page and support emails. e.g. info@pipladfoundation.in',
+      true,
+    ],
+    [
+      'address',
+      'Headquarters Address',
+      'Full postal address shown in the footer and contact page.',
+      false,
+    ],
+    [
+      'map_query',
+      'Google Maps Location',
+      'Search text used for the embedded map and directions on the contact page. e.g. Manik Pur Buzurg, Bihar',
+      false,
+    ],
+  ];
+
+  return (
+    <ManagerSection
+      title="Site Settings"
+      icon={<Settings size={22} />}
+    >
+      <ErrorMessage message={error} />
+
+      {info && (
+        <div
+          style={{
+            padding: '.9rem 1rem',
+            marginBottom: '1.25rem',
+            borderRadius: 10,
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            color: '#166534',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '.5rem',
+          }}
+        >
+          <Check size={18} />
+          {info}
+        </div>
+      )}
+
+      <div
+        style={{
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          borderRadius: 12,
+          background: '#f0f9ff',
+          border: '1px solid #bae6fd',
+          color: '#0c4a6e',
+          lineHeight: 1.6,
+        }}
+      >
+        These contact details are shown across the website — top bar,
+        footer, contact page, refund policy and verification/support
+        emails. Changes go live immediately.
+      </div>
+
+      {loading ? (
+        <p>Loading settings...</p>
+      ) : (
+        <form
+          onSubmit={submit}
+          style={formGridStyle}
+        >
+          {fields.map(
+            ([
+              key,
+              label,
+              hint,
+              isInput,
+            ]) => (
+              <div key={key}>
+                <label
+                  style={{
+                    fontWeight: 600,
+                    display: 'block',
+                    marginBottom: '.35rem',
+                  }}
+                >
+                  {label}
+                </label>
+
+                {isInput ? (
+                  <input
+                    type="text"
+                    value={form[key]}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        [key]:
+                          e.target.value,
+                      })
+                    }
+                    style={inputStyle}
+                  />
+                ) : (
+                  <textarea
+                    value={form[key]}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        [key]:
+                          e.target.value,
+                      })
+                    }
+                    style={{
+                      ...textareaStyle,
+                      minHeight: 80,
+                    }}
+                  />
+                )}
+
+                {hint && (
+                  <div
+                    style={{
+                      marginTop: '.35rem',
+                      color: '#64748b',
+                      fontSize: '.8rem',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {hint}
+                  </div>
+                )}
+              </div>
+            )
+          )}
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '.75rem',
+            }}
+          >
+            <button
+              type="submit"
+              className="btn"
+              disabled={saving}
+              style={primaryButton}
+            >
+              {saving
+                ? 'Saving...'
+                : 'Save Settings'}
+            </button>
+
+            <button
+              type="button"
+              className="btn"
+              onClick={load}
+              style={outlineButton}
+              disabled={loading}
+            >
+              Reload
+            </button>
+          </div>
+        </form>
       )}
     </ManagerSection>
   );
