@@ -36,6 +36,7 @@ from ..models import (
     ContactInquiry,
     Donation,
     FooterFocusItem,
+    FooterQuickLink,
     FounderMilestone,
     FounderProfile,
     GalleryItem,
@@ -52,7 +53,8 @@ from ..schemas import (
     CauseResponse,
     DonationListResponse,
     DonationResponse,
-    FooterFocusItemResponse,
+FooterFocusItemResponse,
+    FooterQuickLinkResponse,
     FounderProfileResponse,
     GalleryItemResponse,
     MentorResponse,
@@ -2664,3 +2666,128 @@ def delete_footer_focus_item(
     db.delete(item)
     db.commit()
     return {"message": "Footer focus item deleted"}
+
+
+# ============================================================
+# FOOTER QUICK LINKS (admin)
+# ============================================================
+
+@router.get(
+    "/footer-links",
+    response_model=List[FooterQuickLinkResponse],
+)
+def get_footer_quick_links(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(FooterQuickLink)
+        .order_by(FooterQuickLink.display_order.asc(), FooterQuickLink.id.asc())
+        .all()
+    )
+
+
+@router.post(
+    "/footer-links",
+    response_model=FooterQuickLinkResponse,
+)
+def create_footer_quick_link(
+    label: str = Form(...),
+    path: str = Form(...),
+    display_order: int = Form(0),
+    is_published: bool = Form(True),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    label = label.strip()
+    path = path.strip()
+    if not label:
+        raise HTTPException(400, "Link label is required")
+    if not path:
+        raise HTTPException(400, "Link path is required")
+
+    link = FooterQuickLink(
+        label=label,
+        path=path,
+        display_order=display_order,
+        is_published=is_published,
+    )
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+    return link
+
+
+@router.put(
+    "/footer-links/{link_id}",
+    response_model=FooterQuickLinkResponse,
+)
+def update_footer_quick_link(
+    link_id: int,
+    label: str = Form(...),
+    path: str = Form(...),
+    display_order: int = Form(0),
+    is_published: bool = Form(True),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    link = (
+        db.query(FooterQuickLink)
+        .filter(FooterQuickLink.id == link_id)
+        .first()
+    )
+    if not link:
+        raise HTTPException(404, "Footer quick link not found")
+
+    label = label.strip()
+    path = path.strip()
+    if not label:
+        raise HTTPException(400, "Link label is required")
+    if not path:
+        raise HTTPException(400, "Link path is required")
+
+    link.label = label
+    link.path = path
+    link.display_order = display_order
+    link.is_published = is_published
+    db.commit()
+    db.refresh(link)
+    return link
+
+
+@router.post("/footer-links/reorder")
+def reorder_footer_quick_links(
+    body: dict,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    order = body.get("order") or []
+    for position, link_id in enumerate(order):
+        link = (
+            db.query(FooterQuickLink)
+            .filter(FooterQuickLink.id == int(link_id))
+            .first()
+        )
+        if link:
+            link.display_order = position
+    db.commit()
+    return {"message": "Footer quick links reordered"}
+
+
+@router.delete("/footer-links/{link_id}")
+def delete_footer_quick_link(
+    link_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    link = (
+        db.query(FooterQuickLink)
+        .filter(FooterQuickLink.id == link_id)
+        .first()
+    )
+    if not link:
+        raise HTTPException(404, "Footer quick link not found")
+
+    db.delete(link)
+    db.commit()
+    return {"message": "Footer quick link deleted"}

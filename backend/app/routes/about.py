@@ -3,10 +3,11 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import About, FooterFocusItem, FounderProfile, Mentor
+from ..models import About, FooterFocusItem, FooterQuickLink, FounderProfile, Mentor
 from ..schemas import (
     AboutResponse,
     FooterFocusItemResponse,
+    FooterQuickLinkResponse,
     FounderProfileResponse,
     MentorResponse,
 )
@@ -108,5 +109,15 @@ def get_footer_focus_items(db: Session = Depends(get_db)):
         db.query(FooterFocusItem)
         .filter(FooterFocusItem.is_published == True)  # noqa: E712
         .order_by(FooterFocusItem.display_order.asc(), FooterFocusItem.id.asc())
+        .all()
+    )
+
+
+@router.get("/footer-links", response_model=List[FooterQuickLinkResponse])
+def get_footer_quick_links(db: Session = Depends(get_db)):
+    return (
+        db.query(FooterQuickLink)
+        .filter(FooterQuickLink.is_published == True)  # noqa: E712
+        .order_by(FooterQuickLink.display_order.asc(), FooterQuickLink.id.asc())
         .all()
     )

@@ -30,6 +30,12 @@ DEFAULT_SETTINGS: Dict[str, str] = {
     "email": "info@pipladfoundation.in",
     "address": "Vill-Manikpur, Shahkhund-813108, Bhagalpur, Bihar",
     "map_query": "Manik Pur Buzurg, माणिक पुर बुज़ुर्ग, Bihar",
+    "mission": (
+        "Piplad Welfare Foundation works with rural communities to bridge the gaps in "
+        "education, health, livelihoods, water, environment and technology, building a "
+        "future where every villager can unlock their true potential."
+    ),
+    "copyright": "Piplad Welfare Foundation",
 }
 
 

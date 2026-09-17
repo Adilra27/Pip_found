@@ -31,6 +31,7 @@ import {
   Eye,
   EyeOff,
   LayoutDashboard,
+  Link2,
   Send,
   Target,
   UserCheck,
@@ -42,12 +43,14 @@ import {
   createAdminCause,
   createAdminCertificate,
   createAdminFooterFocus,
+  createAdminFooterQuickLink,
   createAdminMentor,
   createAdminProject,
   createAdminTeamMember,
   deleteAdminCause,
   deleteAdminCertificate,
   deleteAdminFooterFocus,
+  deleteAdminFooterQuickLink,
   deleteAdminGalleryImage,
   deleteAdminMentor,
   deleteAdminProject,
@@ -58,6 +61,7 @@ import {
   fetchAdminCertificates,
   fetchAdminFounder,
   fetchAdminFooterFocus,
+  fetchAdminFooterQuickLinks,
   fetchAdminGallery,
   fetchAdminMentors,
   fetchAdminProjects,
@@ -73,6 +77,7 @@ import {
   fetchDonationsList,
   getAdminCredentials,
   reorderAdminFooterFocus,
+  reorderAdminFooterQuickLinks,
   resolveMediaUrl,
   sendAdminTeamCard,
   setAdminCredentials,
@@ -80,6 +85,7 @@ import {
   updateAdminCertificate,
   updateAdminFounder,
   updateAdminFooterFocus,
+  updateAdminFooterQuickLink,
   updateAdminMentor,
   updateAdminProject,
   updateAdminTeamMember,
@@ -5217,7 +5223,7 @@ export default function Admin() {
     ],
     [
       'footer',
-      'Footer Focus',
+      'Footer',
       Target,
     ],
     [
@@ -5588,7 +5594,7 @@ export default function Admin() {
           )}
 
           {tab === 'footer' && (
-            <FooterFocusManager />
+            <FooterManager />
           )}
 
           {tab === 'impact' && (
@@ -6936,7 +6942,7 @@ function FounderMentorsManager({ refreshAll }) {
 // FOOTER FOCUS MANAGER
 // ============================================================
 
-function FooterFocusManager() {
+function FooterManager() {
   const [items, setItems] = useState([]);
 
   const [form, setForm] = useState({
@@ -6947,9 +6953,27 @@ function FooterFocusManager() {
 
   const [editingId, setEditingId] = useState(null);
 
+  const [links, setLinks] = useState([]);
+
+  const [linkForm, setLinkForm] = useState({
+    label: '',
+    path: '',
+    displayOrder: 0,
+    isPublished: true,
+  });
+
+  const [linkEditingId, setLinkEditingId] = useState(null);
+
+  const [settingsForm, setSettingsForm] = useState({
+    mission: '',
+    copyright: '',
+  });
+
   const [loading, setLoading] = useState(true);
 
   const [saving, setSaving] = useState(false);
+
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   const [error, setError] = useState('');
 
@@ -6957,9 +6981,22 @@ function FooterFocusManager() {
     setLoading(true);
 
     try {
-      const data = await fetchAdminFooterFocus();
+      const [focusData, linkData, settingsData] = await Promise.all([
+        fetchAdminFooterFocus(),
+        fetchAdminFooterQuickLinks(),
+        fetchSiteSettings(),
+      ]);
 
-      setItems(Array.isArray(data) ? data : []);
+      setItems(Array.isArray(focusData) ? focusData : []);
+
+      setLinks(Array.isArray(linkData) ? linkData : []);
+
+      if (settingsData && typeof settingsData === 'object') {
+        setSettingsForm({
+          mission: settingsData.mission || '',
+          copyright: settingsData.copyright || '',
+        });
+      }
 
       setError('');
     } catch (e) {
@@ -6972,6 +7009,134 @@ function FooterFocusManager() {
   useEffect(() => {
     load();
   }, []);
+
+  async function saveSettings(e) {
+    e.preventDefault();
+
+    setError('');
+
+    if (!settingsForm.mission.trim()) {
+      setError('Please enter the footer mission statement.');
+      return;
+    }
+
+    setSettingsSaving(true);
+
+    try {
+      await updateSiteSettings({
+        mission: settingsForm.mission,
+        copyright: settingsForm.copyright,
+      });
+
+      setError('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSettingsSaving(false);
+    }
+  }
+
+  function resetLink() {
+    setLinkEditingId(null);
+
+    setLinkForm({
+      label: '',
+      path: '',
+      displayOrder: 0,
+      isPublished: true,
+    });
+  }
+
+  function startEditLink(link) {
+    setLinkEditingId(link.id);
+
+    setLinkForm({
+      label: link.label || '',
+      path: link.path || '',
+      displayOrder: link.display_order || 0,
+      isPublished: link.is_published !== false,
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  async function submitLink(e) {
+    e.preventDefault();
+
+    setError('');
+
+    if (!linkForm.label.trim()) {
+      setError('Please enter the link label.');
+      return;
+    }
+
+    if (!linkForm.path.trim()) {
+      setError('Please enter the link path, e.g. /about or https://example.com.');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      if (linkEditingId) {
+        await updateAdminFooterQuickLink(linkEditingId, linkForm);
+      } else {
+        await createAdminFooterQuickLink(linkForm);
+      }
+
+      resetLink();
+
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeLink(id) {
+    if (!window.confirm('Delete this footer quick link?')) {
+      return;
+    }
+
+    try {
+      await deleteAdminFooterQuickLink(id);
+
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function moveLink(index, direction) {
+    const next = [...links];
+
+    const target = index + direction;
+
+    if (target < 0 || target >= next.length) {
+      return;
+    }
+
+    const current = next[index];
+
+    next[index] = next[target];
+
+    next[target] = current;
+
+    setLinks(next);
+
+    try {
+      await reorderAdminFooterQuickLinks(
+        next.map((link) => link.id)
+      );
+    } catch (e) {
+      setError(e.message);
+      await load();
+    }
+  }
 
   function reset() {
     setEditingId(null);
@@ -7069,12 +7234,274 @@ function FooterFocusManager() {
   }
 
   return (
-    <ManagerSection
-      title="Footer Focus"
-      icon={<Target size={22} />}
-    >
+    <>
       <ErrorMessage message={error} />
 
+      <ManagerSection
+        title="Footer Settings"
+        icon={<Settings size={22} />}
+      >
+        <div
+          style={{
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            borderRadius: 12,
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            color: '#166534',
+            lineHeight: 1.6,
+          }}
+        >
+          The mission statement (Column 1) and the copyright line (bottom bar)
+          shown in the footer of every page.
+        </div>
+
+        <form
+          onSubmit={saveSettings}
+          style={formGridStyle}
+        >
+          <textarea
+            placeholder="Mission statement, e.g. Creating Opportunities, Creating Lives..."
+            value={settingsForm.mission}
+            onChange={(e) =>
+              setSettingsForm({ ...settingsForm, mission: e.target.value })
+            }
+            style={textareaStyle}
+            required
+          />
+
+          <input
+            placeholder="Copyright line, e.g. Piplad Welfare Foundation"
+            value={settingsForm.copyright}
+            onChange={(e) =>
+              setSettingsForm({ ...settingsForm, copyright: e.target.value })
+            }
+            style={inputStyle}
+          />
+
+          <div style={{ display: 'flex', gap: '.75rem' }}>
+            <button
+              className="btn"
+              type="submit"
+              disabled={settingsSaving}
+              style={primaryButton}
+            >
+              {settingsSaving ? 'Saving...' : 'Save Footer Settings'}
+            </button>
+          </div>
+        </form>
+      </ManagerSection>
+
+      <ManagerSection
+        title="Quick Links"
+        icon={<Link2 size={22} />}
+      >
+        <div
+          style={{
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            borderRadius: 12,
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            color: '#166534',
+            lineHeight: 1.6,
+          }}
+        >
+          These links power the “Quick Links" column of the footer. Use paths
+          like /about, /impact or full https:// URLs. Unpublished links are
+          hidden from visitors.
+        </div>
+
+        <form
+          onSubmit={submitLink}
+          style={formGridStyle}
+        >
+          <input
+            placeholder="Link label, e.g. About Our Foundation"
+            value={linkForm.label}
+            onChange={(e) =>
+              setLinkForm({ ...linkForm, label: e.target.value })
+            }
+            style={inputStyle}
+            required
+          />
+
+          <input
+            placeholder="Path, e.g. /about or https://example.com"
+            value={linkForm.path}
+            onChange={(e) =>
+              setLinkForm({ ...linkForm, path: e.target.value })
+            }
+            style={inputStyle}
+            required
+          />
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '.9rem',
+            }}
+          >
+            <input
+              type="number"
+              placeholder="Display order"
+              value={linkForm.displayOrder}
+              onChange={(e) =>
+                setLinkForm({ ...linkForm, displayOrder: Number(e.target.value) })
+              }
+              style={inputStyle}
+            />
+
+            <label
+              style={{
+                display: 'flex',
+                gap: '.5rem',
+                alignItems: 'center',
+                padding: '0 0.25rem',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={linkForm.isPublished}
+                onChange={(e) =>
+                  setLinkForm({ ...linkForm, isPublished: e.target.checked })
+                }
+              />
+              Published
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: '.75rem' }}>
+            <button
+              className="btn"
+              type="submit"
+              disabled={saving}
+              style={primaryButton}
+            >
+              {saving
+                ? 'Saving...'
+                : linkEditingId
+                  ? 'Update Link'
+                  : 'Add Link'}
+            </button>
+
+            {linkEditingId && (
+              <button
+                type="button"
+                className="btn"
+                onClick={resetLink}
+                style={outlineButton}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+
+        {loading ? (
+          <p>Loading quick links...</p>
+        ) : links.length === 0 ? (
+          <div
+            style={{
+              padding: '2rem',
+              textAlign: 'center',
+              border: '1px dashed #cbd5e1',
+              borderRadius: 12,
+              color: '#64748b',
+            }}
+          >
+            No quick links yet. The default links are shown to visitors until
+            you add some.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '.75rem' }}>
+            {links.map((link, index) => (
+              <div
+                key={link.id}
+                className="card"
+                style={{
+                  padding: '1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div>
+                  <strong>{link.label}</strong>
+
+                  <p
+                    style={{
+                      margin: '.25rem 0 0',
+                      color: '#64748b',
+                      fontSize: '.8rem',
+                    }}
+                  >
+                    {link.path}
+                    {' — '}Order: {link.display_order}
+                    {link.is_published === false ? ' — Hidden' : ''}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '.5rem',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => moveLink(index, -1)}
+                    style={outlineButton}
+                    disabled={index === 0}
+                  >
+                    ↑ Up
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => moveLink(index, 1)}
+                    style={outlineButton}
+                    disabled={index === links.length - 1}
+                  >
+                    ↓ Down
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => startEditLink(link)}
+                    className="btn"
+                    style={outlineButton}
+                  >
+                    <Edit3 size={15} />
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => removeLink(link.id)}
+                    className="btn"
+                    style={dangerButton}
+                  >
+                    <Trash2 size={15} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ManagerSection>
+
+      <ManagerSection
+        title="Core Focus"
+        icon={<Target size={22} />}
+      >
       <div
         style={{
           padding: '1rem',
@@ -7262,7 +7689,8 @@ function FooterFocusManager() {
           ))}
         </div>
       )}
-    </ManagerSection>
+      </ManagerSection>
+    </>
   );
 }
 

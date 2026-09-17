@@ -964,6 +964,10 @@ export async function fetchFooterFocus() {
   return publicGet('/about/footer-focus');
 }
 
+export async function fetchFooterQuickLinks() {
+  return publicGet('/about/footer-links');
+}
+
 
 // ============================================================
 // ADMIN ABOUT (FOUNDER & MENTORS)
@@ -1135,6 +1139,55 @@ export async function deleteAdminFooterFocus(id) {
 
 export async function reorderAdminFooterFocus(order) {
   return adminFetch('/admin/footer-focus/reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order }),
+  });
+}
+
+export async function fetchAdminFooterQuickLinks() {
+  return adminFetch('/admin/footer-links');
+}
+
+export async function createAdminFooterQuickLink({ label, path, displayOrder, isPublished }) {
+  const form = new FormData();
+
+  form.append('label', label);
+  form.append('path', path);
+  form.append('display_order', String(displayOrder || 0));
+  form.append('is_published', String(Boolean(isPublished)));
+
+  return adminFetch('/admin/footer-links', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function updateAdminFooterQuickLink(
+  id,
+  { label, path, displayOrder, isPublished }
+) {
+  const form = new FormData();
+
+  form.append('label', label);
+  form.append('path', path);
+  form.append('display_order', String(displayOrder || 0));
+  form.append('is_published', String(Boolean(isPublished)));
+
+  return adminFetch(`/admin/footer-links/${id}`, {
+    method: 'PUT',
+    body: form,
+  });
+}
+
+export async function deleteAdminFooterQuickLink(id) {
+  return adminFetch(`/admin/footer-links/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function reorderAdminFooterQuickLinks(order) {
+  return adminFetch('/admin/footer-links/reorder', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ order }),

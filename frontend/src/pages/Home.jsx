@@ -246,6 +246,10 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
       {/* WHO WE ARE */}
       <section className="home-section home-who-we-are">
         <div className="container">
+          <span className="home-who-chip">
+            <MapPin size={16} /> Rural-first, community-led
+          </span>
+
           <SectionHeading
             eyebrow={whoWeAreData.eyebrow}
             title={whoWeAreData.title}

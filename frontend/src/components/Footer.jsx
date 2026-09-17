@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, MapPin, Phone, Mail, ShieldCheck } from 'lucide-react';
 import SocialLinks from './SocialLinks';
-import { fetchFooterFocus } from '../api';
+import { fetchFooterFocus, fetchFooterQuickLinks } from '../api';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const DEFAULT_FOCUS = [
@@ -13,8 +13,19 @@ const DEFAULT_FOCUS = [
   'Emergency Medical Financial Aid',
 ];
 
+const DEFAULT_QUICK_LINKS = [
+  { label: 'About Our Foundation', path: '/about' },
+  { label: 'Our Impact', path: '/impact' },
+  { label: 'Current Welfare Causes', path: '/causes' },
+  { label: 'Donate & 80G Benefits', path: '/donate' },
+  { label: 'Media & Awards Gallery', path: '/gallery' },
+  { label: 'Contact & Reach Us', path: '/contact' },
+  { label: 'Refund & Cancellation Policy', path: '/terms' },
+];
+
 export default function Footer({ onOpenDonate }) {
   const [focusItems, setFocusItems] = useState(DEFAULT_FOCUS);
+  const [quickLinks, setQuickLinks] = useState(DEFAULT_QUICK_LINKS);
   const { settings } = useSiteSettings();
 
   useEffect(() => {
@@ -32,7 +43,20 @@ export default function Footer({ onOpenDonate }) {
       }
     };
 
+    const loadQuickLinks = async () => {
+      try {
+        const data = await fetchFooterQuickLinks();
+
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setQuickLinks(data.map((link) => ({ label: link.label, path: link.path })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch footer quick links:', error);
+      }
+    };
+
     loadFocus();
+    loadQuickLinks();
 
     return () => {
       isMounted = false;
@@ -42,6 +66,13 @@ export default function Footer({ onOpenDonate }) {
   const items = Array.isArray(focusItems) && focusItems.length > 0
     ? focusItems
     : DEFAULT_FOCUS;
+
+  const links = Array.isArray(quickLinks) && quickLinks.length > 0
+    ? quickLinks
+    : DEFAULT_QUICK_LINKS;
+
+  const mission = settings.mission || 'Creating Opportunities, Creating Lives. Dedicated to child healthcare, quality education, zero hunger, and rural empowerment across India.';
+  const copyright = settings.copyright || 'Piplad Welfare Foundation';
 
   return (
     <footer style={{ background: '#0f172a', color: '#cbd5e1', paddingTop: '4rem', paddingBottom: '2rem' }}>
@@ -62,7 +93,7 @@ export default function Footer({ onOpenDonate }) {
               </div>
             </div>
             <p style={{ fontSize: '0.9rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-              Creating Opportunities, Creating Lives. Dedicated to child healthcare, quality education, zero hunger, and rural empowerment across India.
+              {mission}
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(16,185,129,0.1)', color: '#34d399', padding: '0.5rem 0.8rem', borderRadius: '6px', fontSize: '0.85rem', width: 'fit-content' }}>
               <ShieldCheck size={16} /> 80G Tax Deductible (Reg. NGO)
@@ -75,13 +106,23 @@ export default function Footer({ onOpenDonate }) {
           <div>
             <h4 style={{ color: '#ffffff', fontSize: '1.1rem', fontWeight: 700, marginBottom: '1.25rem' }}>Quick Links</h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
-              <li><Link to="/about" style={{ color: '#cbd5e1', hover: { color: '#34d399' } }}>About Our Foundation</Link></li>
-              <li><Link to="/impact" style={{ color: '#cbd5e1' }}>Our Impact</Link></li>
-              <li><Link to="/causes" style={{ color: '#cbd5e1' }}>Current Welfare Causes</Link></li>
-              <li><Link to="/donate" style={{ color: '#cbd5e1' }}>Donate & 80G Benefits</Link></li>
-              <li><Link to="/gallery" style={{ color: '#cbd5e1' }}>Media & Awards Gallery</Link></li>
-              <li><Link to="/contact" style={{ color: '#cbd5e1' }}>Contact & Reach Us</Link></li>
-              <li><Link to="/terms" style={{ color: '#cbd5e1' }}>Refund & Cancellation Policy</Link></li>
+              {links.map((link, index) => {
+                const external = /^https?:\/\//.test(link.path);
+
+                return (
+                  <li key={`${link.label}-${index}`}>
+                    {external ? (
+                      <a href={link.path} target="_blank" rel="noreferrer" style={{ color: '#cbd5e1', textDecoration: 'none' }}>
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link to={link.path} style={{ color: '#cbd5e1', textDecoration: 'none' }}>
+                        {link.label}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -121,7 +162,7 @@ export default function Footer({ onOpenDonate }) {
 
         <div style={{ borderTop: '1px solid #1e293b', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', fontSize: '0.85rem', color: '#64748b' }}>
           <div>
-            © {new Date().getFullYear()} Piplad Welfare Foundation (PWF). All Rights Reserved.
+            © {new Date().getFullYear()} {copyright} (PWF). All Rights Reserved.
           </div>
           <div style={{ display: 'flex', gap: '1.5rem' }}>
             <Link to="/terms" style={{ color: '#64748b' }}>Terms & Conditions</Link>

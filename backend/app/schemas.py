@@ -357,6 +357,24 @@ class FooterFocusItemResponse(FooterFocusItemBase):
 
 
 # ============================================================
+# FOOTER QUICK LINKS
+# ============================================================
+
+class FooterQuickLinkBase(BaseModel):
+    label: str
+    path: str
+    display_order: int = 0
+    is_published: bool = True
+
+
+class FooterQuickLinkResponse(FooterQuickLinkBase):
+    id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================
 # GENERATED DOCUMENT RESPONSES (download/revoke + shared helpers)
 # ============================================================
 

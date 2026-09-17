@@ -134,6 +134,19 @@ class FooterFocusItem(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class FooterQuickLink(Base):
+    """Editable link rows under "Quick Links" in the website footer."""
+
+    __tablename__ = "footer_quick_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    label = Column(String(255), nullable=False)
+    path = Column(String(500), nullable=False)
+    display_order = Column(Integer, nullable=False, default=0)
+    is_published = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Cause(Base):
     __tablename__ = "causes"
 
