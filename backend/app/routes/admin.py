@@ -1,13 +1,14 @@
 import json
 import logging
 import os
+import re
 import secrets
 import uuid
 
 import cloudinary
 import cloudinary.uploader
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -39,6 +40,7 @@ from ..models import (
     FounderProfile,
     GalleryItem,
     Mentor,
+    SiteVisit,
     TeamMember,
     UpcomingProject,
     VideoGallery,
@@ -47,6 +49,7 @@ from ..models import (
 
 from ..schemas import (
     CertificateResponse,
+    CauseResponse,
     DonationListResponse,
     DonationResponse,
     FooterFocusItemResponse,
@@ -496,11 +499,306 @@ def get_admin_dashboard_stats(
         db.query(ContactInquiry).count()
     )
 
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())
+
+    total_visitors = (
+        db.query(func.count(func.distinct(SiteVisit.visitor_key)))
+        .scalar()
+        or 0
+    )
+
+    visitors_today = (
+        db.query(func.count(func.distinct(SiteVisit.visitor_key)))
+        .filter(SiteVisit.visit_date == today)
+        .scalar()
+        or 0
+    )
+
+    visitors_this_week = (
+        db.query(func.count(func.distinct(SiteVisit.visitor_key)))
+        .filter(SiteVisit.visit_date >= week_start)
+        .scalar()
+        or 0
+    )
+
     return {
         "total_donations": total_donations,
         "total_donors": total_donors,
         "active_causes": active_causes,
         "inquiries_count": inquiries_count,
+        "total_visitors": total_visitors,
+        "visitors_today": visitors_today,
+        "visitors_this_week": visitors_this_week,
+    }
+
+
+# ============================================================
+# VISITS ADMIN
+# ============================================================
+
+@router.get("/visits")
+def get_admin_visits(
+    days: int = 30,
+    months: int = 6,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Visitor breakdown for the admin: daily counts and monthly totals."""
+    days = min(max(days or 30, 7), 90)
+    months = min(max(months or 6, 1), 24)
+
+    today = date.today()
+    daily_start = today - timedelta(days=days - 1)
+
+    month_start = today.replace(day=1)
+    first_month_index = (
+        month_start.year * 12
+        + (month_start.month - 1)
+        - (months - 1)
+    )
+    month_lower = date(
+        first_month_index // 12,
+        first_month_index % 12 + 1,
+        1,
+    )
+
+    rows = (
+        db.query(
+            SiteVisit.visit_date,
+            func.count(func.distinct(SiteVisit.visitor_key)),
+        )
+        .filter(SiteVisit.visit_date >= month_lower)
+        .group_by(SiteVisit.visit_date)
+        .all()
+    )
+
+    counts_by_day = {
+        visit_date: int(count)
+        for visit_date, count in rows
+    }
+
+    daily = []
+    for offset in range(days):
+        day = daily_start + timedelta(days=offset)
+        daily.append(
+            {
+                "date": day.isoformat(),
+                "count": counts_by_day.get(day, 0),
+            }
+        )
+
+    month_counts = {}
+    for visit_date, count in counts_by_day.items():
+        key = f"{visit_date.year:04d}-{visit_date.month:02d}"
+        month_counts[key] = month_counts.get(key, 0) + count
+
+    monthly = []
+    for offset in range(months):
+        ym = (
+            month_start.year * 12
+            + (month_start.month - 1)
+            - offset
+        )
+        key = f"{ym // 12:04d}-{ym % 12 + 1:02d}"
+        monthly.append(
+            {
+                "month": key,
+                "count": month_counts.get(key, 0),
+            }
+        )
+    monthly.reverse()
+
+    total_visitors = (
+        db.query(func.count(func.distinct(SiteVisit.visitor_key)))
+        .scalar()
+        or 0
+    )
+
+    return {
+        "total_visitors": total_visitors,
+        "daily": daily,
+        "monthly": monthly,
+    }
+
+
+# ============================================================
+# CAUSES ADMIN
+# ============================================================
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (value or "").lower()).strip("-")
+    return slug or "cause"
+
+
+def _unique_cause_slug(
+    db: Session,
+    title: str,
+    exclude_id: Optional[int] = None,
+) -> str:
+    base = _slugify(title)
+    slug = base
+    counter = 1
+
+    while True:
+        query = db.query(Cause).filter(Cause.slug == slug)
+        if exclude_id:
+            query = query.filter(Cause.id != exclude_id)
+        if not query.first():
+            return slug
+        counter += 1
+        slug = f"{base}-{counter}"
+
+
+@router.get(
+    "/causes",
+    response_model=List[CauseResponse],
+)
+def get_admin_causes(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    return (
+        db.query(Cause)
+        .order_by(Cause.created_at.desc(), Cause.id.desc())
+        .all()
+    )
+
+
+@router.post(
+    "/causes",
+    response_model=CauseResponse,
+)
+def create_admin_cause(
+    title: str = Form(...),
+    short_description: str = Form(...),
+    category: Optional[str] = Form(None),
+    full_description: Optional[str] = Form(None),
+    target_amount: Optional[float] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    title = title.strip()
+    short_description = (short_description or "").strip()
+
+    if not title:
+        raise HTTPException(400, "Cause title is required")
+    if not short_description:
+        raise HTTPException(400, "Cause short description is required")
+
+    image_url = None
+
+    if file and file.filename:
+        image_url = _upload_image(file, "causes")
+
+    cause = Cause(
+        title=title,
+        slug=_unique_cause_slug(db, title),
+        category=(category or "").strip() or "General",
+        short_description=short_description,
+        full_description=(full_description or "").strip() or None,
+        target_amount=target_amount or 0,
+        raised_amount=0.0,
+        image_url=image_url,
+    )
+
+    db.add(cause)
+    db.commit()
+    db.refresh(cause)
+
+    return cause
+
+
+@router.put(
+    "/causes/{cause_id}",
+    response_model=CauseResponse,
+)
+def update_admin_cause(
+    cause_id: int,
+    title: str = Form(...),
+    short_description: str = Form(...),
+    category: Optional[str] = Form(None),
+    full_description: Optional[str] = Form(None),
+    target_amount: Optional[float] = Form(None),
+    remove_image: bool = Form(False),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    cause = (
+        db.query(Cause)
+        .filter(Cause.id == cause_id)
+        .first()
+    )
+
+    if not cause:
+        raise HTTPException(404, "Cause not found")
+
+    title = title.strip()
+    short_description = (short_description or "").strip()
+
+    if not title:
+        raise HTTPException(400, "Cause title is required")
+    if not short_description:
+        raise HTTPException(400, "Cause short description is required")
+
+    old_image = cause.image_url
+    old_title = cause.title
+
+    cause.title = title
+
+    if title != old_title:
+        cause.slug = _unique_cause_slug(db, title, exclude_id=cause.id)
+
+    cause.category = (category or "").strip() or "General"
+    cause.short_description = short_description
+    cause.full_description = (full_description or "").strip() or None
+    cause.target_amount = target_amount or 0
+
+    if file and file.filename:
+        cause.image_url = _upload_image(file, "causes")
+    elif remove_image:
+        cause.image_url = None
+
+    db.commit()
+    db.refresh(cause)
+
+    if old_image and old_image != cause.image_url:
+        _delete_local_file(old_image)
+        _delete_cloudinary_file(old_image, "image")
+
+    return cause
+
+
+@router.delete("/causes/{cause_id}")
+def delete_admin_cause(
+    cause_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    cause = (
+        db.query(Cause)
+        .filter(Cause.id == cause_id)
+        .first()
+    )
+
+    if not cause:
+        raise HTTPException(404, "Cause not found")
+
+    old_image = cause.image_url
+
+    db.query(Donation).filter(Donation.cause_id == cause.id).update(
+        {Donation.cause_id: None}
+    )
+    db.delete(cause)
+    db.commit()
+
+    _delete_local_file(old_image)
+    _delete_cloudinary_file(old_image, "image")
+
+    return {
+        "message": "Cause deleted"
     }
 
 

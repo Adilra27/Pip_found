@@ -15,6 +15,48 @@ export async function fetchCauses() {
   return res.json();
 }
 
+// ============================================================
+// VISITOR TRACKING
+// ============================================================
+
+const VISITOR_KEY_STORAGE = 'pwf_visitor_key';
+
+function getVisitorKey() {
+  try {
+    let key = localStorage.getItem(VISITOR_KEY_STORAGE);
+
+    if (!key) {
+      key =
+        globalThis.crypto && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `v-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(VISITOR_KEY_STORAGE, key);
+    }
+
+    return key;
+  } catch {
+    return null;
+  }
+}
+
+export async function trackVisit() {
+  const visitorKey = getVisitorKey();
+  if (!visitorKey) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/visits/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_key: visitorKey }),
+    });
+
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function submitContact(data) {
   const res = await fetch(`${API_BASE_URL}/contact`, {
     method: 'POST',
@@ -170,6 +212,10 @@ async function adminFetch(path, options = {}) {
 
 export async function fetchAdminStats() {
   return adminFetch('/admin/stats');
+}
+
+export async function fetchAdminVisits(days = 30, months = 6) {
+  return adminFetch(`/admin/visits?days=${days}&months=${months}`);
 }
 
 export async function fetchAdminVolunteers() {
@@ -365,6 +411,97 @@ export async function updateAdminProject(
 
 export async function deleteAdminProject(id) {
   return adminFetch(`/admin/projects/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+
+// ============================================================
+// ADMIN CAUSES
+// ============================================================
+
+export async function fetchAdminCauses() {
+  return adminFetch('/admin/causes');
+}
+
+export async function createAdminCause({
+  title,
+  category,
+  shortDescription,
+  fullDescription,
+  targetAmount,
+  file,
+}) {
+  const form = new FormData();
+
+  form.append('title', title);
+  form.append('short_description', shortDescription || '');
+
+  if (category) {
+    form.append('category', category);
+  }
+
+  if (fullDescription) {
+    form.append('full_description', fullDescription);
+  }
+
+  if (targetAmount) {
+    form.append('target_amount', String(targetAmount));
+  }
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch('/admin/causes', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function updateAdminCause(
+  id,
+  {
+    title,
+    category,
+    shortDescription,
+    fullDescription,
+    targetAmount,
+    file,
+    removeImage,
+  }
+) {
+  const form = new FormData();
+
+  form.append('title', title);
+  form.append('short_description', shortDescription || '');
+
+  if (category) {
+    form.append('category', category);
+  }
+
+  if (fullDescription) {
+    form.append('full_description', fullDescription);
+  }
+
+  if (targetAmount) {
+    form.append('target_amount', String(targetAmount));
+  }
+
+  form.append('remove_image', String(Boolean(removeImage)));
+
+  if (file) {
+    form.append('file', file);
+  }
+
+  return adminFetch(`/admin/causes/${id}`, {
+    method: 'PUT',
+    body: form,
+  });
+}
+
+export async function deleteAdminCause(id) {
+  return adminFetch(`/admin/causes/${id}`, {
     method: 'DELETE',
   });
 }

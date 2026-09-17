@@ -398,7 +398,7 @@
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  min-width: 920px;
+  min-width: 760px;
 }
 
 .adm-table thead th {
@@ -437,6 +437,11 @@
   white-space: nowrap;
 }
 
+.adm-recipient {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
 .adm-sub {
   font-size: 0.74rem;
   color: #94a3b8;
@@ -445,6 +450,48 @@
 
 .adm-sub-sent {
   color: #047857;
+}
+
+/* ---- Type pills --------------------------------------------------- */
+.adm-pill-kind {
+  padding: 0.18rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.adm-pill-kind::before {
+  display: none;
+}
+
+.adm-pill-blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.adm-pill-violet {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.adm-pill-emerald {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.adm-pill-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.adm-pill-cyan {
+  background: #cffafe;
+  color: #0e7490;
+}
+
+.adm-pill-slate {
+  background: #e2e8f0;
+  color: #475569;
 }
 
 /* ---- Status pills ------------------------------------------------ */
@@ -489,7 +536,8 @@
 .adm-actions {
   display: flex;
   gap: 0.4rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
 }
 
 .adm-action {
@@ -528,6 +576,65 @@
 }
 
 .adm-action-danger:hover:not(:disabled) {
+  border-color: #fca5a5;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+/* ---- Icon-only action buttons -------------------------------------- */
+.adm-icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.adm-icon-btn:hover:not(:disabled) {
+  border-color: var(--brand-green);
+  color: #047857;
+  background: #f0fdf4;
+}
+
+.adm-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.adm-icon-btn-blue:hover:not(:disabled) {
+  border-color: #60a5fa;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.adm-icon-btn-email:hover:not(:disabled) {
+  border-color: #34d399;
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.adm-icon-btn-verify:hover:not(:disabled) {
+  border-color: #a78bfa;
+  color: #6d28d9;
+  background: #f5f3ff;
+}
+
+.adm-icon-btn-danger {
+  color: #b91c1c;
+}
+
+.adm-icon-btn-danger:hover:not(:disabled) {
   border-color: #fca5a5;
   color: #b91c1c;
   background: #fef2f2;

@@ -67,24 +67,32 @@ function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
-function formatDateTime(value) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 function StatusBadge({ status }) {
   const valid = status === 'valid';
   return (
     <span className={`adm-pill ${valid ? 'adm-pill-valid' : 'adm-pill-revoked'}`}>
       {valid ? 'Valid' : 'Revoked'}
+    </span>
+  );
+}
+
+const TYPE_PILLS = {
+  appreciation: 'adm-pill-blue',
+  internship: 'adm-pill-violet',
+  completion: 'adm-pill-emerald',
+  participation: 'adm-pill-amber',
+  volunteer: 'adm-pill-cyan',
+  certificate: 'adm-pill-slate',
+};
+
+function TypePill({ label }) {
+  const cls =
+    TYPE_PILLS[String(label).toLowerCase()] ||
+    'adm-pill-slate';
+
+  return (
+    <span className={`adm-pill adm-pill-kind ${cls}`}>
+      {label}
     </span>
   );
 }
@@ -295,45 +303,46 @@ export default function CertificateHistory() {
             <table className="adm-table">
               <thead>
                 <tr>
-                  <th>Certificate Number</th>
-                  <th>Recipient Name</th>
-                  <th>Certificate Type</th>
+                  <th>Certificate</th>
+                  <th>Recipient</th>
                   <th>Program</th>
                   <th>Issue Date</th>
-                  <th>Email</th>
                   <th>Status</th>
-                  <th>Created At</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {data.items.map((row) => (
                   <tr key={`${row.kind}-${row.record_id}`}>
-                    <td className="adm-num">{row.document_number}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{row.recipient_name}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{row.type_label}</td>
+                    <td className="adm-num">
+                      <div>{row.document_number}</div>
+                      <div className="adm-sub" style={{ marginTop: '0.25rem' }}>
+                        <TypePill label={row.type_label} />
+                      </div>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <div className="adm-recipient">{row.recipient_name}</div>
+                      {row.email ? (
+                        <div className={`adm-sub ${row.email_sent ? 'adm-sub-sent' : ''}`}>
+                          {row.email_sent ? '✓ Email sent' : 'Email not sent'}
+                        </div>
+                      ) : (
+                        <div className="adm-sub">No email on record</div>
+                      )}
+                    </td>
                     <td>{row.program || '—'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <b>{formatDate(row.issue_date)}</b>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      {row.email || '—'}
-                      {row.email ? (
-                        <div className={`adm-sub ${row.email_sent ? 'adm-sub-sent' : ''}`}>
-                          {row.email_sent ? 'Email sent' : 'Email not sent'}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
                       <StatusBadge status={row.status} />
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(row.created_at)}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td>
                       <div className="adm-actions">
                         <button
                           type="button"
                           title="View PDF"
-                          className="adm-action"
+                          className="adm-icon-btn"
                           onClick={() => openPdf(row)}
                           disabled={busy === `view-${row.record_id}`}
                         >
@@ -342,12 +351,11 @@ export default function CertificateHistory() {
                           ) : (
                             <Eye size={14} />
                           )}
-                          View
                         </button>
                         <button
                           type="button"
                           title="Download PDF"
-                          className="adm-action"
+                          className="adm-icon-btn adm-icon-btn-blue"
                           onClick={() => downloadPdf(row)}
                           disabled={busy === `download-${row.record_id}`}
                         >
@@ -356,12 +364,11 @@ export default function CertificateHistory() {
                           ) : (
                             <Download size={14} />
                           )}
-                          Download
                         </button>
                         <button
                           type="button"
                           title={row.email ? 'Email the official PDF to the recipient' : 'No recipient email on this record'}
-                          className="adm-action"
+                          className="adm-icon-btn adm-icon-btn-email"
                           onClick={() => sendEmail(row)}
                           disabled={busy === `send-${row.record_id}` || !row.email}
                         >
@@ -370,7 +377,6 @@ export default function CertificateHistory() {
                           ) : (
                             <Mail size={14} />
                           )}
-                          {row.email_sent ? 'Resend Email' : 'Send Email'}
                         </button>
                         {row.verified_url ? (
                           <a
@@ -378,20 +384,24 @@ export default function CertificateHistory() {
                             target="_blank"
                             rel="noreferrer"
                             title="Open public verify page"
-                            className="adm-action"
+                            className="adm-icon-btn adm-icon-btn-verify"
                           >
-                            <BadgeCheck size={14} /> Verify
+                            <BadgeCheck size={14} />
                           </a>
                         ) : null}
                         {row.status === 'valid' ? (
                           <button
                             type="button"
                             title="Revoke"
-                            className="adm-action adm-action-danger"
+                            className="adm-icon-btn adm-icon-btn-danger"
                             onClick={() => revoke(row)}
                             disabled={busy === `revoke-${row.record_id}`}
                           >
-                            <ShieldX size={14} /> Revoke
+                            {busy === `revoke-${row.record_id}` ? (
+                              <Loader2 size={14} className="spin" />
+                            ) : (
+                              <ShieldX size={14} />
+                            )}
                           </button>
                         ) : null}
                       </div>

@@ -22,7 +22,7 @@ import VerifyCertificate from './pages/VerifyCertificate';
 import VerifyVolunteer from './pages/VerifyVolunteer';
 
 
-import { fetchCauses } from './api';
+import { fetchCauses, trackVisit } from './api';
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
@@ -47,6 +47,8 @@ export default function App() {
     fetchCauses()
       .then((data) => setCauses(data))
       .catch((err) => console.error(err));
+
+    trackVisit();
   }, []);
 
   const handleOpenDonate = (cause = null) => {

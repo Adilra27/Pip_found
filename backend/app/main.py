@@ -27,6 +27,7 @@ from .routes import (
     media,
     team,
     verify,
+    visits,
     volunteers,
 )
 
@@ -657,6 +658,11 @@ app.include_router(
 app.include_router(
     verify.router,
     tags=["Verify"],
+)
+
+app.include_router(
+    visits.router,
+    tags=["Visits"],
 )
 
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -443,3 +443,21 @@ class ImpactMetric(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+
+
+class SiteVisit(Base):
+    """One row per unique visitor per day (used for the admin visitor counter)."""
+
+    __tablename__ = "site_visits"
+    __table_args__ = (
+        UniqueConstraint(
+            "visitor_key",
+            "visit_date",
+            name="uq_site_visits_visitor_key_date",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    visitor_key = Column(String(100), nullable=False, index=True)
+    visit_date = Column(Date, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

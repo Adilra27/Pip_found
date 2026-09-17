@@ -6,6 +6,7 @@ import CertificateHistory from '../components/admin/CertificateHistory';
 import {
   BadgeCheck,
   CalendarDays,
+  HandHeart,
   History,
   Image as ImageIcon,
   LogIn,
@@ -37,11 +38,13 @@ import {
 
 import {
   clearAdminCredentials,
+  createAdminCause,
   createAdminCertificate,
   createAdminFooterFocus,
   createAdminMentor,
   createAdminProject,
   createAdminTeamMember,
+  deleteAdminCause,
   deleteAdminCertificate,
   deleteAdminFooterFocus,
   deleteAdminGalleryImage,
@@ -50,6 +53,7 @@ import {
   deleteAdminTeamMember,
   deleteAdminVideo,
   deleteContactInquiry,
+  fetchAdminCauses,
   fetchAdminCertificates,
   fetchAdminFounder,
   fetchAdminFooterFocus,
@@ -57,6 +61,7 @@ import {
   fetchAdminMentors,
   fetchAdminProjects,
   fetchAdminStats,
+  fetchAdminVisits,
   fetchAdminTeam,
   fetchAdminTeamCard,
   fetchAdminVideos,
@@ -70,6 +75,7 @@ import {
   resolveMediaUrl,
   sendAdminTeamCard,
   setAdminCredentials,
+  updateAdminCause,
   updateAdminCertificate,
   updateAdminFounder,
   updateAdminFooterFocus,
@@ -118,6 +124,15 @@ const emptyProjectForm = {
 const emptyCertificateForm = {
   title: '',
   description: '',
+  file: null,
+};
+
+const emptyCauseForm = {
+  title: '',
+  category: '',
+  shortDescription: '',
+  fullDescription: '',
+  targetAmount: '',
   file: null,
 };
 
@@ -2570,6 +2585,1112 @@ function ProjectManager({
 
 
 // ============================================================
+// VISITOR STATS
+// ============================================================
+
+function MiniStat({ label, value, sub, icon }) {
+  return (
+    <div
+      className="card"
+      style={{
+        padding: '1.1rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '.25rem',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '.5rem',
+          color: '#64748b',
+          fontSize: '.82rem',
+          fontWeight: 600,
+        }}
+      >
+        {icon}
+        {label}
+      </div>
+
+      <strong
+        style={{
+          fontSize: '1.5rem',
+          color: '#0f172a',
+          lineHeight: 1.2,
+        }}
+      >
+        {value}
+      </strong>
+
+      {sub && (
+        <span
+          style={{
+            color: '#059669',
+            fontSize: '.78rem',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {sub}
+        </span>
+      )}
+    </div>
+  );
+}
+
+
+function VerticalBars({
+  data,
+  height = 190,
+  labelStep = 1,
+}) {
+  if (!data || data.length === 0) {
+    return (
+      <p
+        style={{
+          color: '#64748b',
+        }}
+      >
+        No data yet.
+      </p>
+    );
+  }
+
+  const max = Math.max(
+    1,
+    ...data.map((d) => d.value)
+  );
+
+  const showValue = data.length <= 14;
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 4,
+          height,
+        }}
+      >
+        {data.map((d, i) => {
+          const pct = Math.round(
+            (d.value / max) * 100
+          );
+
+          return (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+              }}
+              title={`${
+                d.tooltip || d.label
+              }: ${d.value}`}
+            >
+              {showValue &&
+                d.value > 0 && (
+                  <span
+                    style={{
+                      fontSize: '.62rem',
+                      color: '#059669',
+                      fontWeight: 800,
+                      marginBottom: 3,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {d.value}
+                  </span>
+                )}
+
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: 38,
+                  height: `${pct}%`,
+                  minHeight:
+                    d.value > 0 ? 3 : 0,
+                  borderRadius:
+                    '4px 4px 0 0',
+                  background:
+                    d.value > 0
+                      ? 'linear-gradient(180deg, #34d399 0%, #059669 100%)'
+                      : 'transparent',
+                  boxShadow:
+                    d.value > 0
+                      ? '0 1px 3px rgba(5,150,105,.25)'
+                      : 'none',
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 4,
+          marginTop: 5,
+        }}
+      >
+        {data.map((d, i) => {
+          const show =
+            i % labelStep === 0 ||
+            i === data.length - 1;
+
+          return (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                fontSize: '.62rem',
+                color: '#64748b',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {show ? d.label : ''}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
+function VisitorStats() {
+  const [daily, setDaily] =
+    useState([]);
+
+  const [monthly, setMonthly] =
+    useState([]);
+
+  const [total, setTotal] =
+    useState(0);
+
+  const [range, setRange] =
+    useState(14);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState('');
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      const data =
+        await fetchAdminVisits(
+          range
+        );
+
+      setDaily(data.daily || []);
+      setMonthly(data.monthly || []);
+
+      setTotal(
+        data.total_visitors || 0
+      );
+
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range]);
+
+  const label = (value) => {
+    const [y, m, d] = value
+      .split('-')
+      .map(Number);
+
+    return new Date(
+      y,
+      m - 1,
+      d
+    ).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const today =
+    daily.length > 0
+      ? daily[daily.length - 1].count
+      : 0;
+
+  const lastWeek = daily
+    .slice(-7)
+    .reduce((sum, d) => sum + d.count, 0);
+
+  const busiest = daily.reduce(
+    (acc, d) =>
+      d.count > acc.count
+        ? d
+        : acc,
+    { count: 0, date: null }
+  );
+
+  const dailyBars = daily.map(
+    (d) => {
+      const [y, m, dd] = d.date
+        .split('-')
+        .map(Number);
+
+      return {
+        label: String(dd),
+        tooltip: `${dd}/${m}/${y}`,
+        value: d.count,
+      };
+    }
+  );
+
+  const monthlyBars = monthly.map(
+    (m) => {
+      const [y, mm] = m.month
+        .split('-')
+        .map(Number);
+
+      const dt = new Date(y, mm - 1, 1);
+
+      return {
+        label: dt.toLocaleDateString(
+          'en-IN',
+          { month: 'short' }
+        ),
+        tooltip: dt.toLocaleDateString(
+          'en-IN',
+          {
+            month: 'long',
+            year: 'numeric',
+          }
+        ),
+        value: m.count,
+      };
+    }
+  );
+
+  const dayLabelStep =
+    range >= 30
+      ? 5
+      : range === 14
+      ? 2
+      : 1;
+
+  const tableStyle = {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '.9rem',
+  };
+
+  const thStyle = {
+    textAlign: 'left',
+    padding: '.5rem .75rem',
+    borderBottom: '2px solid #e2e8f0',
+    color: '#475569',
+    fontSize: '.78rem',
+    textTransform: 'uppercase',
+    letterSpacing: '.03em',
+  };
+
+  const tdStyle = {
+    padding: '.5rem .75rem',
+    borderBottom: '1px solid #f1f5f9',
+    color: '#0f172a',
+  };
+
+  const scrollStyle = {
+    maxHeight: 280,
+    overflowY: 'auto',
+  };
+
+  return (
+    <ManagerSection
+      title="Visitor Analytics"
+      icon={<Eye size={22} />}
+    >
+      <ErrorMessage
+        message={error}
+      />
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent:
+            'space-between',
+          gap: '.75rem',
+          flexWrap: 'wrap',
+          marginBottom: '1.25rem',
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            color: '#475569',
+          }}
+        >
+          Track how many people visit the
+          website, day by day.
+        </p>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '.5rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          {[7, 14, 30].map(
+            (days) => (
+              <button
+                key={days}
+                className="btn"
+                onClick={() =>
+                  setRange(days)
+                }
+                style={{
+                  ...outlineButton,
+                  background:
+                    range === days
+                      ? '#059669'
+                      : 'transparent',
+                  color:
+                    range === days
+                      ? '#ffffff'
+                      : '#059669',
+                  borderColor:
+                    '#059669',
+                }}
+              >
+                Last {days} days
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* =====================================================
+          SUMMARY CARDS
+          ===================================================== */}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns:
+            'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1.5rem',
+        }}
+      >
+        <MiniStat
+          label="Visitors Today"
+          value={today}
+          icon={<Eye size={16} />}
+        />
+
+        <MiniStat
+          label="This Week"
+          value={lastWeek}
+          icon={<CalendarDays size={16} />}
+        />
+
+        <MiniStat
+          label="Total Visitors"
+          value={total.toLocaleString(
+            'en-IN'
+          )}
+          icon={<Users size={16} />}
+        />
+
+        <MiniStat
+          label="Busiest Day"
+          value={busiest.count}
+          sub={
+            busiest.date
+              ? label(busiest.date)
+              : 'No visits yet'
+          }
+          icon={<BarChart3 size={16} />}
+        />
+      </div>
+
+      {/* =====================================================
+          CHARTS
+          ===================================================== */}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns:
+            'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: '1.5rem',
+        }}
+      >
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent:
+                'space-between',
+              gap: '.5rem',
+              marginBottom: '.9rem',
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: '1.05rem',
+              }}
+            >
+              Daily Visitors
+            </h3>
+
+            <span className="badge badge-green">
+              Last {range} days
+            </span>
+          </div>
+
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <VerticalBars
+              data={dailyBars}
+              height={190}
+              labelStep={dayLabelStep}
+            />
+          )}
+        </div>
+
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent:
+                'space-between',
+              gap: '.5rem',
+              marginBottom: '.9rem',
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: '1.05rem',
+              }}
+            >
+              Monthly Visitors
+            </h3>
+
+            <span className="badge badge-green">
+              Trend
+            </span>
+          </div>
+
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <VerticalBars
+              data={monthlyBars}
+              height={190}
+              labelStep={1}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* =====================================================
+          DETAIL TABLES
+          ===================================================== */}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns:
+            'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: '1.5rem',
+          marginTop: '1.5rem',
+        }}
+      >
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem',
+          }}
+        >
+          <h3
+            style={{
+              margin: '0 0 .75rem',
+              fontSize: '1.05rem',
+            }}
+          >
+            Day-wise Detail
+          </h3>
+
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <div style={scrollStyle}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>
+                      Date
+                    </th>
+                    <th
+                      style={{
+                        ...thStyle,
+                        textAlign: 'right',
+                      }}
+                    >
+                      Visitors
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {daily
+                    .slice()
+                    .reverse()
+                    .map((item) => (
+                      <tr key={item.date}>
+                        <td style={tdStyle}>
+                          {label(
+                            item.date
+                          )}
+                        </td>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            textAlign: 'right',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {item.count}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem',
+          }}
+        >
+          <h3
+            style={{
+              margin: '0 0 .75rem',
+              fontSize: '1.05rem',
+            }}
+          >
+            Month-wise Detail
+          </h3>
+
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <div style={scrollStyle}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>
+                      Month
+                    </th>
+                    <th
+                      style={{
+                        ...thStyle,
+                        textAlign: 'right',
+                      }}
+                    >
+                      Visitors
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthly
+                    .slice()
+                    .reverse()
+                    .map((item) => (
+                      <tr key={item.month}>
+                        <td style={tdStyle}>
+                          {label(
+                            `${item.month}-01`
+                          )}
+                        </td>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            textAlign: 'right',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {item.count}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
+// CAUSE MANAGER
+// ============================================================
+
+function CauseManager({ refreshAll }) {
+  const [items, setItems] =
+    useState([]);
+
+  const [form, setForm] =
+    useState(emptyCauseForm);
+
+  const [editingId, setEditingId] =
+    useState(null);
+
+  const [removeImage, setRemoveImage] =
+    useState(false);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [error, setError] =
+    useState('');
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const pageSize = 6;
+
+  const [page, setPage] =
+    useState(1);
+
+  const currentPage = Math.min(
+    page,
+    Math.max(
+      1,
+      Math.ceil(
+        items.length / pageSize
+      )
+    )
+  );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      items.length / pageSize
+    )
+  );
+
+  const pageItems = items.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  async function load() {
+    setLoading(true);
+
+    try {
+      setItems(
+        await fetchAdminCauses()
+      );
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function reset() {
+    setForm(emptyCauseForm);
+    setEditingId(null);
+    setRemoveImage(false);
+  }
+
+  function edit(item) {
+    setEditingId(item.id);
+    setRemoveImage(false);
+
+    setForm({
+      title: item.title,
+      category: item.category || '',
+      shortDescription:
+        item.short_description || '',
+      fullDescription:
+        item.full_description || '',
+      targetAmount:
+        item.target_amount != null
+          ? String(item.target_amount)
+          : '',
+      file: null,
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+
+    setError('');
+    setSaving(true);
+
+    try {
+      if (editingId) {
+        await updateAdminCause(
+          editingId,
+          {
+            ...form,
+            removeImage,
+          }
+        );
+      } else {
+        await createAdminCause(
+          form
+        );
+      }
+
+      reset();
+
+      await load();
+
+      refreshAll();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id) {
+    if (
+      !window.confirm(
+        'Delete this cause?'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await deleteAdminCause(id);
+
+      await load();
+
+      refreshAll();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  return (
+    <ManagerSection
+      title="Welfare Causes"
+      icon={<HandHeart size={22} />}
+    >
+      <ErrorMessage
+        message={error}
+      />
+
+      <form
+        onSubmit={submit}
+        style={formGridStyle}
+      >
+        <input
+          placeholder="Cause title"
+          value={form.title}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              title: e.target.value,
+            })
+          }
+          required
+          style={inputStyle}
+        />
+
+        <input
+          placeholder="Category (e.g. Healthcare)"
+          value={form.category}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              category: e.target.value,
+            })
+          }
+          style={inputStyle}
+        />
+
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Target amount (₹)"
+          value={form.targetAmount}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              targetAmount:
+                e.target.value,
+            })
+          }
+          style={inputStyle}
+        />
+
+        <textarea
+          placeholder="Short description (shown on cards)"
+          value={form.shortDescription}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              shortDescription:
+                e.target.value,
+            })
+          }
+          required
+          style={textareaStyle}
+        />
+
+        <textarea
+          placeholder="Full description (optional)"
+          value={form.fullDescription}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              fullDescription:
+                e.target.value,
+            })
+          }
+          style={textareaStyle}
+        />
+
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={(e) =>
+            setForm({
+              ...form,
+              file:
+                e.target.files?.[0] ||
+                null,
+            })
+          }
+          style={inputStyle}
+        />
+
+        {editingId && (
+          <label
+            style={{
+              display: 'flex',
+              gap: '.5rem',
+              alignItems:
+                'center',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={removeImage}
+              onChange={(e) =>
+                setRemoveImage(
+                  e.target.checked
+                )
+              }
+            />
+
+            Remove current image
+          </label>
+        )}
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '.75rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <button
+            className="btn"
+            disabled={saving}
+            style={primaryButton}
+          >
+            {saving
+              ? 'Saving...'
+              : editingId
+              ? 'Update Cause'
+              : 'Add Cause'}
+          </button>
+
+          {editingId && (
+            <button
+              type="button"
+              className="btn"
+              onClick={reset}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </form>
+
+      <div style={managerGrid}>
+        {loading ? (
+          <p>Loading...</p>
+        ) : items.length === 0 ? (
+          <p
+            style={{
+              color: '#64748b',
+            }}
+          >
+            No causes yet.
+          </p>
+        ) : (
+          pageItems.map((item) => (
+            <article
+              key={item.id}
+              className="card"
+              style={{
+                overflow: 'hidden',
+              }}
+            >
+              {item.image_url && (
+                <img
+                  src={resolveMediaUrl(
+                    item.image_url
+                  )}
+                  alt={item.title}
+                  style={{
+                    width: '100%',
+                    height: 180,
+                    objectFit: 'cover',
+                  }}
+                />
+              )}
+
+              <div
+                style={{
+                  padding: '1rem',
+                }}
+              >
+                {item.category && (
+                  <span className="badge badge-green">
+                    {item.category}
+                  </span>
+                )}
+
+                <h3
+                  style={{
+                    margin: '.5rem 0',
+                  }}
+                >
+                  {item.title}
+                </h3>
+
+                <p
+                  style={{
+                    color: '#64748b',
+                  }}
+                >
+                  {item.short_description}
+                </p>
+
+                <p
+                  style={{
+                    color: '#475569',
+                  }}
+                >
+                  ₹{(item.target_amount || 0).toLocaleString('en-IN')} goal
+                  {' · '}
+                  ₹{(item.raised_amount || 0).toLocaleString('en-IN')} raised
+                </p>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '.5rem',
+                  }}
+                >
+                  <button
+                    className="btn"
+                    onClick={() =>
+                      edit(item)
+                    }
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      remove(item.id)
+                    }
+                    className="btn"
+                    style={dangerButton}
+                  >
+                    <Trash2 size={15} />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        onPage={setPage}
+      />
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
 // TEAM MANAGER
 // ============================================================
 
@@ -4032,6 +5153,11 @@ export default function Admin() {
       LayoutDashboard,
     ],
     [
+      'visitors',
+      'Visitors',
+      Eye,
+    ],
+    [
       'donations',
       'Donations',
       Heart,
@@ -4055,6 +5181,11 @@ export default function Admin() {
       'projects',
       'Upcoming Projects',
       CalendarDays,
+    ],
+    [
+      'causes',
+      'Causes',
+      HandHeart,
     ],
     [
       'team',
@@ -4305,6 +5436,39 @@ export default function Admin() {
                     0
                   }
                 />
+
+                <Stat
+                  icon={
+                    <Eye />
+                  }
+                  label="Visitors Today"
+                  value={
+                    stats?.visitors_today ||
+                    0
+                  }
+                />
+
+                <Stat
+                  icon={
+                    <CalendarDays />
+                  }
+                  label="Visitors This Week"
+                  value={
+                    stats?.visitors_this_week ||
+                    0
+                  }
+                />
+
+                <Stat
+                  icon={
+                    <BarChart3 />
+                  }
+                  label="Total Visitors"
+                  value={
+                    stats?.total_visitors ||
+                    0
+                  }
+                />
               </div>
 
               <div
@@ -4355,6 +5519,10 @@ export default function Admin() {
             <DonationManager />
           )}
 
+          {tab === 'visitors' && (
+            <VisitorStats />
+          )}
+
           {tab === 'videos' && (
             <VideoManager
               refreshAll={
@@ -4365,6 +5533,14 @@ export default function Admin() {
 
           {tab === 'projects' && (
             <ProjectManager
+              refreshAll={
+                loadDashboard
+              }
+            />
+          )}
+
+          {tab === 'causes' && (
+            <CauseManager
               refreshAll={
                 loadDashboard
               }
