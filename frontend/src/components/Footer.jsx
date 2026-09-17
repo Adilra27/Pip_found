@@ -103,7 +103,7 @@ export default function Footer({ onOpenDonate }) {
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <Phone size={18} color="#10b981" style={{ flexShrink: 0 }} />
-                <span>+91-9876543210</span>
+                <span>+91-8981266033</span>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <Mail size={18} color="#10b981" style={{ flexShrink: 0 }} />

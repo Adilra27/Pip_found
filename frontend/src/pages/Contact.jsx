@@ -91,7 +91,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 style={{ fontWeight: 700, color: '#0f172a' }}>Helpline & WhatsApp</h4>
-                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>+91-9876543210</p>
+                  <p style={{ color: '#64748b', fontSize: '0.95rem' }}>+91-8981266033</p>
                 </div>
               </div>
 

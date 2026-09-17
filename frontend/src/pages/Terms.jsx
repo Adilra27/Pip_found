@@ -36,7 +36,7 @@ export default function Terms() {
 
             <h2 className="heading-md" style={{ marginBottom: '1rem', color: '#0f172a' }}>4. Cancellation Policy</h2>
             <p>
-              Recurring or monthly pledges can be paused or cancelled at any time by sending a request to our support helpline at <strong>+91-9876543210</strong> or emailing support.
+              Recurring or monthly pledges can be paused or cancelled at any time by sending a request to our support helpline at <strong>+91-8981266033</strong> or emailing support.
             </p>
           </div>
         </div>
