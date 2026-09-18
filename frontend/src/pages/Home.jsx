@@ -22,6 +22,7 @@ import {
   fetchBlogPosts,
   fetchCauses,
   fetchCertificates,
+  fetchHomeSlides,
   fetchPublicImpact,
   fetchUpcomingProjects,
   resolveMediaUrl,
@@ -29,38 +30,8 @@ import {
 import CauseCard from '../components/CauseCard';
 import { impactAreasData, whoWeAreData } from '../data/aboutdata';
 import { partnerData } from '../data/partnerData';
+import { defaultHeroSlides as heroSlides } from '../data/heroSlides';
 import '../styles/home.css';
-
-const heroSlides = [
-  {
-    eyebrow: 'Education for All',
-    title: 'Empowering Minds,',
-    highlight: 'Illuminating Futures',
-    text: 'Creating accessible learning opportunities for children, educators and rural communities through technology-enabled education.',
-    image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&q=85&w=1400',
-  },
-  {
-    eyebrow: 'Food for All',
-    title: 'Nourishing Hope,',
-    highlight: 'One Meal at a Time',
-    text: 'Supporting vulnerable families and communities with food assistance, community meals and dignity-centered welfare initiatives.',
-    image: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=85&w=1400',
-  },
-  {
-    eyebrow: 'Grow Green, Live Clean',
-    title: "Together, Let's Plant",
-    highlight: 'the Seeds for Tomorrow',
-    text: 'Building greener and more resilient communities through tree plantation, climate action, sustainable agriculture and conservation.',
-    image: 'https://images.unsplash.com/photo-1497250681960-ef046c08a56e?auto=format&fit=crop&q=85&w=1400',
-  },
-  {
-    eyebrow: 'Swift Aid, Strong Hope',
-    title: 'Every Second',
-    highlight: 'Saves a Life',
-    text: 'Standing with communities during emergencies through rapid relief, preparedness and resilient local support systems.',
-    image: 'https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&q=85&w=1400',
-  },
-];
 
 const programIcons = [
   BookOpen,
@@ -102,19 +73,22 @@ function truncate(text, length = 150) {
 
 export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
   const [slide, setSlide] = useState(0);
+  const [slides, setSlides] = useState([]);
   const [causes, setCauses] = useState([]);
   const [blogs, setBlogs] = useState([]);
   const [projects, setProjects] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [impact, setImpact] = useState(null);
-  const [loading, setLoading] = useState({ causes: true, blogs: true, projects: true, certificates: true, impact: true });
+  const [loading, setLoading] = useState({ slides: true, causes: true, blogs: true, projects: true, certificates: true, impact: true });
+
+  const activeSlides = slides.length > 0 ? slides : heroSlides;
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setSlide((current) => (current + 1) % heroSlides.length);
+      setSlide((current) => (current + 1) % activeSlides.length);
     }, 6000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [activeSlides.length]);
 
   useEffect(() => {
     let mounted = true;
@@ -131,6 +105,12 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
       }
     };
 
+    load('slides', fetchHomeSlides, (data) =>
+      setSlides(data.map((slide) => ({
+        ...slide,
+        image: slide.image_url ? resolveMediaUrl(slide.image_url) : '',
+      })))
+    );
     load('causes', fetchCauses, setCauses);
     load('blogs', fetchBlogPosts, setBlogs);
     load('projects', fetchUpcomingProjects, setProjects);
@@ -153,7 +133,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
     };
   }, []);
 
-  const activeSlide = heroSlides[slide];
+  const activeSlide = activeSlides[Math.min(slide, activeSlides.length - 1)];
   const featuredBlogs = useMemo(() => blogs.slice(0, 4), [blogs]);
   const featuredCertificates = useMemo(() => certificates.slice(0, 6), [certificates]);
   const featuredProjects = useMemo(() => projects.slice(0, 3), [projects]);
@@ -213,13 +193,13 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
         </div>
 
         <div className="home-hero-controls container">
-          <button type="button" aria-label="Previous slide" onClick={() => setSlide((slide - 1 + heroSlides.length) % heroSlides.length)}>
+          <button type="button" aria-label="Previous slide" onClick={() => setSlide((slide - 1 + activeSlides.length) % activeSlides.length)}>
             <ChevronLeft size={20} />
           </button>
           <div className="home-hero-dots">
-            {heroSlides.map((item, index) => (
+            {activeSlides.map((item, index) => (
               <button
-                key={item.eyebrow}
+                key={item.id ?? item.eyebrow}
                 type="button"
                 aria-label={`Go to slide ${index + 1}`}
                 className={index === slide ? 'active' : ''}
@@ -227,7 +207,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
               />
             ))}
           </div>
-          <button type="button" aria-label="Next slide" onClick={() => setSlide((slide + 1) % heroSlides.length)}>
+          <button type="button" aria-label="Next slide" onClick={() => setSlide((slide + 1) % activeSlides.length)}>
             <ChevronRight size={20} />
           </button>
         </div>

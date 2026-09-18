@@ -494,3 +494,28 @@ class SiteSetting(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+
+
+class HomeSlide(Base):
+    """Home-page hero slider slide, editable by the admin.
+
+    When no slides are configured the frontend falls back to its built-in
+    defaults, so the homepage keeps rendering correctly out of the box.
+    """
+
+    __tablename__ = "home_slides"
+
+    id = Column(Integer, primary_key=True, index=True)
+    eyebrow = Column(String(255), nullable=True, default="")
+    title = Column(String(255), nullable=False)
+    highlight = Column(String(255), nullable=True, default="")
+    text = Column(Text, nullable=True, default="")
+    image_url = Column(String(500), nullable=True)
+    display_order = Column(Integer, nullable=False, default=0, index=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )

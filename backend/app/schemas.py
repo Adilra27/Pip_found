@@ -522,3 +522,22 @@ class VerifiedVolunteerResponse(BaseModel):
     issue_date: Optional[date] = None
     valid_till: Optional[date] = None
     issued_by: str = "Piplad Welfare Foundation"
+
+
+# ============================================================
+# HOME PAGE HERO SLIDES
+# ============================================================
+
+class HomeSlideResponse(BaseModel):
+    id: int
+    eyebrow: Optional[str] = None
+    title: str
+    highlight: Optional[str] = None
+    text: Optional[str] = None
+    image_url: Optional[str] = None
+    display_order: int = 0
+    is_active: bool = True
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)

@@ -14,6 +14,7 @@ export const partnerData = [
   {
     slug: 'transport-corporation-of-india',
     galleryCategory: 'TCI Partner',
+    logo: '/logos/tci-logo.jpeg',
     short: 'TCI',
     name: 'Transport Corporation of India',
     description:

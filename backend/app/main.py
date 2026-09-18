@@ -23,6 +23,7 @@ from .routes import (
     contact,
     donation,
     generation,
+    home,
     impact,
     media,
     settings,
@@ -671,6 +672,11 @@ app.include_router(
     tags=["Settings"],
 )
 
+app.include_router(
+    home.router,
+    tags=["Home"],
+)
+
 
 # ============================================================
 # ROOT ENDPOINT
@@ -736,6 +742,12 @@ MEDIA_DIR.mkdir(
 
 # About page founder / mentor photos.
 (MEDIA_DIR / "about").mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+# Home-page hero slide uploads.
+(MEDIA_DIR / "home").mkdir(
     parents=True,
     exist_ok=True,
 )

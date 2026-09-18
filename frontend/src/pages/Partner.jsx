@@ -176,6 +176,80 @@ export default function Partner() {
         </section>
       )}
 
+      {partner.slug === 'transport-corporation-of-india' && (
+        <section className="section-padding" style={{ background: '#fff' }}>
+          <div className="container" style={{ maxWidth: 920 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
+              <Building2 size={24} color="#059669" />
+              <span className="home-eyebrow" style={{ color: '#65a30d', margin: 0 }}>About Our Partner</span>
+            </div>
+            <h2 style={{ margin: '0 0 1.25rem' }}>Who is Transport Corporation of India</h2>
+            <div className="partner-logo-row">
+              <div className="partner-logo-box">
+                <img
+                  src="/logos/tci-logo.jpeg"
+                  alt="Transport Corporation of India logo"
+                  className="partner-logo-img"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+                <span className="partner-logo-fallback">{partner.short}</span>
+              </div>
+            </div>
+            <p style={{ color: '#475569', lineHeight: 1.8, margin: '0 0 2rem' }}>
+              Transport Corporation of India (TCI) is one of the country's largest integrated logistics and
+              supply-chain companies, with a legacy of moving goods and connecting communities across India for
+              over seven decades. Beyond its business of freight, supply chain and warehousing, TCI believes in
+              building skills and creating dignified livelihood opportunities — especially for rural learners
+              who are eager to enter the fast-growing logistics and supply-chain sector.
+            </p>
+
+            <div className="partner-info-grid">
+              <article className="card partner-detail-card">
+                <GraduationCap size={26} color="#65a30d" />
+                <h2>How They Help People</h2>
+                <p>
+                  TCI brings industry-aligned vocational training, hands-on apprenticeships and structured
+                  skilling programs to rural learners. Through our partnership, young people gain practical
+                  exposure to warehousing, freight documentation, safety standards, transport operations and
+                  the digital tools that power modern supply chains — giving them job-ready skills that
+                  employers actually look for.
+                </p>
+              </article>
+              <article className="card partner-detail-card">
+                <HeartPulse size={26} color="#65a30d" />
+                <h2>Impact That Reaches People</h2>
+                <p>
+                  Trainees move from classrooms directly into placement pathways with logistics companies and
+                  nearby industries. Young people from villages who once had few local employment options now
+                  enter formal careers with structured growth, safe working conditions and steady income,
+                  while entire families benefit from a whole new industry opening up to them.
+                </p>
+              </article>
+              <article className="card partner-detail-card">
+                <HandCoins size={26} color="#65a30d" />
+                <h2>Our Community Commitment</h2>
+                <p>
+                  TCI's support reflects a conviction that business growth and community well-being can go hand
+                  in hand. Their skills-first approach roots development in local aspiration, pairing training
+                  with real employment — so opportunity is created close to home and shared across the
+                  community rather than concentrated far away.
+                </p>
+              </article>
+              <article className="card partner-detail-card">
+                <TrendingUp size={26} color="#65a30d" />
+                <h2>What the Future Holds</h2>
+                <p>
+                  As logistics and e-commerce expand rapidly across India, the demand for trained, trustworthy
+                  professionals keeps growing. Together, we aim to widen the skilling pathways, support more
+                  learners each year, and strengthen the route from classroom to career — building stable,
+                  dignified futures for the people we both serve.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="section-padding" style={{ background: '#fff' }}>
         <div className="container" style={{ maxWidth: 920 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
@@ -225,14 +299,14 @@ export default function Partner() {
                   <div className="partner-developer">
                     <div className="partner-developer-avatar"><Users size={20} /></div>
                     <div>
-                      <strong>Adil</strong>
+                      <a href="https://www.linkedin.com/in/adil-rahaman-molla-166298201/" target="_blank" rel="noreferrer"><strong>Adil</strong></a>
                       <span>Developer</span>
                     </div>
                   </div>
                   <div className="partner-developer">
                     <div className="partner-developer-avatar"><Users size={20} /></div>
                     <div>
-                      <strong>Rishu</strong>
+                      <a href="https://www.linkedin.com/in/rishu-singh-b8a252238/" target="_blank" rel="noreferrer"><strong>Rishu</strong></a>
                       <span>Developer</span>
                     </div>
                   </div>

@@ -36,6 +36,11 @@ import {
   Target,
   UserCheck,
   Settings,
+  Home,
+  ArrowUp,
+  ArrowDown,
+  Save,
+  Plus,
 } from 'lucide-react';
 
 import {
@@ -44,6 +49,7 @@ import {
   createAdminCertificate,
   createAdminFooterFocus,
   createAdminFooterQuickLink,
+  createAdminHomeSlide,
   createAdminMentor,
   createAdminProject,
   createAdminTeamMember,
@@ -52,6 +58,7 @@ import {
   deleteAdminFooterFocus,
   deleteAdminFooterQuickLink,
   deleteAdminGalleryImage,
+  deleteAdminHomeSlide,
   deleteAdminMentor,
   deleteAdminProject,
   deleteAdminTeamMember,
@@ -63,6 +70,7 @@ import {
   fetchAdminFooterFocus,
   fetchAdminFooterQuickLinks,
   fetchAdminGallery,
+  fetchAdminHomeSlides,
   fetchAdminMentors,
   fetchAdminProjects,
   fetchAdminStats,
@@ -78,6 +86,7 @@ import {
   getAdminCredentials,
   reorderAdminFooterFocus,
   reorderAdminFooterQuickLinks,
+  reorderAdminHomeSlides,
   resolveMediaUrl,
   sendAdminTeamCard,
   setAdminCredentials,
@@ -86,6 +95,7 @@ import {
   updateAdminFounder,
   updateAdminFooterFocus,
   updateAdminFooterQuickLink,
+  updateAdminHomeSlide,
   updateAdminMentor,
   updateAdminProject,
   updateAdminTeamMember,
@@ -103,6 +113,8 @@ import {
   fetchSiteSettings,
   updateSiteSettings,
 } from '../api';
+
+import { defaultHeroSlides } from '../data/heroSlides';
 
 
 // ============================================================
@@ -5162,6 +5174,11 @@ export default function Admin() {
       LayoutDashboard,
     ],
     [
+      'home',
+      'Home Page',
+      Home,
+    ],
+    [
       'visitors',
       'Visitors',
       Eye,
@@ -5535,6 +5552,10 @@ export default function Admin() {
 
           {tab === 'visitors' && (
             <VisitorStats />
+          )}
+
+          {tab === 'home' && (
+            <HomeHeroManager />
           )}
 
           {tab === 'videos' && (
@@ -7951,6 +7972,566 @@ function SiteSettingsManager() {
           </div>
         </form>
       )}
+    </ManagerSection>
+  );
+}
+
+
+// ============================================================
+// HOME PAGE HERO SLIDES
+// ============================================================
+
+const emptyHomeSlideForm = {
+  eyebrow: '',
+  title: '',
+  highlight: '',
+  text: '',
+  isActive: true,
+  file: null,
+};
+
+function HomeHeroManager() {
+  const [items, setItems] = useState([]);
+  const [form, setForm] = useState(emptyHomeSlideForm);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  async function load() {
+    setLoading(true);
+    try {
+      const slides = await fetchAdminHomeSlides();
+      if (slides && slides.length > 0) {
+        setItems(slides);
+      } else {
+        setItems(
+          defaultHeroSlides.map((slide, index) => ({
+            id: -(index + 1),
+            ...slide,
+            image_url: slide.image,
+            is_active: true,
+          }))
+        );
+      }
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function patchItem(id, patch) {
+    setItems((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, ...patch } : item
+      )
+    );
+  }
+
+  async function saveSlide(id) {
+    const item = items.find((slide) => slide.id === id);
+    if (!item) return;
+
+    if (!item.title.trim()) {
+      setError('Slide title is required.');
+      return;
+    }
+
+    setBusyId(id);
+    setError('');
+    setNotice('');
+
+    try {
+      const fields = {
+        eyebrow: item.eyebrow || '',
+        title: item.title || '',
+        highlight: item.highlight || '',
+        text: item.text || '',
+        display_order: item.display_order || 0,
+        is_active: item.is_active,
+        file: item.file || null,
+      };
+
+      if (item.id < 0) {
+        await createAdminHomeSlide({
+          ...fields,
+          imageUrl: item.file ? '' : item.image_url || '',
+        });
+        await load();
+        setNotice('Slide created and saved.');
+      } else {
+        const updated = await updateAdminHomeSlide(id, {
+          ...fields,
+          imageUrl: item.image_url || null,
+        });
+
+        setItems((current) =>
+          current.map((slide) =>
+            slide.id === id ? { ...updated, file: null } : { ...slide, file: null }
+          )
+        );
+
+        setNotice('Slide saved.');
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function submitNewSlide(e) {
+    e.preventDefault();
+
+    setError('');
+    setNotice('');
+
+    if (!form.title.trim()) {
+      setError('Slide title is required.');
+      return;
+    }
+
+    if (!form.file) {
+      setError('Please choose a background image for the slide.');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await createAdminHomeSlide({
+        eyebrow: form.eyebrow,
+        title: form.title,
+        highlight: form.highlight,
+        text: form.text,
+        is_active: form.isActive,
+        file: form.file,
+      });
+
+      setForm(emptyHomeSlideForm);
+      setNotice('Slide added. It is now live on the homepage.');
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeSlide(id) {
+    if (!window.confirm('Delete this home slide?')) {
+      return;
+    }
+
+    if (id < 0) {
+      setItems((current) => current.filter((slide) => slide.id !== id));
+      setNotice('Slide removed. It will not appear on the homepage.');
+      return;
+    }
+
+    setBusyId(id);
+    setError('');
+    setNotice('');
+
+    try {
+      await deleteAdminHomeSlide(id);
+      setNotice('Slide deleted.');
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function moveSlide(index, direction) {
+    const target = index + direction;
+    if (target < 0 || target >= items.length) return;
+
+    const next = [...items];
+    const current = next[index];
+    next[index] = next[target];
+    next[target] = current;
+
+    setItems(next);
+
+    if (items.some((slide) => slide.id < 0)) {
+      setNotice('Order updated. Reorder is saved permanently once all slides are created.');
+      return;
+    }
+
+    try {
+      await reorderAdminHomeSlides(next.map((slide) => slide.id));
+      await load();
+    } catch (e) {
+      setError(e.message);
+      await load();
+    }
+  }
+
+  const fieldLabelStyle = {
+    fontWeight: 600,
+    display: 'block',
+    marginBottom: '.35rem',
+    fontSize: '.85rem',
+    color: '#334155',
+  };
+
+  return (
+    <ManagerSection
+      title="Home Page Hero Slides"
+      icon={<Home size={22} />}
+    >
+      <ErrorMessage message={error} />
+
+      {notice && (
+        <div
+          style={{
+            padding: '0.85rem 1rem',
+            marginBottom: '1rem',
+            borderRadius: 8,
+            background: '#dcfce7',
+            color: '#166534',
+          }}
+        >
+          {notice}
+        </div>
+      )}
+
+      <div
+        style={{
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          borderRadius: 12,
+          background: '#f0f9ff',
+          border: '1px solid #bae6fd',
+          color: '#0c4a6e',
+          lineHeight: 1.6,
+        }}
+      >
+        These are the rotating banner slides at the top of the homepage. The
+        current 4 default slides are shown below — edit them and press Save to
+        persist your changes, or use the form above to add brand-new slides.
+      </div>
+
+      <form
+        onSubmit={submitNewSlide}
+        style={formGridStyle}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gap: '.9rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          }}
+        >
+          <div>
+            <label style={fieldLabelStyle}>Eyebrow (small label)</label>
+            <input
+              placeholder="e.g. Education for All"
+              value={form.eyebrow}
+              onChange={(e) =>
+                setForm({ ...form, eyebrow: e.target.value })
+              }
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={fieldLabelStyle}>Title (required)</label>
+            <input
+              placeholder="e.g. Empowering Minds,"
+              value={form.title}
+              onChange={(e) =>
+                setForm({ ...form, title: e.target.value })
+              }
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={fieldLabelStyle}>Highlight (bold part of title)</label>
+            <input
+              placeholder="e.g. Illuminating Futures"
+              value={form.highlight}
+              onChange={(e) =>
+                setForm({ ...form, highlight: e.target.value })
+              }
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        <textarea
+          placeholder="Slide text (shown under the title)"
+          value={form.text}
+          onChange={(e) =>
+            setForm({ ...form, text: e.target.value })
+          }
+          style={{ ...textareaStyle, minHeight: 70 }}
+        />
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '.9rem',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={(e) =>
+              setForm({ ...form, file: e.target.files?.[0] || null })
+            }
+            required
+            style={{
+              ...inputStyle,
+              width: 'auto',
+              flex: 1,
+              minWidth: 220,
+            }}
+          />
+
+          <label
+            style={{
+              display: 'flex',
+              gap: '.5rem',
+              alignItems: 'center',
+              fontWeight: 600,
+              color: '#334155',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) =>
+                setForm({ ...form, isActive: e.target.checked })
+              }
+            />
+            Active
+          </label>
+
+          <button
+            className="btn"
+            type="submit"
+            disabled={saving}
+            style={primaryButton}
+          >
+            <Plus size={16} />
+            {saving ? 'Adding...' : 'Add Slide'}
+          </button>
+        </div>
+      </form>
+
+      <div
+        style={{
+          display: 'grid',
+          gap: '1.5rem',
+        }}
+      >
+        {loading ? (
+          <p>Loading...</p>
+        ) : items.length === 0 ? (
+          <p style={{ color: '#64748b' }}>
+            No custom slides yet. The default slides are live on the homepage —
+            use the form above to add your own.
+          </p>
+        ) : (
+          items.map((item, index) => (
+            <article
+              key={item.id}
+              className="card"
+              style={{ overflow: 'hidden' }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(200px, 300px) 1fr',
+                  gap: 0,
+                }}
+              >
+                <div>
+                  {item.image_url ? (
+                    <img
+                      src={resolveMediaUrl(item.image_url)}
+                      alt={item.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        minHeight: 200,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        minHeight: 200,
+                        display: 'grid',
+                        placeItems: 'center',
+                        background: '#e2e8f0',
+                        color: '#64748b',
+                      }}
+                    >
+                      No image
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    padding: '1.25rem',
+                    display: 'grid',
+                    gap: '.75rem',
+                    alignContent: 'start',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'grid',
+                      gap: '.75rem',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    }}
+                  >
+                    <div>
+                      <label style={fieldLabelStyle}>Eyebrow</label>
+                      <input
+                        value={item.eyebrow || ''}
+                        onChange={(e) =>
+                          patchItem(item.id, { eyebrow: e.target.value })
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={fieldLabelStyle}>Title</label>
+                      <input
+                        value={item.title || ''}
+                        onChange={(e) =>
+                          patchItem(item.id, { title: e.target.value })
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={fieldLabelStyle}>Highlight</label>
+                      <input
+                        value={item.highlight || ''}
+                        onChange={(e) =>
+                          patchItem(item.id, { highlight: e.target.value })
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={fieldLabelStyle}>Slide text</label>
+                    <textarea
+                      value={item.text || ''}
+                      onChange={(e) =>
+                        patchItem(item.id, { text: e.target.value })
+                      }
+                      style={{ ...textareaStyle, minHeight: 60 }}
+                    />
+                  </div>
+
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={(e) =>
+                      patchItem(item.id, { file: e.target.files?.[0] || null })
+                    }
+                    style={inputStyle}
+                  />
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '.5rem',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: 'flex',
+                        gap: '.5rem',
+                        alignItems: 'center',
+                        fontWeight: 600,
+                        color: '#334155',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={item.is_active}
+                        onChange={(e) =>
+                          patchItem(item.id, { is_active: e.target.checked })
+                        }
+                      />
+                      Active
+                    </label>
+
+                    <button
+                      className="btn"
+                      onClick={() => saveSlide(item.id)}
+                      disabled={busyId === item.id || loading}
+                      style={primaryButton}
+                    >
+                      <Save size={15} />
+                      {busyId === item.id ? 'Saving...' : 'Save'}
+                    </button>
+
+                    <button
+                      className="btn"
+                      onClick={() => moveSlide(index, -1)}
+                      disabled={index === 0 || loading}
+                      style={outlineButton}
+                      title="Move up"
+                    >
+                      <ArrowUp size={15} />
+                    </button>
+
+                    <button
+                      className="btn"
+                      onClick={() => moveSlide(index, 1)}
+                      disabled={index === items.length - 1 || loading}
+                      style={outlineButton}
+                      title="Move down"
+                    >
+                      <ArrowDown size={15} />
+                    </button>
+
+                    <button
+                      className="btn"
+                      onClick={() => removeSlide(item.id)}
+                      disabled={busyId === item.id || loading}
+                      style={dangerButton}
+                    >
+                      <Trash2 size={15} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
     </ManagerSection>
   );
 }

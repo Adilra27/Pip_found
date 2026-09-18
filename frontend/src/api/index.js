@@ -241,6 +241,68 @@ export async function updateSiteSettings(values) {
   });
 }
 
+// ============================================================
+// HOME PAGE HERO SLIDES
+// ============================================================
+
+export async function fetchHomeSlides() {
+  const res = await fetch(`${API_BASE_URL}/home/slides`);
+  if (!res.ok) throw new Error('Failed to fetch home slides');
+  return res.json();
+}
+
+export async function fetchAdminHomeSlides() {
+  return adminFetch('/admin/home/slides');
+}
+
+export async function createAdminHomeSlide(form) {
+  const data = new FormData();
+  data.append('title', form.title || '');
+  if (form.eyebrow) data.append('eyebrow', form.eyebrow);
+  if (form.highlight) data.append('highlight', form.highlight);
+  if (form.text) data.append('text', form.text);
+  if (form.display_order) data.append('display_order', String(form.display_order));
+  data.append('is_active', form.is_active !== false ? 'true' : 'false');
+  if (form.file) data.append('image', form.file);
+  else if (form.imageUrl) data.append('image_url', form.imageUrl);
+
+  return adminFetch('/admin/home/slides', {
+    method: 'POST',
+    body: data,
+  });
+}
+
+export async function updateAdminHomeSlide(id, form) {
+  const data = new FormData();
+  if (form.title !== undefined) data.append('title', form.title || '');
+  if (form.eyebrow !== undefined) data.append('eyebrow', form.eyebrow || '');
+  if (form.highlight !== undefined) data.append('highlight', form.highlight || '');
+  if (form.text !== undefined) data.append('text', form.text || '');
+  if (form.display_order !== undefined) data.append('display_order', String(form.display_order));
+  if (form.is_active !== undefined) data.append('is_active', form.is_active ? 'true' : 'false');
+  if (form.file) data.append('image', form.file);
+  else if (form.imageUrl !== undefined && form.imageUrl !== null) data.append('image_url', form.imageUrl || '');
+
+  return adminFetch(`/admin/home/slides/${id}`, {
+    method: 'PUT',
+    body: data,
+  });
+}
+
+export async function deleteAdminHomeSlide(id) {
+  return adminFetch(`/admin/home/slides/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function reorderAdminHomeSlides(orderedIds) {
+  return adminFetch('/admin/home/slides/reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(orderedIds),
+  });
+}
+
 export async function fetchAdminVolunteers() {
   return adminFetch('/admin/volunteers');
 }
