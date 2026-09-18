@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, MapPin, Phone, Mail, ShieldCheck } from 'lucide-react';
 import SocialLinks from './SocialLinks';

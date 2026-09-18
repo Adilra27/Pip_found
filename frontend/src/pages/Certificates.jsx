@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Award } from 'lucide-react';
 import { fetchCertificates, resolveMediaUrl } from '../api';
 

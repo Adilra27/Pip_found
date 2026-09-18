@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { submitContact } from '../api';
 import { MapPin, Phone, Mail, Send, CheckCircle2, Loader2, Navigation } from 'lucide-react';
 import SocialLinks from '../components/SocialLinks';

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BriefcaseBusiness, CheckCircle2, HeartHandshake, Users, Camera, Building2, GraduationCap, HeartPulse, HandCoins, TrendingUp } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { partnerData } from '../data/partnerData';

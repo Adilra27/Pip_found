@@ -1,6 +1,6 @@
 // src/components/about/FounderStory.jsx
 
-import React from "react";
+
 import { founderStoryData } from "../../data/aboutdata";
 import { resolveMediaUrl } from "../../api";
 

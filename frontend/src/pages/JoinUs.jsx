@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Users, Handshake, TrendingUp, CheckCircle2, ArrowRight, Loader2, MessageCircle, Award, Zap } from 'lucide-react';
 import '../styles/joinus.css';

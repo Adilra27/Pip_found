@@ -1,6 +1,6 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
 
-export const API_ORIGIN = API_BASE_URL.replace(/\/api$/, '');
+const API_ORIGIN = API_BASE_URL.replace(/\/api$/, '');
 
 export function resolveMediaUrl(url) {
   if (!url) return '';

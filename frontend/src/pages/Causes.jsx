@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchCauses } from '../api';
 import CauseCard from '../components/CauseCard';
 import { ShieldCheck } from 'lucide-react';

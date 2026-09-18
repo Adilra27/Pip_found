@@ -1,6 +1,6 @@
 // src/components/about/MentorsSection.jsx
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { mentorsData } from "../../data/aboutdata";
 import { resolveMediaUrl } from "../../api";
 

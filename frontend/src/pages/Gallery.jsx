@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Award, CalendarDays, Image as ImageIcon, Video, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { fetchGalleryItems, fetchUpcomingProjects, fetchVideos, resolveMediaUrl } from '../api';

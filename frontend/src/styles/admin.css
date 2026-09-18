@@ -571,16 +571,6 @@
   cursor: not-allowed;
 }
 
-.adm-action-danger {
-  color: #b91c1c;
-}
-
-.adm-action-danger:hover:not(:disabled) {
-  border-color: #fca5a5;
-  color: #b91c1c;
-  background: #fef2f2;
-}
-
 /* ---- Icon-only action buttons -------------------------------------- */
 .adm-icon-btn {
   width: 32px;

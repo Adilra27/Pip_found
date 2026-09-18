@@ -203,38 +203,10 @@ class BlogResponse(BlogBase):
 # ABOUT
 # ============================================================
 
-class AboutBase(BaseModel):
-    name: str
-    tagline: Optional[str] = None
-    mission: Optional[str] = None
-    vision: Optional[str] = None
-    founded: Optional[str] = None
-    registration: Optional[str] = None
-
-
-class AboutResponse(AboutBase):
-    id: int
-
-    model_config = ConfigDict(from_attributes=True)
-
 
 # ============================================================
 # MEDIA
 # ============================================================
-
-class MediaBase(BaseModel):
-    title: str
-    source: str
-    url: str
-    image_url: Optional[str] = None
-    published_date: Optional[datetime] = None
-
-
-class MediaResponse(MediaBase):
-    id: int
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================

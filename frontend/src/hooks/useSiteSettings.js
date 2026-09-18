@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchSiteSettings } from '../api';
 
-export const DEFAULT_SITE_SETTINGS = {
+const DEFAULT_SITE_SETTINGS = {
   phone: '+91-8981266033',
   email: 'info@pipladfoundation.in',
   address: 'Vill-Manikpur, Shahkhund-813108, Bhagalpur, Bihar',

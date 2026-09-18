@@ -1,6 +1,6 @@
 // src/components/about/MissionVision.jsx
 
-import React from "react";
+
 import { missionVisionData } from "../../data/aboutdata";
 
 const MissionVision = () => {

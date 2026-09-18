@@ -1,6 +1,6 @@
 // src/components/about/ValuesSection.jsx
 
-import React from "react";
+
 import { valuesData } from "../../data/aboutdata";
 
 const ValuesSection = () => {

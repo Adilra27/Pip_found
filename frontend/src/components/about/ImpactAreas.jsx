@@ -1,6 +1,6 @@
 // src/components/about/ImpactAreas.jsx
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { impactAreasData } from "../../data/aboutdata";
 
 const ImpactAreas = () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Heart, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react';
 import { createRazorpayOrder, verifyPayment } from '../api';
 

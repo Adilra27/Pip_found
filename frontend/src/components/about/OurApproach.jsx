@@ -1,6 +1,6 @@
 // src/components/about/OurApproach.jsx
 
-import React from "react";
+
 import { ourApproachData } from "../../data/aboutdata";
 
 const OurApproach = () => {

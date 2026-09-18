@@ -37,10 +37,6 @@
 
 .home-who-we-are { background: #fff; }
 .home-who-chip { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem 1rem; margin-bottom: 1rem; background: #ecfdf5; color: #065f46; border: 1px solid #bbf7d0; border-radius: 999px; font-size: .82rem; font-weight: 700; }
-.home-two-column { display: grid; grid-template-columns: .85fr 1.15fr; gap: 4.5rem; align-items: center; }
-.home-photo-panel { position: relative; padding: 1rem; background: linear-gradient(145deg,#ecfdf5,#f0fdf4); border-radius: 28px; box-shadow: 0 20px 60px rgba(15,23,42,.08); }
-.home-photo-panel img { display: block; width: 100%; height: 180px; object-fit: contain; border-radius: 20px; }
-.home-photo-badge { position: absolute; bottom: -16px; right: 25px; display: inline-flex; align-items: center; gap: .45rem; padding: .75rem 1rem; background: #14532d; color: #fff; border-radius: 999px; box-shadow: 0 12px 25px rgba(20,83,45,.25); font-size: .8rem; font-weight: 700; }
 .home-secondary-copy { color: #64748b; line-height: 1.75; margin: -1.4rem 0 1.8rem; }
 .home-highlight-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1rem; }
 .home-highlight-card { display: flex; gap: .8rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 15px; background: #f8fafc; }
@@ -187,7 +183,7 @@
   .home-impact-grid { grid-template-columns: repeat(2,1fr); }
   .home-impact-grid > div:nth-child(2) { border-right: 0; }
   .home-impact-grid > div:nth-child(-n+2) { border-bottom: 1px solid #e2e8f0; }
-  .home-two-column,.home-pathshala-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .home-pathshala-grid { grid-template-columns: 1fr; gap: 2.5rem; }
   .home-at-glance-grid { grid-template-columns: 1fr; }
   .home-partner-grid,.home-project-grid,.home-certificate-grid,.home-cause-grid { grid-template-columns: 1fr; }
   .home-section-heading-row { align-items: flex-start; flex-direction: column; }
@@ -198,7 +194,6 @@
   .home-hero-inner { padding-top: 3rem; padding-bottom: 6rem; gap: 2rem; }
   .home-hero h1 { font-size: clamp(2.5rem, 13vw, 4rem); }
   .home-highlight-grid,.home-program-grid,.home-blog-grid { grid-template-columns: 1fr; }
-  .home-photo-badge { position: static; margin: .8rem 0 0; width: fit-content; }
   .home-impact-grid strong { font-size: 1.15rem; }
   .home-impact-grid span { font-size: .72rem; }
 }

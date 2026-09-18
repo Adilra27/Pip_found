@@ -1,6 +1,6 @@
 // src/components/about/StrategicPriorities.jsx
 
-import React from "react";
+
 import { strategicPrioritiesData } from "../../data/aboutdata";
 
 const StrategicPriorities = () => {

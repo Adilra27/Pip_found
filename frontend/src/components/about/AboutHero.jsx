@@ -1,6 +1,6 @@
 // src/components/about/AboutHero.jsx
 
-import React from "react";
+
 import { aboutHeroData } from "../../data/aboutdata";
 
 const AboutHero = () => {

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Heart, ShieldCheck, CheckCircle2, Building2, FileText } from 'lucide-react';
 
 export default function Donate({ onOpenDonate }) {

@@ -1,6 +1,6 @@
 // src/components/about/AboutCTA.jsx
 
-import React from "react";
+
 import { Link } from "react-router-dom";
 import { aboutCTAData } from "../../data/aboutdata";
 

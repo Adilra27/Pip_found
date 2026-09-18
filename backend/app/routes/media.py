@@ -4,10 +4,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import GalleryItem, Media, UpcomingProject, VideoGallery
+from ..models import GalleryItem, UpcomingProject, VideoGallery
 from ..schemas import (
     GalleryItemResponse,
-    MediaResponse,
     UpcomingProjectResponse,
     VideoGalleryResponse,
 )
@@ -47,9 +46,3 @@ def get_public_projects(
         .order_by(UpcomingProject.expected_date.asc(), UpcomingProject.id.desc())
         .all()
     )
-
-
-# Existing media-coverage endpoint is kept intact for compatibility.
-@router.get("/api/media", response_model=List[MediaResponse])
-def get_media_coverage(db: Session = Depends(get_db)):
-    return db.query(Media).order_by(Media.published_date.desc()).all()

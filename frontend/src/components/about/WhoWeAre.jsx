@@ -1,6 +1,6 @@
 // src/components/about/WhoWeAre.jsx
 
-import React from "react";
+
 import { whoWeAreData } from "../../data/aboutdata";
 
 const WhoWeAre = () => {
