@@ -112,13 +112,16 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div
+      className="modal-overlay"
+      onClick={() => {
+        if (typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches) return;
+        onClose();
+      }}
+    >
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         {/* Close Button */}
-        <button
-          onClick={onClose}
-          style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-        >
+        <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Close donation form">
           <X size={24} />
         </button>
 
@@ -169,7 +172,7 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
             {/* Amount Selection */}
             <div className="form-group">
               <label className="form-label">Select Amount (INR)</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <div className="donate-amount-grid">
                 {presetAmounts.map((val) => (
                   <button
                     key={val}
@@ -191,6 +194,8 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
               </div>
               <input
                 type="number"
+                inputMode="decimal"
+                min="1"
                 placeholder="Or enter custom amount in ₹"
                 className="form-input"
                 value={customAmount}
@@ -206,12 +211,13 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
                 required
                 placeholder="Your Name"
                 className="form-input"
+                autoComplete="name"
                 value={donorName}
                 onChange={(e) => setDonorName(e.target.value)}
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div className="donate-donor-grid">
               <div className="form-group">
                 <label className="form-label">Email Address *</label>
                 <input
@@ -219,6 +225,8 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
                   required
                   placeholder="name@example.com"
                   className="form-input"
+                  autoComplete="email"
+                  inputMode="email"
                   value={donorEmail}
                   onChange={(e) => setDonorEmail(e.target.value)}
                 />
@@ -230,6 +238,8 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
                   type="tel"
                   placeholder="+91 Mobile No."
                   className="form-input"
+                  autoComplete="tel"
+                  inputMode="tel"
                   value={donorPhone}
                   onChange={(e) => setDonorPhone(e.target.value)}
                 />
@@ -239,7 +249,7 @@ export default function DonateModal({ isOpen, onClose, selectedCause = null, cau
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary"
+              className="btn btn-primary donate-submit-btn"
               style={{ width: '100%', marginTop: '0.5rem', padding: '0.9rem', fontSize: '1.05rem', borderRadius: '8px' }}
             >
               {loading ? (

@@ -58,6 +58,11 @@ export default function App() {
     trackVisit();
   }, []);
 
+  useEffect(() => {
+    document.body.classList.toggle('modal-open', donateModalOpen);
+    return () => document.body.classList.remove('modal-open');
+  }, [donateModalOpen]);
+
   const handleOpenDonate = (cause = null) => {
     setSelectedCause(cause);
     setDonateModalOpen(true);
@@ -71,7 +76,7 @@ export default function App() {
   return (
     <Router>
       <ScrollToTop />
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
         <Header onOpenDonate={() => handleOpenDonate()} />
 
         <main style={{ flexGrow: 1 }}>

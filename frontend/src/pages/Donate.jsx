@@ -25,10 +25,10 @@ export default function Donate({ onOpenDonate }) {
 
       {/* Main Donation Section */}
       <section className="section-padding" style={{ background: '#ffffff' }}>
-        <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '3rem' }}>
+        <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '3rem' }}>
           
           {/* Card 1: Online Donation */}
-          <div className="card" style={{ padding: '2.5rem', borderTop: '4px solid #059669' }}>
+          <div className="card donate-card" style={{ borderTop: '4px solid #059669' }}>
             <div style={{ background: '#d1fae5', color: '#059669', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
               <Heart size={26} fill="#059669" />
             </div>
@@ -42,7 +42,7 @@ export default function Donate({ onOpenDonate }) {
           </div>
 
           {/* Card 2: Bank Transfer Details */}
-          <div className="card" style={{ padding: '2.5rem', borderTop: '4px solid #d97706' }}>
+          <div className="card donate-card" style={{ borderTop: '4px solid #d97706' }}>
             <div style={{ background: '#fef3c7', color: '#d97706', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
               <Building2 size={26} />
             </div>
@@ -65,7 +65,7 @@ export default function Donate({ onOpenDonate }) {
       {/* Tax Benefit Notice */}
       <section className="section-padding" style={{ background: '#f8fafc' }}>
         <div className="container" style={{ maxWidth: '850px' }}>
-          <div className="card" style={{ padding: '2.5rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <div className="card donate-card" style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
             <div style={{ background: '#d1fae5', color: '#059669', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <FileText size={30} />
             </div>

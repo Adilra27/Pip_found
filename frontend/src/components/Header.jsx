@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Phone,
@@ -11,6 +11,7 @@ import { useSiteSettings, telHref } from '../hooks/useSiteSettings';
 
 export default function Header({ onOpenDonate }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(null);
   const location = useLocation();
   const { settings } = useSiteSettings();
@@ -104,7 +105,31 @@ export default function Header({ onOpenDonate }) {
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
+    setOpenGroup(null);
   };
+
+  // Lock page scroll while the mobile drawer is open and allow Escape to close.
+  useEffect(() => {
+    document.body.classList.toggle('mobile-menu-open', mobileMenuOpen);
+
+    if (!mobileMenuOpen) {
+      return () => document.body.classList.remove('mobile-menu-open');
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setOpenGroup(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [mobileMenuOpen]);
 
   const closeNavigation = () => {
     setOpenDropdown(null);
@@ -238,6 +263,7 @@ export default function Header({ onOpenDonate }) {
                 : 'Open navigation menu'
             }
             aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav"
             onClick={() =>
               setMobileMenuOpen((current) => !current)
             }
@@ -255,73 +281,90 @@ export default function Header({ onOpenDonate }) {
           MOBILE NAVIGATION
       ============================================================ */}
       {mobileMenuOpen && (
-        <div className="mobile-menu">
-          <div className="container mobile-menu-inner">
-            {navItems.map((item) => (
-              <div
-                key={item.label}
-                className="mobile-nav-group"
-              >
-                {item.subItems ? (
-                  <>
-                    <div
-                      className={`mobile-nav-heading ${
+        <>
+          <div
+            className="mobile-menu-backdrop"
+            onClick={closeMobileMenu}
+            aria-hidden="true"
+          />
+          <div className="mobile-menu" id="mobile-nav">
+            <div className="container mobile-menu-inner">
+              {navItems.map((item) => (
+                <div
+                  key={item.label}
+                  className="mobile-nav-group"
+                >
+                  {item.subItems ? (
+                    <>
+                      <button
+                        type="button"
+                        className={`mobile-nav-heading ${
+                          isActive(item.path)
+                            ? 'mobile-nav-heading-active'
+                            : ''
+                        }`}
+                        aria-expanded={openGroup === item.label}
+                        onClick={() =>
+                          setOpenGroup((current) =>
+                            current === item.label ? null : item.label
+                          )
+                        }
+                      >
+                        <span>{item.label}</span>
+                        <ChevronDown size={18} />
+                      </button>
+
+                      {openGroup === item.label && (
+                        <div className="mobile-submenu">
+                          {item.subItems.map((subItem) => (
+                            <Link
+                              key={subItem.path}
+                              to={subItem.path}
+                              className="mobile-submenu-link"
+                              onClick={closeMobileMenu}
+                            >
+                              {subItem.label}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Link
+                      to={item.path}
+                      className={`mobile-nav-link ${
                         isActive(item.path)
-                          ? 'mobile-nav-heading-active'
+                          ? 'mobile-nav-link-active'
                           : ''
                       }`}
+                      onClick={closeMobileMenu}
                     >
                       {item.label}
-                    </div>
+                    </Link>
+                  )}
+                </div>
+              ))}
 
-                    <div className="mobile-submenu">
-                      {item.subItems.map((subItem) => (
-                        <Link
-                          key={subItem.path}
-                          to={subItem.path}
-                          className="mobile-submenu-link"
-                          onClick={closeMobileMenu}
-                        >
-                          {subItem.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <Link
-                    to={item.path}
-                    className={`mobile-nav-link ${
-                      isActive(item.path)
-                        ? 'mobile-nav-link-active'
-                        : ''
-                    }`}
-                    onClick={closeMobileMenu}
-                  >
-                    {item.label}
-                  </Link>
-                )}
-              </div>
-            ))}
-
-            <button
-              type="button"
-              className="mobile-donate-button"
-              onClick={() => {
-                closeMobileMenu();
-                onOpenDonate();
-              }}
-            >
-              Donate Now
-            </button>
-            <Link
-              to="/admin"
-              className="mobile-admin-link"
-              onClick={closeMobileMenu}
-            >
-              Admin Login
-            </Link>
+              <button
+                type="button"
+                className="mobile-donate-button"
+                onClick={() => {
+                  closeMobileMenu();
+                  onOpenDonate();
+                }}
+              >
+                Donate Now
+              </button>
+              <Link
+                to="/admin"
+                className="mobile-admin-link"
+                onClick={closeMobileMenu}
+              >
+                Admin Login
+              </Link>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </header>
   );

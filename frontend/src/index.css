@@ -58,6 +58,14 @@ body {
   overflow-x: hidden;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
+body.mobile-menu-open {
+  overflow: hidden;
+}
+
 button,
 input,
 textarea,
@@ -100,6 +108,8 @@ a {
   z-index: 900;
 
   width: 100%;
+
+  padding-top: env(safe-area-inset-top, 0px);
 
   background: #ffffff;
 
@@ -459,6 +469,17 @@ a {
    MOBILE MENU
 ============================================================ */
 
+.mobile-menu-backdrop {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(15, 23, 42, 0.45);
+
+  /* Behind the header/panel but above the page (the sticky header is a
+     stacking context at z-index 900). */
+  z-index: -1;
+}
+
 .mobile-menu {
   background: #ffffff;
 
@@ -485,12 +506,37 @@ a {
 }
 
 .mobile-nav-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 100%;
+
   padding: 0.55rem 0;
+
+  background: none;
+  border: 0;
+
+  text-align: left;
 
   color: #334155;
 
   font-size: 0.92rem;
   font-weight: 750;
+
+  cursor: pointer;
+}
+
+.mobile-nav-heading svg {
+  flex: 0 0 auto;
+
+  color: #94a3b8;
+
+  transition: transform 0.2s ease;
+}
+
+.mobile-nav-heading[aria-expanded='true'] svg {
+  transform: rotate(180deg);
 }
 
 .mobile-nav-heading-active {
@@ -1236,6 +1282,49 @@ a {
   overflow-y: auto;
 }
 
+.modal-close-btn {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.modal-close-btn:focus-visible {
+  outline: 2px solid var(--brand-green);
+  outline-offset: 2px;
+}
+
+.donate-amount-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.donate-donor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.donate-submit-btn {
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.donate-card {
+  padding: 2.5rem;
+}
+
 /* ============================================================
    SOCIAL LINKS
 ============================================================ */
@@ -1348,6 +1437,15 @@ a {
   .mobile-menu-btn {
     display: inline-flex;
   }
+
+  /* Self-contained scrollable drawer so every nav item is reachable. */
+  .mobile-menu {
+    max-height: calc(100dvh - 118px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @media (max-width: 640px) {
@@ -1398,6 +1496,10 @@ a {
     padding-left: 1rem;
     padding-right: 1rem;
   }
+
+  .mobile-menu {
+    max-height: calc(100dvh - 108px - env(safe-area-inset-top, 0px));
+  }
 }
 
 @media (max-width: 420px) {
@@ -1444,4 +1546,66 @@ a {
 @keyframes verify-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   MOBILE (DONATE-FLOW CRITICAL FIXES)
+============================================================ */
+
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .section-padding {
+    padding: 3rem 0;
+  }
+
+  /* 16px prevents iOS Safari from auto-zooming on focus. */
+  .form-input,
+  .form-textarea,
+  .form-select {
+    font-size: 16px;
+  }
+
+  /* Keep the tall modal usable while the on-screen keyboard is open. */
+  .modal-overlay {
+    align-items: flex-start;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 0.75rem)
+      0.75rem
+      calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  .modal-card {
+    padding: 1.35rem;
+    border-radius: 14px;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem);
+  }
+
+  .modal-close-btn {
+    top: 0.6rem;
+    right: 0.6rem;
+    width: 44px;
+    height: 44px;
+  }
+
+  .donate-amount-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .donate-donor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .donate-card {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .modal-card {
+    padding: 1.1rem;
+  }
 }
