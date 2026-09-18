@@ -1392,18 +1392,6 @@ export async function fetchCertificateHistory({
 // NEWSLETTER
 // ============================================================
 
-export async function fetchApplicationStatus(applicationId) {
-  const res = await fetch(`${API_BASE_URL}/verify/application/${encodeURIComponent(applicationId)}`, {
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    throw new Error('Unable to look up application status right now.');
-  }
-
-  return res.json();
-}
-
 export async function subscribeNewsletter({ email, name, website = '' }) {
   const res = await fetch(`${API_BASE_URL}/newsletter/subscribe`, {
     method: 'POST',

@@ -499,16 +499,6 @@ class VerifiedVolunteerResponse(BaseModel):
     issued_by: str = "Piplad Welfare Foundation"
 
 
-class VerifiedApplicationResponse(BaseModel):
-    found: bool
-    application_id: Optional[int] = None
-    status: Optional[str] = None
-    volunteer_id: Optional[str] = None
-    full_name: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-
 # ============================================================
 # HOME PAGE HERO SLIDES
 # ============================================================

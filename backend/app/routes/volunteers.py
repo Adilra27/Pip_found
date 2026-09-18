@@ -160,10 +160,9 @@ def create_volunteer_application(
     db.refresh(volunteer)
 
     send_admin_alert_email(
-        subject=f"New volunteer application received (#{volunteer.id})",
+        subject="New volunteer application received",
         text_body=(
             f"A new volunteer application was submitted.\n\n"
-            f"Application ID: #{volunteer.id}\n"
             f"Name: {volunteer.full_name}\n"
             f"Email: {volunteer.email}\n"
             f"Phone: {volunteer.phone}\n"

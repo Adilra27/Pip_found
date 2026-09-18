@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Users, Handshake, TrendingUp, CheckCircle2, ArrowRight, Loader2, MessageCircle, Award, Zap, Search, Copy } from 'lucide-react';
+import { Heart, Users, Handshake, TrendingUp, CheckCircle2, ArrowRight, Loader2, MessageCircle, Award, Zap } from 'lucide-react';
 import '../styles/joinus.css';
-import { submitVolunteerApplication, fetchApplicationStatus } from '../api';
+import { submitVolunteerApplication } from '../api';
 
 import usePageMeta from '../hooks/usePageMeta';
 
@@ -23,59 +23,6 @@ export default function JoinUs({ onOpenDonate }) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
-  const [submittedId, setSubmittedId] = useState(null);
-
-  const [appId, setAppId] = useState('');
-  const [appLoading, setAppLoading] = useState(false);
-  const [appResult, setAppResult] = useState(null);
-  const [appError, setAppError] = useState(null);
-  const [idCopied, setIdCopied] = useState(false);
-
-  const handleCopyId = async () => {
-    if (!submittedId) return;
-    try {
-      await navigator.clipboard.writeText(String(submittedId));
-      setIdCopied(true);
-      setTimeout(() => setIdCopied(false), 2500);
-    } catch {
-      setIdCopied(false);
-    }
-  };
-
-  const handleCheckApplication = async (event) => {
-    event.preventDefault();
-    const id = appId.trim();
-    if (!/^\d+$/.test(id)) {
-      setAppError('Please enter your valid application ID. It is shared in the confirmation email.');
-      setAppResult(null);
-      return;
-    }
-
-    setAppLoading(true);
-    setAppError(null);
-    setAppResult(null);
-    try {
-      const data = await fetchApplicationStatus(id);
-      if (!data.found) {
-        throw new Error('No application found with that ID.');
-      }
-      setAppResult(data);
-    } catch (err) {
-      setAppError(err.message || 'Unable to look up application status right now.');
-    } finally {
-      setAppLoading(false);
-    }
-  };
-
-  const statusLabels = {
-    pending: 'Pending Review',
-    reviewed: 'Under Review',
-    accepted: 'Accepted',
-    merged: 'Accepted',
-    settings: 'Issued',
-    issued: 'Accepted',
-    rejected: 'Rejected',
-  };
 
   const waysToBecomeInvolved = [
     {
@@ -139,7 +86,7 @@ export default function JoinUs({ onOpenDonate }) {
     setError(null);
 
     try {
-      const response = await submitVolunteerApplication({
+      await submitVolunteerApplication({
         full_name: formData.fullName,
         email: formData.email,
         phone: formData.phone,
@@ -150,32 +97,24 @@ export default function JoinUs({ onOpenDonate }) {
       });
       setLoading(false);
       setSubmitted(true);
-      setSubmittedId(response?.id ?? null);
-      if (response?.id) {
-        setAppId(String(response.id));
-        setAppResult(null);
-        setAppError(null);
-      }
 
-      setFormData({
-        fullName: '',
-        email: '',
-        phone: '',
-        interestArea: 'Education & Skill development',
-        aboutYourself: '',
-        profilePic: null,
-        website: ''
-      });
+      // Reset form after 3 seconds
+      setTimeout(() => {
+        setSubmitted(false);
+        setFormData({
+          fullName: '',
+          email: '',
+          phone: '',
+          interestArea: 'Education & Skill development',
+          aboutYourself: '',
+          profilePic: null,
+          website: ''
+        });
+      }, 3000);
     } catch {
       setLoading(false);
       setError('Failed to submit. Please try again.');
     }
-  };
-
-  const handleSubmitAnother = () => {
-    setSubmitted(false);
-    setSubmittedId(null);
-    setIdCopied(false);
   };
 
   return (
@@ -320,45 +259,6 @@ export default function JoinUs({ onOpenDonate }) {
                 <p style={{ color: '#047857' }}>
                   Thank you for your interest in joining Piplad. Our team will review your application and contact you soon.
                 </p>
-
-                {submittedId ? (
-                  <div style={{
-                    marginTop: '1.5rem',
-                    background: '#ffffff',
-                    border: '1px dashed #059669',
-                    borderRadius: '10px',
-                    padding: '1.25rem'
-                  }}>
-                    <p style={{ color: '#065f46', fontWeight: 700, marginBottom: '0.5rem' }}>
-                      Your Application ID
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', letterSpacing: '0.05em' }}>
-                        #{submittedId}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyId}
-                        className="btn btn-outline"
-                        style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                      >
-                        <Copy size={15} /> {idCopied ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                    <p style={{ color: '#475569', fontSize: '0.85rem', marginTop: '0.75rem' }}>
-                      Save this ID — use the "Check Your Status" box below to track your application anytime.
-                    </p>
-                  </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  onClick={handleSubmitAnother}
-                  className="btn btn-primary"
-                  style={{ marginTop: '1.5rem', borderRadius: '8px', padding: '0.75rem 1.5rem' }}
-                >
-                  Submit Another Application
-                </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="joinus-form">
@@ -562,68 +462,6 @@ export default function JoinUs({ onOpenDonate }) {
                 Gain hands-on experience, learn new skills, and build your professional portfolio.
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== APPLICATION STATUS SECTION ===== */}
-      <section id="check-status" style={{ background: '#f8fafc', padding: '4rem 0' }}>
-        <div className="container">
-          <div className="card" style={{ padding: '2.25rem', maxWidth: '640px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <Search size={36} color="#0284c7" style={{ marginBottom: '0.75rem' }} />
-              <h2 className="heading-md" style={{ color: '#0f172a' }}>Already Applied? Check Your Status</h2>
-              <p style={{ fontSize: '0.95rem', color: '#475569', marginTop: '0.5rem' }}>
-                Enter the application ID shown after you submitted your application.
-              </p>
-            </div>
-
-            <form onSubmit={handleCheckApplication} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={appId}
-                onChange={(e) => setAppId(e.target.value)}
-                placeholder="Application ID (e.g. 42)"
-                className="form-input"
-                style={{ flex: 1, minWidth: '200px' }}
-              />
-              <button type="submit" className="btn btn-primary" disabled={appLoading} style={{ borderRadius: '8px' }}>
-                {appLoading ? <Loader2 size={18} className="spin" /> : <Search size={18} />} Check
-              </button>
-            </form>
-
-            {appError && (
-              <p style={{ color: '#ef4444', fontSize: '0.9rem', marginTop: '1rem' }}>{appError}</p>
-            )}
-
-            {appResult && (
-              <div style={{
-                marginTop: '1.25rem',
-                background: appResult.status === 'rejected' ? '#fef2f2' : '#ecfdf5',
-                border: `1px solid ${appResult.status === 'rejected' ? '#fca5a5' : '#a7f3d0'}`,
-                borderRadius: '10px',
-                padding: '1.25rem 1.5rem'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-                  <CheckCircle2 size={22} color={appResult.status === 'rejected' ? '#ef4444' : '#059669'} />
-                  <strong style={{ color: appResult.status === 'rejected' ? '#991b1b' : '#065f46', fontSize: '1rem' }}>
-                    {statusLabels[appResult.status] || appResult.status}
-                  </strong>
-                </div>
-                {appResult.volunteer_id && (
-                  <p style={{ fontSize: '0.9rem', color: '#475569', margin: '0 0 0.35rem 0' }}>
-                    Volunteer ID: <strong>{appResult.volunteer_id}</strong>
-                  </p>
-                )}
-                <p style={{ fontSize: '0.9rem', color: '#475569', margin: 0 }}>
-                  Applied on{' '}
-                  {appResult.created_at
-                    ? new Date(appResult.created_at).toLocaleDateString()
-                    : '-'}
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </section>
