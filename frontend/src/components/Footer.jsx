@@ -258,10 +258,11 @@ export default function Footer({ onOpenDonate }) {
           <div>
             © {new Date().getFullYear()} {copyright} (PWF). All Rights Reserved.
           </div>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
             <Link to="/terms" style={{ color: '#64748b' }}>Terms & Conditions</Link>
             <Link to="/terms" style={{ color: '#64748b' }}>Refund Policy</Link>
             <Link to="/contact" style={{ color: '#64748b' }}>Support</Link>
+            <Link to="/admin" style={{ color: '#64748b' }}>Staff Login</Link>
           </div>
         </div>
       </div>

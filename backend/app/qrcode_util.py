@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 def public_frontend_url() -> str:
     """Root URL used for QR payloads.
 
-    Reads PUBLIC_FRONTEND_URL (production Render/Pages domain), falling back
-    to the Render-hosted frontend so verification links never point at a
-    local dev server in production.
+    Reads PUBLIC_FRONTEND_URL (production domain), falling back to the
+    public site so verification links never point at a local dev server in
+    production.
     """
-    return (os.getenv("PUBLIC_FRONTEND_URL") or "https://pip-dev.onrender.com").rstrip("/")
+    return (os.getenv("PUBLIC_FRONTEND_URL") or "https://pipladfoundation.in").rstrip("/")
 
 
 def verify_url(kind: str, identifier: str) -> str:

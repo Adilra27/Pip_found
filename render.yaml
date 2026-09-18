@@ -9,7 +9,7 @@ services:
       - key: DATABASE_URL
         value: postgresql+psycopg://piplad_db_user:v6n1ZS3GB91r1kYEOAcmAYDw7ncMXQX2@dpg-da8sqlk9v7es73cgu6hg-a.oregon-postgres.render.com/piplad_db?sslmode=require
       - key: CORS_ORIGINS
-        value: http://localhost:5173,https://www.pip-dev.in,https://pip-found.pages.dev,https://pip-dev.onrender.com,https://pip-found-frontend.onrender.com
+        value: http://localhost:5173,https://www.pip-dev.in,https://pip-found.pages.dev,https://pip-dev.onrender.com,https://pip-found-frontend.onrender.com,https://pipladfoundation.in,https://www.pipladfoundation.in
       - key: RAZORPAY_KEY_ID
         value: rzp_test_TZEtC3OHZZibvB
       - key: RAZORPAY_KEY_SECRET
@@ -35,7 +35,7 @@ services:
         value: Piplad Welfare Foundation
       - key: CONTACT_WEBSITE
         sync: false
-        value: https://www.pipladfoundation.in
+        value: https://pipladfoundation.in
       - key: CONTACT_EMAIL
         sync: false
         value: info@pipladfoundation.in
@@ -43,7 +43,7 @@ services:
       # Must be the deployed frontend domain so scans open the correct site.
       - key: PUBLIC_FRONTEND_URL
         sync: false
-        value: https://www.pipladfoundation.in
+        value: https://pipladfoundation.in
 
   - type: web
     name: pip-found-frontend
@@ -51,6 +51,9 @@ services:
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
+    domains:
+      - pipladfoundation.in
+      - www.pipladfoundation.in
     envVars:
       - key: VITE_API_URL
         value: https://piplad-api.onrender.com/api

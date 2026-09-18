@@ -248,9 +248,6 @@ export default function Header({ onOpenDonate }) {
             >
               Donate
             </button>
-            <Link to="/admin" className="header-admin-link">
-              Admin Login
-            </Link>
           </nav>
 
           {/* MOBILE MENU BUTTON */}
@@ -355,13 +352,6 @@ export default function Header({ onOpenDonate }) {
               >
                 Donate Now
               </button>
-              <Link
-                to="/admin"
-                className="mobile-admin-link"
-                onClick={closeMobileMenu}
-              >
-                Admin Login
-              </Link>
             </div>
           </div>
         </>

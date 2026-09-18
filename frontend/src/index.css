@@ -373,8 +373,7 @@ a {
    HEADER DONATE BUTTON
 ============================================================ */
 
-.header-donate-button,
-.header-admin-link {
+.header-donate-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -403,8 +402,7 @@ a {
     box-shadow 0.2s ease;
 }
 
-.header-donate-button:hover,
-.header-admin-link:hover {
+.header-donate-button:hover {
   background: #4d7c0f;
 
   transform: translateY(-1px);
@@ -416,24 +414,6 @@ a {
 .header-donate-button:focus-visible {
   outline: 3px solid rgba(132, 204, 22, 0.35);
   outline-offset: 3px;
-}
-
-.header-admin-link {
-  min-width: 110px;
-  min-height: 42px;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid #65a30d;
-  background: transparent;
-  color: #65a30d;
-  box-shadow: none;
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.header-admin-link:hover {
-  background: #f7fee7;
-  color: #4d7c0f;
-  box-shadow: none;
 }
 
 /* ============================================================
@@ -606,24 +586,6 @@ a {
 }
 
 .mobile-donate-button:hover {
-  background: #4d7c0f;
-}
-
-.mobile-admin-link {
-  display: block;
-  width: 100%;
-  margin-top: 0.65rem;
-  padding: 0.85rem 1rem;
-  border-radius: 8px;
-  background: #65a30d;
-  color: #ffffff;
-  text-align: center;
-  font-size: 0.94rem;
-  font-weight: 750;
-  text-decoration: none;
-}
-
-.mobile-admin-link:hover {
   background: #4d7c0f;
 }
 
@@ -1411,11 +1373,6 @@ a {
   .header-donate-button {
     padding-left: 1.15rem;
     padding-right: 1.15rem;
-  }
-
-  .header-admin-link {
-    padding-left: 0.7rem;
-    padding-right: 0.7rem;
   }
 }
 
