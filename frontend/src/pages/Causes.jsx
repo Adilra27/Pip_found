@@ -3,7 +3,13 @@ import { fetchCauses } from '../api';
 import CauseCard from '../components/CauseCard';
 import { ShieldCheck } from 'lucide-react';
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Causes({ onSelectCauseToDonate }) {
+  usePageMeta(
+    'Our Causes',
+    'Support Piplad Welfare Foundation causes — healthcare, education, zero hunger, and women empowerment. Every donation is 80G tax exempt.'
+  );
   const [causes, setCauses] = useState([]);
   const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);

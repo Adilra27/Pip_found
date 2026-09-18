@@ -2,7 +2,13 @@
 import { FileText } from 'lucide-react';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Terms() {
+  usePageMeta(
+    'Terms & Privacy Policy',
+    'Terms, conditions, and privacy policy for Piplad Welfare Foundation.'
+  );
   const { settings } = useSiteSettings();
 
   return (

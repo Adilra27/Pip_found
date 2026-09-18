@@ -122,3 +122,25 @@ def verify_volunteer(identifier: str, db: Session = Depends(get_db)):
         issue_date=app.issue_date,
         valid_till=app.valid_till,
     )
+
+
+@router.get("/application/{application_id}", response_model=schemas.VerifiedApplicationResponse)
+def verify_application_status(application_id: int, db: Session = Depends(get_db)):
+    """Public, privacy-safe status lookup for a volunteer application."""
+    app = (
+        db.query(models.VolunteerApplication)
+        .filter(models.VolunteerApplication.id == application_id)
+        .first()
+    )
+    if not app:
+        return schemas.VerifiedApplicationResponse(found=False)
+
+    return schemas.VerifiedApplicationResponse(
+        found=True,
+        application_id=app.id,
+        status=app.status,
+        volunteer_id=app.volunteer_id,
+        full_name=app.full_name,
+        created_at=app.created_at,
+        updated_at=getattr(app, "updated_at", None),
+    )

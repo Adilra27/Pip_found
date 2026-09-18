@@ -15,7 +15,13 @@ import AboutCTA from '../components/about/AboutCTA';
 
 import '../styles/about.css';
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function About() {
+  usePageMeta(
+    'About Us',
+    'Learn about Piplad Welfare Foundation — our mission, vision, founder story, and impact across healthcare, education, zero hunger, and women empowerment.'
+  );
   const location = useLocation();
 
   const [aboutData, setAboutData] = useState(null);

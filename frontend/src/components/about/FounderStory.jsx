@@ -30,6 +30,8 @@ const FounderStory = ({ data = null }) => {
             <div className="about-founder-image-frame">
 
               <img
+                loading="lazy"
+                decoding="async"
                 src={image}
                 alt={profile.image_alt || profile.imageAlt || fallback.imageAlt}
               />

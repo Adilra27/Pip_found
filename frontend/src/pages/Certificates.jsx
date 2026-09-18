@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Award } from 'lucide-react';
-import { fetchCertificates, resolveMediaUrl } from '../api';
+import { cloudinaryUrl, fetchCertificates, resolveMediaUrl } from '../api';
+
+import usePageMeta from '../hooks/usePageMeta';
 
 export default function Certificates() {
+  usePageMeta(
+    'Certificates',
+    'Official certificates issued by Piplad Welfare Foundation — view and verify.'
+  );
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,7 +71,9 @@ export default function Certificates() {
                 >
                   {certificate.image_url ? (
                     <img
-                      src={resolveMediaUrl(certificate.image_url)}
+                      loading="lazy"
+                      decoding="async"
+                      src={cloudinaryUrl(resolveMediaUrl(certificate.image_url), { width: 700 })}
                       alt={certificate.title}
                       style={{ width: '100%', height: 200, objectFit: 'cover' }}
                     />

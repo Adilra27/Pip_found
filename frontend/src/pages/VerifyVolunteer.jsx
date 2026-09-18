@@ -22,7 +22,13 @@ function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function VerifyVolunteer() {
+  usePageMeta(
+    'Verify Volunteer ID',
+    'Verify a volunteer ID card issued by Piplad Welfare Foundation.'
+  );
   const { identifier } = useParams();
   const [state, setState] = useState({ loading: true, data: null, error: null });
 

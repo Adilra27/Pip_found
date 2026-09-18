@@ -2,8 +2,11 @@ import os
 import hmac
 import hashlib
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -12,7 +15,7 @@ from ..database import get_db
 from ..models import Donation, Cause
 from ..schemas import RazorpayOrderCreate, RazorpayVerifyRequest, DonationResponse
 from ..donation_receipt import build_donation_receipt_html
-from ..email_service import send_donation_documents_email
+from ..email_service import send_admin_alert_email, send_donation_documents_email
 from ..certificate_pdf import build_donation_receipt_pdf
 
 try:
@@ -138,7 +141,7 @@ def _save_donation_documents(
                 f"/media/invoices/donation_{donation.id}/receipt.pdf"
             )
         except Exception:
-            print("Failed to store donation receipt PDF")
+            logger.exception("Failed to store donation receipt PDF")
 
 
 def _email_donation_documents(
@@ -170,7 +173,7 @@ def _email_donation_documents(
             paid_at=donation.created_at,
         )
     except Exception:
-        print("Failed to generate donation receipt PDF")
+        logger.exception("Failed to generate donation receipt PDF")
 
     _save_donation_documents(donation, receipt_pdf)
 
@@ -202,6 +205,21 @@ def _finalize_donation(
         cause = db.query(Cause).filter(Cause.id == donation.cause_id).first()
         if cause:
             cause.raised_amount = (cause.raised_amount or 0.0) + donation.amount
+
+    if was_pending:
+        send_admin_alert_email(
+            subject=f"New donation received — ₹{donation.amount:,.0f}",
+            text_body=(
+                f"A new donation was completed on the website.\n\n"
+                f"Donor: {donation.donor_name}\n"
+                f"Email: {donation.donor_email}\n"
+                f"Amount: ₹{donation.amount:,.0f}\n"
+                f"Payment ID: {payment_id}\n"
+                f"Order ID: {donation.razorpay_order_id or '-'}\n"
+                f"Date: {datetime.utcnow().isoformat()} (UTC)\n\n"
+                f"The 80G receipt email is handled automatically."
+            ),
+        )
 
     if not donation.receipt_sent_at:
         sent = _email_donation_documents(donation, payment_id)
@@ -332,7 +350,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
             if donation:
                 _finalize_donation(db, donation, payment_id=payment_id)
     except Exception as e:
-        print(f"Razorpay webhook error: {e}")
+        logger.exception("Razorpay webhook error: %s", e)
 
     return {"status": "ok"}
 

@@ -17,6 +17,7 @@ from .models import (
     IssuedCertificate,
     Media,
     Mentor,
+    NewsletterSubscriber,
     TeamMember,
     UpcomingProject,
     VideoGallery,
@@ -89,8 +90,20 @@ class UpcomingProjectAdmin(ModelView, model=UpcomingProject):
 
 
 class BlogAdmin(ModelView, model=Blog):
-    column_list = [Blog.id, Blog.title, Blog.published_date]
+    column_list = [Blog.id, Blog.title, Blog.category, Blog.published_date]
     icon = "fa-solid fa-newspaper"
+
+
+class NewsletterSubscriberAdmin(ModelView, model=NewsletterSubscriber):
+    column_list = [
+        NewsletterSubscriber.id,
+        NewsletterSubscriber.email,
+        NewsletterSubscriber.name,
+        NewsletterSubscriber.created_at,
+    ]
+    column_searchable_list = [NewsletterSubscriber.email, NewsletterSubscriber.name]
+    column_sortable_list = [NewsletterSubscriber.created_at]
+    icon = "fa-solid fa-bell"
 
 
 class AboutAdmin(ModelView, model=About):

@@ -39,6 +39,8 @@ function TeamMemberCard({ member }) {
       <div className="team-member-photo-wrapper">
 
         <img
+          loading="lazy"
+          decoding="async"
           src={photo}
           alt={member.name}
           className="team-member-photo"
@@ -221,7 +223,13 @@ function normalizeTeamName(value) {
 }
 
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Team() {
+  usePageMeta(
+    'Our Team',
+    'Meet the team and mentors behind Piplad Welfare Foundation and its community programs.'
+  );
   const { teamName } = useParams();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);

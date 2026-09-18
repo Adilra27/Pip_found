@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -6,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..email_service import send_admin_alert_email
 from ..models import VolunteerApplication
 from ..schemas import VolunteerApplicationResponse
 
@@ -115,8 +117,22 @@ def create_volunteer_application(
     interest_area: str = Form(...),
     about_yourself: Optional[str] = Form(None),
     profile_pic: UploadFile = File(...),
+    website: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
+    if website:
+        return VolunteerApplicationResponse(
+            id=0,
+            full_name=full_name,
+            email=email,
+            phone=phone,
+            interest_area=interest_area,
+            about_yourself=about_yourself,
+            profile_pic_url=None,
+            status="pending",
+            created_at=datetime.utcnow(),
+        )
+
     full_name = full_name.strip()
     email = email.strip().lower()
     phone = phone.strip()
@@ -142,4 +158,18 @@ def create_volunteer_application(
     db.add(volunteer)
     db.commit()
     db.refresh(volunteer)
+
+    send_admin_alert_email(
+        subject=f"New volunteer application received (#{volunteer.id})",
+        text_body=(
+            f"A new volunteer application was submitted.\n\n"
+            f"Application ID: #{volunteer.id}\n"
+            f"Name: {volunteer.full_name}\n"
+            f"Email: {volunteer.email}\n"
+            f"Phone: {volunteer.phone}\n"
+            f"Interest area: {volunteer.interest_area}\n"
+            f"Applied at: {volunteer.created_at.isoformat()} (UTC)"
+        ),
+    )
+
     return volunteer

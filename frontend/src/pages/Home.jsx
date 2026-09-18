@@ -19,6 +19,7 @@ import {
   Utensils,
 } from 'lucide-react';
 import {
+  cloudinaryUrl,
   fetchBlogPosts,
   fetchCauses,
   fetchCertificates,
@@ -71,7 +72,10 @@ function truncate(text, length = 150) {
   return clean.length > length ? `${clean.slice(0, length).trim()}…` : clean;
 }
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
+  usePageMeta();
   const [slide, setSlide] = useState(0);
   const [slides, setSlides] = useState([]);
   const [causes, setCauses] = useState([]);
@@ -355,7 +359,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
               >
                 <div className="home-partner-mark">
                   {partner.logo ? (
-                    <img src={partner.logo} alt={`${partner.name} logo`} />
+                    <img loading="lazy" decoding="async" src={partner.logo} alt={`${partner.name} logo`} />
                   ) : (
                     partner.short
                   )}
@@ -408,7 +412,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
               {featuredProjects.map((project) => (
                 <article className="home-project-card" key={project.id}>
                   {project.image_url ? (
-                    <img src={resolveMediaUrl(project.image_url)} alt={project.title} />
+                    <img loading="lazy" decoding="async" src={cloudinaryUrl(resolveMediaUrl(project.image_url), { width: 700 })} alt={project.title} />
                   ) : (
                     <div className="home-project-placeholder"><Sprout size={34} /></div>
                   )}
@@ -446,7 +450,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
                 <article className="home-blog-card" key={post.id}>
                   <div className="home-blog-image-wrap">
                     {post.image_url ? (
-                      <img src={resolveMediaUrl(post.image_url)} alt={post.title} />
+                      <img loading="lazy" decoding="async" src={cloudinaryUrl(resolveMediaUrl(post.image_url), { width: 700 })} alt={post.title} />
                     ) : (
                       <div className="home-blog-placeholder"><BookOpen size={34} /></div>
                     )}
@@ -483,7 +487,7 @@ export default function Home({ onOpenDonate, onSelectCauseToDonate }) {
               {featuredCertificates.map((certificate) => (
                 <article className="home-certificate-card" key={certificate.id}>
                   {certificate.image_url ? (
-                    <img src={resolveMediaUrl(certificate.image_url)} alt={certificate.title} />
+                    <img loading="lazy" decoding="async" src={cloudinaryUrl(resolveMediaUrl(certificate.image_url), { width: 700 })} alt={certificate.title} />
                   ) : (
                     <div className="home-certificate-placeholder"><Award size={38} /></div>
                   )}

@@ -9,6 +9,21 @@ export function resolveMediaUrl(url) {
   return `${API_ORIGIN}/${url}`;
 }
 
+// Rewrite a Cloudinary image URL to add responsive transform params
+// (width cropping, auto compression and next-gen format). Non-Cloudinary
+// URLs pass through unchanged.
+export function cloudinaryUrl(url, options = {}) {
+  if (!url) return '';
+  if (!/res\.cloudinary\.com\//i.test(url)) return url;
+  const { width, quality = 'auto', format = 'auto' } = options;
+  const parts = [];
+  if (width) parts.push(`w_${width}`, 'c_limit');
+  if (quality) parts.push(`q_${quality}`);
+  if (format) parts.push(`f_${format}`);
+  if (!parts.length) return url;
+  return url.replace(/\/image\/upload\//, `/image/upload/${parts.join(',')}/`);
+}
+
 export async function fetchCauses() {
   const res = await fetch(`${API_BASE_URL}/causes`);
   if (!res.ok) throw new Error('Failed to fetch causes');
@@ -97,6 +112,10 @@ export async function submitVolunteerApplication(data) {
 
   if (data.profile_pic) {
     form.append('profile_pic', data.profile_pic);
+  }
+
+  if (data.website) {
+    form.append('website', data.website);
   }
 
   const res = await fetch(`${API_BASE_URL}/volunteers`, {
@@ -949,8 +968,13 @@ export async function deleteContactInquiry(id) {
 // PUBLIC BLOG
 // ============================================================
 
-export async function fetchBlogPosts() {
-  const res = await fetch(`${API_BASE_URL}/blog`);
+export async function fetchBlogPosts({ category, q } = {}) {
+  const params = new URLSearchParams();
+  if (category && category !== 'All') params.set('category', category);
+  if (q) params.set('q', q);
+  const query = params.toString();
+
+  const res = await fetch(`${API_BASE_URL}/blog${query ? `?${query}` : ''}`);
 
   if (!res.ok) {
     throw new Error('Failed to fetch blog posts');
@@ -1362,4 +1386,60 @@ export async function fetchCertificateHistory({
   if (type && type !== 'all') params.set('type', type);
   if (status && status !== 'all') params.set('status', status);
   return adminFetch(`/admin/cert-management/history?${params.toString()}`);
+}
+
+// ============================================================
+// NEWSLETTER
+// ============================================================
+
+export async function fetchApplicationStatus(applicationId) {
+  const res = await fetch(`${API_BASE_URL}/verify/application/${encodeURIComponent(applicationId)}`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error('Unable to look up application status right now.');
+  }
+
+  return res.json();
+}
+
+export async function subscribeNewsletter({ email, name, website = '' }) {
+  const res = await fetch(`${API_BASE_URL}/newsletter/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, name, website }),
+  });
+
+  if (!res.ok) {
+    let detail = 'Unable to subscribe. Please try again.';
+    try {
+      const data = await res.json();
+      if (data && data.detail) detail = data.detail;
+    } catch {
+      // ignore JSON parse errors, keep default message
+    }
+    throw new Error(detail);
+  }
+
+  return res.json();
+}
+
+export async function fetchNewsletterSubscribers() {
+  return adminFetch('/admin/newsletter');
+}
+
+export async function exportNewsletterSubscribers() {
+  const credentials = getAdminCredentials();
+  const response = await fetch(`${API_BASE_URL}/admin/newsletter/export`, {
+    headers: {
+      Authorization: `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Unable to export newsletter subscribers.');
+  }
+
+  return response.blob();
 }

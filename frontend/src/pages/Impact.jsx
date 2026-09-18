@@ -63,7 +63,13 @@ function SectionHeading({ eyebrow, title, description, light = false }) {
   );
 }
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Impact() {
+  usePageMeta(
+    'Our Impact',
+    'See the measurable impact of Piplad Welfare Foundation across people, the environment, and communities.'
+  );
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

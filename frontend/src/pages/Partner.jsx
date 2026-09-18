@@ -25,7 +25,13 @@ function groupPartnerAlbums(items) {
   return Array.from(albums.values());
 }
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Partner() {
+  usePageMeta(
+    'Partners',
+    'Meet the corporate partners and supporters of Piplad Welfare Foundation.'
+  );
   const { partnerSlug } = useParams();
   const partner = partnerData.find((item) => item.slug === partnerSlug);
   const [partnerPhotos, setPartnerPhotos] = useState([]);
@@ -68,6 +74,8 @@ export default function Partner() {
           <div className="home-partner-detail-mark">
             {partner.logo ? (
               <img
+                loading="lazy"
+                decoding="async"
                 src={partner.logo}
                 alt={`${partner.name} logo`}
               />
@@ -114,6 +122,8 @@ export default function Partner() {
             <div className="partner-logo-row">
               <div className="partner-logo-box">
                 <img
+                  loading="lazy"
+                  decoding="async"
                   src="/logos/tcs-logo.png"
                   alt="Tata Consultancy Services logo"
                   className="partner-logo-img"
@@ -187,6 +197,8 @@ export default function Partner() {
             <div className="partner-logo-row">
               <div className="partner-logo-box">
                 <img
+                  loading="lazy"
+                  decoding="async"
                   src="/logos/tci-logo.jpeg"
                   alt="Transport Corporation of India logo"
                   className="partner-logo-img"
@@ -265,7 +277,7 @@ export default function Partner() {
               {partnerAlbums.map((album) => (
                 <article className="partner-photo-card" key={album.id}>
                   <div className="partner-photo-img">
-                    <img src={resolveMediaUrl(album.photos[0].image_url)} alt={album.title} />
+                    <img loading="lazy" decoding="async" src={resolveMediaUrl(album.photos[0].image_url)} alt={album.title} />
                   </div>
                   <figcaption>
                     <h3>{album.title}</h3>

@@ -46,6 +46,8 @@ export default function VerificationShell({
         <div className="verify-card">
           <div className="verify-brand">
             <img
+              loading="lazy"
+              decoding="async"
               src="/piplad-logo.png"
               alt="Piplad Welfare Foundation logo"
               className="verify-logo"

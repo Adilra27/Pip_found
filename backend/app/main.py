@@ -6,6 +6,16 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+
+class _CachedStaticFiles(StaticFiles):
+    """StaticFiles that adds cache headers; `headers=` kwarg is not
+    available on older Starlette versions."""
+
+    def create_response(self, *args, **kwargs):
+        response = super().create_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        return response
 from sqlalchemy import inspect, text
 
 logger = logging.getLogger(__name__)
@@ -26,6 +36,7 @@ from .routes import (
     home,
     impact,
     media,
+    newsletter,
     settings,
     team,
     verify,
@@ -470,6 +481,41 @@ with engine.begin() as connection:
 
 
 # ============================================================
+# BLOG CATEGORY / META DESCRIPTION COMPATIBILITY
+# ============================================================
+
+# Adds blog filtering (category) and SEO (meta_description) columns
+# to pre-existing ``blogs`` tables.
+
+with engine.begin() as connection:
+    table_names = {name.lower() for name in inspect(connection).get_table_names()}
+    if "blogs" in table_names:
+        blog_columns = {
+            column["name"] for column in inspect(connection).get_columns("blogs")
+        }
+
+        if "category" not in blog_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE blogs
+                    ADD COLUMN category VARCHAR(100)
+                    """
+                )
+            )
+
+        if "meta_description" not in blog_columns:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE blogs
+                    ADD COLUMN meta_description VARCHAR(300)
+                    """
+                )
+            )
+
+
+# ============================================================
 # CERTIFICATE TEMPLATE IMAGE URL COMPATIBILITY
 # ============================================================
 
@@ -677,6 +723,11 @@ app.include_router(
     tags=["Home"],
 )
 
+app.include_router(
+    newsletter.router,
+    tags=["Newsletter"],
+)
+
 
 # ============================================================
 # ROOT ENDPOINT
@@ -772,9 +823,7 @@ ensure_generated_dirs()
 
 app.mount(
     "/media",
-    StaticFiles(
-        directory=MEDIA_DIR,
-    ),
+    _CachedStaticFiles(directory=MEDIA_DIR),
     name="media",
 )
 

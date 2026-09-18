@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, MapPin, Phone, Mail, ShieldCheck } from 'lucide-react';
+import { Heart, MapPin, Phone, Mail, ShieldCheck, Send } from 'lucide-react';
 import SocialLinks from './SocialLinks';
-import { fetchFooterFocus, fetchFooterQuickLinks } from '../api';
+import { fetchFooterFocus, fetchFooterQuickLinks, subscribeNewsletter } from '../api';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const DEFAULT_FOCUS = [
@@ -27,6 +27,31 @@ export default function Footer({ onOpenDonate }) {
   const [focusItems, setFocusItems] = useState(DEFAULT_FOCUS);
   const [quickLinks, setQuickLinks] = useState(DEFAULT_QUICK_LINKS);
   const { settings } = useSiteSettings();
+
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterState, setNewsletterState] = useState('idle');
+  const [newsletterWebsite, setNewsletterWebsite] = useState('');
+
+  const handleNewsletterSubmit = async (event) => {
+    event.preventDefault();
+
+    const email = newsletterEmail.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      setNewsletterState('error');
+      return;
+    }
+
+    setNewsletterState('loading');
+    try {
+      await subscribeNewsletter({ email, website: newsletterWebsite });
+      setNewsletterEmail('');
+      setNewsletterState('success');
+      setTimeout(() => setNewsletterState('idle'), 6000);
+    } catch (err) {
+      console.error('Newsletter subscribe failed:', err);
+      setNewsletterState('error');
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +108,8 @@ export default function Footer({ onOpenDonate }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
               <img
+                loading="lazy"
+                decoding="async"
                 src="/piplad-logo.png"
                 alt="Piplad Welfare Foundation"
                 style={{ width: '80px', height: '80px', borderRadius: '10px', objectFit: 'contain', flexShrink: 0 }}
@@ -100,6 +127,73 @@ export default function Footer({ onOpenDonate }) {
             </div>
             <h4 style={{ color: '#ffffff', fontSize: '1rem', fontWeight: 700, margin: '1.75rem 0 0.9rem 0' }}>Follow Us</h4>
             <SocialLinks />
+
+            {/* Newsletter */}
+            <div style={{ marginTop: '1.5rem' }}>
+              <label htmlFor="newsletter-email" style={{ color: '#ffffff', fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem', display: 'block' }}>
+                Subscribe to our newsletter
+              </label>
+              <form onSubmit={handleNewsletterSubmit} style={{ display: 'flex', gap: '0.5rem', maxWidth: '300px' }}>
+                <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', height: 0, overflow: 'hidden' }} aria-hidden="true">
+                  <label htmlFor="newsletter-website">Website</label>
+                  <input
+                    id="newsletter-website"
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={newsletterWebsite}
+                    onChange={(e) => setNewsletterWebsite(e.target.value)}
+                  />
+                </div>
+                <input
+                  id="newsletter-email"
+                  type="email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  placeholder="Your email address"
+                  required
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: '0.6rem 0.8rem',
+                    borderRadius: '8px',
+                    border: '1px solid #334155',
+                    background: '#1e293b',
+                    color: '#f1f5f9',
+                    fontSize: '0.85rem'
+                  }}
+                />
+                <button
+                  type="submit"
+                  aria-label="Subscribe to newsletter"
+                  disabled={newsletterState === 'loading'}
+                  style={{
+                    background: '#10b981',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0 0.9rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    opacity: newsletterState === 'loading' ? 0.7 : 1
+                  }}
+                >
+                  <Send size={16} />
+                </button>
+              </form>
+              {newsletterState === 'success' && (
+                <p style={{ color: '#34d399', fontSize: '0.8rem', margin: '0.5rem 0 0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <ShieldCheck size={14} /> Subscribed! Welcome aboard.
+                </p>
+              )}
+              {newsletterState === 'error' && (
+                <p style={{ color: '#f87171', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>
+                  Please enter a valid email address.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Col 2: Quick Links */}

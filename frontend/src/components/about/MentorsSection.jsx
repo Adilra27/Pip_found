@@ -77,6 +77,8 @@ const MentorsSection = ({ data = null }) => {
             <div className="about-mentor-image">
 
               <img
+                loading="lazy"
+                decoding="async"
                 src={mentorImage}
                 alt={mentor.name}
               />

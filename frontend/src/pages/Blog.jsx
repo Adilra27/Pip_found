@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Calendar, ArrowRight, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { fetchBlogPosts } from '../api';
+import { cloudinaryUrl, fetchBlogPosts } from '../api';
+
+import usePageMeta from '../hooks/usePageMeta';
 
 export default function Blog() {
+  usePageMeta(
+    'Blog',
+    'Stories, updates, and insights from Piplad Welfare Foundation.'
+  );
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Filtering
+  const [category, setCategory] = useState('All');
+  const [search, setSearch] = useState('');
+  const [categories, setCategories] = useState([]);
 
   // Track which blog card is currently being hovered
   const [hoveredPostId, setHoveredPostId] = useState(null);
@@ -22,7 +33,15 @@ export default function Blog() {
         const data = await fetchBlogPosts();
 
         if (isMounted) {
-          setPosts(Array.isArray(data) ? data : []);
+          const list = Array.isArray(data) ? data : [];
+          setPosts(list);
+
+          const seen = new Set(['All']);
+          list.forEach((post) => {
+            const label = (post.category || 'General').trim();
+            seen.add(label);
+          });
+          setCategories([...seen]);
         }
       } catch (err) {
         console.error('Failed to fetch blog posts:', err);
@@ -46,6 +65,15 @@ export default function Blog() {
       isMounted = false;
     };
   }, []);
+
+  const filteredPosts = posts.filter((post) => {
+    const matchesCategory =
+      category === 'All' || (post.category || 'General') === category;
+    const query = search.trim().toLowerCase();
+    const haystack = `${post.title} ${post.summary || ''} ${post.category || ''}`.toLowerCase();
+    const matchesSearch = !query || haystack.includes(query);
+    return matchesCategory && matchesSearch;
+  });
 
   const formatDate = (date) => {
     if (!date) return '';
@@ -126,6 +154,61 @@ export default function Blog() {
 
         <div className="container">
 
+          {/* Filter toolbar */}
+          {!loading && !error && posts.length > 0 && (
+            <div style={{ marginBottom: '2.5rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                  justifyContent: 'center',
+                  marginBottom: '1.25rem'
+                }}
+              >
+                {categories.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setCategory(label)}
+                    style={{
+                      background: category === label ? '#15803d' : '#ffffff',
+                      color: category === label ? '#ffffff' : '#0f172a',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '999px',
+                      padding: '0.5rem 1.1rem',
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ maxWidth: '420px', margin: '0 auto' }}>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search stories and updates…"
+                  aria-label="Search blog posts"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1.1rem',
+                    borderRadius: '12px',
+                    border: '1px solid #d1d5db',
+                    fontSize: '0.95rem',
+                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)'
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Loading */}
           {loading && (
             <div
@@ -160,7 +243,7 @@ export default function Blog() {
 
 
           {/* Empty */}
-          {!loading && !error && posts.length === 0 && (
+          {!loading && !error && filteredPosts.length === 0 && (
             <div
               style={{
                 textAlign: 'center',
@@ -168,18 +251,20 @@ export default function Blog() {
               }}
             >
               <h2 style={{ color: '#0f172a' }}>
-                No blog posts yet
+                No blog posts found
               </h2>
 
               <p style={{ color: '#64748b' }}>
-                New stories and updates will appear here soon.
+                {posts.length === 0
+                  ? 'New stories and updates will appear here soon.'
+                  : 'Try a different category or search term.'}
               </p>
             </div>
           )}
 
 
           {/* Posts */}
-          {!loading && !error && posts.length > 0 && (
+          {!loading && !error && filteredPosts.length > 0 && (
             <div
               style={{
                 display: 'grid',
@@ -189,7 +274,7 @@ export default function Blog() {
               }}
             >
 
-              {posts.map((post) => {
+              {filteredPosts.map((post) => {
 
                 const isHovered = hoveredPostId === post.id;
 
@@ -238,7 +323,9 @@ export default function Blog() {
 
                       {post.image_url ? (
                         <img
-                          src={post.image_url}
+                          loading="lazy"
+                          decoding="async"
+                          src={cloudinaryUrl(post.image_url, { width: 700 })}
                           alt={post.title}
                           style={{
                             width: '100%',

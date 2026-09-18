@@ -4,7 +4,13 @@ import { MapPin, Phone, Mail, Send, CheckCircle2, Loader2, Navigation } from 'lu
 import SocialLinks from '../components/SocialLinks';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Contact() {
+  usePageMeta(
+    'Contact Us',
+    'Get in touch with Piplad Welfare Foundation for donations, volunteering, partnerships, or any questions.'
+  );
   const { settings } = useSiteSettings();
   const [name, setName] = useState('');
 
@@ -18,6 +24,7 @@ export default function Contact() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
+  const [website, setWebsite] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +32,7 @@ export default function Contact() {
     setError(null);
 
     try {
-      await submitContact({ name, email, phone, subject, message });
+      await submitContact({ name, email, phone, subject, message, website });
       setLoading(false);
       setSubmitted(true);
       setName('');
@@ -172,6 +179,18 @@ export default function Contact() {
               </div>
             ) : (
               <form onSubmit={handleSubmit}>
+                <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', height: 0, overflow: 'hidden' }} aria-hidden="true">
+                  <label htmlFor="website">Website</label>
+                  <input
+                    id="website"
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                  />
+                </div>
                 {error && (
                   <div style={{ background: '#fef2f2', color: '#dc2626', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem' }}>
                     {error}

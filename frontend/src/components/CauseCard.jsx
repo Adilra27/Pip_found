@@ -1,5 +1,6 @@
 
 import { Heart } from 'lucide-react';
+import { cloudinaryUrl } from '../api';
 
 export default function CauseCard({ cause, onDonate }) {
   const percentage = Math.min(
@@ -12,7 +13,9 @@ export default function CauseCard({ cause, onDonate }) {
       {/* Image Container */}
       <div style={{ position: 'relative', height: '200px', overflow: 'hidden' }}>
         <img
-          src={cause.image_url || 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=80&w=800'}
+          loading="lazy"
+          decoding="async"
+          src={cloudinaryUrl(cause.image_url, { width: 700 }) || 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=80&w=800'}
           alt={cause.title}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />

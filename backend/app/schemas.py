@@ -28,6 +28,7 @@ class ContactCreate(BaseModel):
     phone: Optional[str] = None
     subject: Optional[str] = None
     message: str
+    website: Optional[str] = None
 
 
 class ContactResponse(ContactCreate):
@@ -188,6 +189,8 @@ class BlogBase(BaseModel):
     title: str
     summary: Optional[str] = None
     content: str
+    category: Optional[str] = "General"
+    meta_description: Optional[str] = None
     image_url: Optional[str] = None
     published_date: Optional[datetime] = None
 
@@ -496,6 +499,16 @@ class VerifiedVolunteerResponse(BaseModel):
     issued_by: str = "Piplad Welfare Foundation"
 
 
+class VerifiedApplicationResponse(BaseModel):
+    found: bool
+    application_id: Optional[int] = None
+    status: Optional[str] = None
+    volunteer_id: Optional[str] = None
+    full_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
 # ============================================================
 # HOME PAGE HERO SLIDES
 # ============================================================
@@ -511,5 +524,24 @@ class HomeSlideResponse(BaseModel):
     is_active: bool = True
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================
+# NEWSLETTER
+# ============================================================
+
+class NewsletterSubscribeRequest(BaseModel):
+    email: str
+    name: Optional[str] = None
+    website: Optional[str] = None
+
+
+class NewsletterSubscriberResponse(BaseModel):
+    id: int
+    email: str
+    name: Optional[str] = None
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

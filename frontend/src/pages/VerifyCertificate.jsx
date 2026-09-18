@@ -49,7 +49,13 @@ function RelevantDates({ startingDate, endDate, competitionDate }) {
   );
 }
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function VerifyCertificate() {
+  usePageMeta(
+    'Verify Certificate',
+    'Verify a certificate issued by Piplad Welfare Foundation.'
+  );
   const { identifier } = useParams();
   const [state, setState] = useState({ loading: true, data: null, error: null });
 

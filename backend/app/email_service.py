@@ -165,6 +165,66 @@ def _deliver_email(
     return False
 
 
+def send_newsletter_confirmation_email(
+    *,
+    to_email: str,
+    name: str | None = None,
+) -> bool:
+    """Confirm a newsletter signup."""
+
+    greeting = f"Hi {name.strip()}," if name and name.strip() else "Hello,"
+    return _deliver_email(
+        to_email=to_email,
+        subject="Welcome to the Piplad Welfare Foundation newsletter",
+        text_body=(
+            f"{greeting}\n\n"
+            "Thank you for subscribing to updates from Piplad Welfare Foundation. "
+            "You will receive stories, impact reports, and opportunities to help "
+            "create opportunities and lives.\n\n"
+            "If you ever wish to unsubscribe, simply reply to this email and "
+            "we will remove you.\n\n"
+            "Warm regards,\n"
+            "Piplad Welfare Foundation"
+        ),
+        html_body=(
+            f"<p>{greeting}</p>"
+            "<p>Thank you for subscribing to updates from Piplad Welfare Foundation. "
+            "You will receive stories, impact reports, and opportunities to help "
+            "create opportunities and lives.</p>"
+            "<p>If you ever wish to unsubscribe, simply reply to this email and "
+            "we will remove you.</p>"
+            "<p>Warm regards,<br/>Piplad Welfare Foundation</p>"
+        ),
+    )
+
+
+def send_admin_alert_email(
+    *,
+    subject: str,
+    text_body: str,
+) -> bool:
+    """Notify the site administrator about a new submission.
+
+    Recipient comes from ``ADMIN_NOTIFY_EMAIL`` (falls back to ``EMAIL_FROM``).
+    No-op when neither is configured.
+    """
+
+    to_email = os.getenv("ADMIN_NOTIFY_EMAIL") or os.getenv("EMAIL_FROM")
+    if not to_email:
+        logger.warning(
+            "Admin alert not sent: ADMIN_NOTIFY_EMAIL/EMAIL_FROM unset (%s)",
+            subject,
+        )
+        return False
+
+    return _deliver_email(
+        to_email=to_email,
+        subject=subject,
+        text_body=text_body,
+        html_body=f"<p>{escape(text_body).replace(chr(10), '<br/>')}</p>",
+    )
+
+
 def send_volunteer_welcome_email(
     *,
     to_email: str,

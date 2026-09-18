@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Calendar } from 'lucide-react';
-import { fetchBlogPost } from '../api';
+import { cloudinaryUrl, fetchBlogPost } from '../api';
+import usePageMeta from '../hooks/usePageMeta';
 
 export default function BlogPost() {
   const { id } = useParams();
@@ -9,6 +10,12 @@ export default function BlogPost() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  usePageMeta(
+    post ? post.title : 'Blog Post',
+    post ? (post.meta_description || post.summary || 'Article from Piplad Welfare Foundation.') : 'Read an article from Piplad Welfare Foundation.',
+    post && post.image_url
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -204,7 +211,9 @@ export default function BlogPost() {
               }}
             >
               <img
-                src={post.image_url}
+                loading="lazy"
+                decoding="async"
+                src={cloudinaryUrl(post.image_url, { width: 1200 })}
                 alt={post.title}
                 style={{
                   width: '100%',

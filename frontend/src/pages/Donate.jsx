@@ -1,7 +1,13 @@
 
 import { Heart, ShieldCheck, CheckCircle2, Building2, FileText } from 'lucide-react';
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Donate({ onOpenDonate }) {
+  usePageMeta(
+    'Donate',
+    'Donate to Piplad Welfare Foundation. 80G tax-exempt contributions supporting healthcare, education, food security, and women empowerment.'
+  );
   return (
     <div>
       {/* Header */}

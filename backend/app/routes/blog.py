@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -16,17 +16,27 @@ router = APIRouter(
 
 @router.get("", response_model=List[BlogResponse])
 def get_blog_posts(
-    db: Session = Depends(get_db)
+    category: Optional[str] = None,
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
 ):
     """
     Return all blog posts ordered by publication date.
+    Optional ``category`` and free-text ``q`` (title/summary) filters.
     """
 
-    return (
-        db.query(Blog)
-        .order_by(Blog.published_date.desc())
-        .all()
-    )
+    query = db.query(Blog)
+
+    if category:
+        query = query.filter(Blog.category == category)
+
+    if q:
+        search = f"%{q.strip()}%"
+        query = query.filter(
+            (Blog.title.ilike(search)) | (Blog.summary.ilike(search))
+        )
+
+    return query.order_by(Blog.published_date.desc()).all()
 
 
 @router.get("/{blog_id}", response_model=BlogResponse)

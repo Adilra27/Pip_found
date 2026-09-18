@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Award, CalendarDays, Image as ImageIcon, Video, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { fetchGalleryItems, fetchUpcomingProjects, fetchVideos, resolveMediaUrl } from '../api';
+import { cloudinaryUrl, fetchGalleryItems, fetchUpcomingProjects, fetchVideos, resolveMediaUrl } from '../api';
 
 function formatDate(value) {
   if (!value) return 'Date to be announced';
@@ -120,7 +120,13 @@ function CategoryBadge({ label }) {
   );
 }
 
+import usePageMeta from '../hooks/usePageMeta';
+
 export default function Gallery() {
+  usePageMeta(
+    'Gallery',
+    "Browse photos and videos of Piplad Welfare Foundation's community work, drives, and impact."
+  );
   const location = useLocation();
   const [photos, setPhotos] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -243,7 +249,7 @@ export default function Gallery() {
                       >
                       <article className="card" style={{ overflow: 'hidden', height: '100%' }}>
                         <div style={{ height: '230px', overflow: 'hidden' }}>
-                          <img src={resolveMediaUrl(album.photos[0].image_url)} alt={album.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img loading="lazy" decoding="async" src={cloudinaryUrl(resolveMediaUrl(album.photos[0].image_url), { width: 700 })} alt={album.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                         <div style={{ padding: '1.25rem' }}>
                           <CategoryBadge label={album.category} />
@@ -305,7 +311,7 @@ export default function Gallery() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
                     {projects.map((project) => (
                       <article key={project.id} className="card" style={{ overflow: 'hidden' }}>
-                        {project.image_url && <img src={resolveMediaUrl(project.image_url)} alt={project.title} style={{ width: '100%', height: '220px', objectFit: 'cover' }} />}
+                        {project.image_url && <img loading="lazy" decoding="async" src={cloudinaryUrl(resolveMediaUrl(project.image_url), { width: 700 })} alt={project.title} style={{ width: '100%', height: '220px', objectFit: 'cover' }} />}
                         <div style={{ padding: '1.4rem' }}>
                           <span className="badge badge-green" style={{ marginBottom: '0.75rem' }}>Upcoming</span>
                           <h3 style={{ margin: '0 0 0.6rem', color: '#0f172a' }}>{project.title}</h3>
@@ -373,7 +379,9 @@ export default function Gallery() {
                   {selectedAlbum.photos.map((photo) => (
                     <img
                       key={photo.id}
-                      src={resolveMediaUrl(photo.image_url)}
+                      loading="lazy"
+                      decoding="async"
+                      src={cloudinaryUrl(resolveMediaUrl(photo.image_url))}
                       alt={selectedAlbum.title}
                       style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 8, background: '#1e293b' }}
                     />
